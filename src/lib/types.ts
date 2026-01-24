@@ -1,0 +1,199 @@
+// User input types
+export interface UserInputs {
+  // Required after-tax income per year
+  requiredIncome: number;
+
+  // Planning horizon (3, 4, or 5 years)
+  planningHorizon: 3 | 4 | 5;
+
+  // Current balances
+  corporateInvestmentBalance: number;
+  tfsaBalance: number;
+  rrspBalance: number;
+  cdaBalance: number;
+  eRDTOHBalance: number;
+  nRDTOHBalance: number;
+  gripBalance: number;
+
+  // Investment return rate (default 4.31%)
+  investmentReturnRate: number;
+
+  // Portfolio composition (percentages that should sum to 100)
+  canadianEquityPercent: number;
+  usEquityPercent: number;
+  internationalEquityPercent: number;
+  fixedIncomePercent: number;
+
+  // Annual corporate retained earnings (additional cash to invest each year)
+  annualCorporateRetainedEarnings: number;
+
+  // Toggles
+  maximizeTFSA: boolean;
+  contributeToRRSP: boolean;
+  contributeToRESP: boolean;
+  payDownDebt: boolean;
+
+  // Optional amounts
+  respContributionAmount?: number;
+  debtPaydownAmount?: number;
+  totalDebtAmount?: number;
+  debtInterestRate?: number;
+
+  // Salary strategy
+  salaryStrategy: 'dynamic' | 'fixed' | 'dividends-only';
+  fixedSalaryAmount?: number;
+}
+
+// Notional account balances
+export interface NotionalAccounts {
+  CDA: number;
+  eRDTOH: number;
+  nRDTOH: number;
+  GRIP: number;
+  corporateInvestments: number;
+}
+
+// Dividend funding breakdown
+export interface DividendFunding {
+  capitalDividends: number;
+  eligibleDividends: number;
+  nonEligibleDividends: number;
+  regularDividends: number;
+  grossDividends: number;
+  afterTaxIncome: number;
+}
+
+// Investment returns breakdown
+export interface InvestmentReturns {
+  totalReturn: number;
+  canadianDividends: number;
+  foreignIncome: number;
+  realizedCapitalGain: number;
+  unrealizedCapitalGain: number;
+  CDAIncrease: number;
+  nRDTOHIncrease: number;
+  eRDTOHIncrease: number;
+  GRIPIncrease: number;
+}
+
+// Tax calculations
+export interface TaxCalculation {
+  personalTax: number;
+  corporateTax: number;
+  cpp: number;
+  ei: number;
+  totalTax: number;
+  dividendRefund: number;
+}
+
+// Yearly result
+export interface YearlyResult {
+  year: number;
+  salary: number;
+  dividends: DividendFunding;
+  personalTax: number;
+  corporateTax: number;
+  cpp: number;
+  cpp2: number;
+  ei: number;
+  ontarioSurtax: number;
+  ontarioHealthPremium: number;
+  totalTax: number;
+  afterTaxIncome: number;
+  rrspRoomGenerated: number;
+  rrspContribution: number;
+  tfsaContribution: number;
+  respContribution: number;
+  debtPaydown: number;
+  notionalAccounts: NotionalAccounts;
+  investmentReturns: InvestmentReturns;
+}
+
+// Summary of all years
+export interface ProjectionSummary {
+  totalCompensation: number;
+  totalSalary: number;
+  totalDividends: number;
+  totalPersonalTax: number;
+  totalCorporateTax: number;
+  totalTax: number;
+  effectiveTaxRate: number;
+  finalCorporateBalance: number;
+  totalRRSPRoomGenerated: number;
+  totalRRSPContributions: number;
+  totalTFSAContributions: number;
+  averageAnnualIncome: number;
+  yearlyResults: YearlyResult[];
+}
+
+// Tax bracket definition
+export interface TaxBracket {
+  threshold: number;
+  rate: number;
+}
+
+// Complete tax rates structure
+export interface TaxRates {
+  federal: {
+    brackets: TaxBracket[];
+    basicPersonalAmount: number;
+  };
+  provincial: {
+    brackets: TaxBracket[];
+    basicPersonalAmount: number;
+  };
+  corporate: {
+    smallBusiness: number;
+    transition: number;
+    general: number;
+  };
+  dividend: {
+    eligible: {
+      grossUp: number;
+      federalCredit: number;
+      provincialCredit: number;
+      effectiveRate: number;
+    };
+    nonEligible: {
+      grossUp: number;
+      federalCredit: number;
+      provincialCredit: number;
+      effectiveRate: number;
+    };
+  };
+  cpp: {
+    rate: number;
+    maximumPensionableEarnings: number;
+    basicExemption: number;
+    maxContribution: number;
+  };
+  cpp2: {
+    rate: number;
+    firstCeiling: number;
+    secondCeiling: number;
+    maxContribution: number;
+  };
+  ei: {
+    rate: number;
+    maximumInsurableEarnings: number;
+    maxContribution: number;
+    employerMultiplier: number;
+  };
+  ontarioSurtax: {
+    firstThreshold: number;
+    firstRate: number;
+    secondThreshold: number;
+    secondRate: number;
+  };
+  ontarioHealthPremium: {
+    brackets: {
+      threshold: number;
+      base: number;
+      rate: number;
+      maxPremium: number;
+    }[];
+  };
+  rdtoh: {
+    refundRate: number;
+  };
+}
