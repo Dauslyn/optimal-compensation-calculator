@@ -61,7 +61,7 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 - **Styling**: Vanilla CSS with CSS variables (dark theme)
 - **Charts**: Recharts
 - **State**: React useState (local state)
-- **Tests**: Vitest (178 tests)
+- **Tests**: Vitest (188 tests)
 
 ---
 
@@ -124,7 +124,10 @@ These features don't answer "salary vs dividends" and belong in separate tools:
   - Added Quebec tax integration test to verify QC-specific brackets, credits, and corporate rates
   - Verified main calculator correctly uses province-aware `getTaxYearData()` for all calculations
   - Deprecated legacy functions that used hardcoded Ontario rates
-- **177 Tests**: Added Quebec and multi-province tax rate verification tests
+- **188 Tests**: Comprehensive test coverage
+  - Quebec and multi-province tax rate verification
+  - All 13 provinces/territories validated
+  - End-to-end calculator tests for realistic scenarios
 
 ### v1.7.0 (2025-01-27)
 
