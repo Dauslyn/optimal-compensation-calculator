@@ -61,7 +61,7 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 - **Styling**: Vanilla CSS with CSS variables (dark theme)
 - **Charts**: Recharts
 - **State**: React useState (local state)
-- **Tests**: Vitest (177 tests)
+- **Tests**: Vitest (178 tests)
 
 ---
 

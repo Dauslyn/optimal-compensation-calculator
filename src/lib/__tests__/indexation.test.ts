@@ -249,6 +249,35 @@ describe('getTaxYearData', () => {
     expect(uniqueNonEligible.size).toBeGreaterThan(1);
   });
 
+  it('should return valid tax data for all 13 provinces/territories', () => {
+    // All Canadian provinces and territories
+    const allProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
+
+    for (const province of allProvinces) {
+      const data = getTaxYearData(2025, 0.02, province);
+
+      // Each province should have valid federal data (same for all)
+      expect(data.federal.brackets.length).toBeGreaterThan(0);
+      expect(data.federal.basicPersonalAmount).toBeGreaterThan(10000);
+
+      // Each province should have valid provincial data
+      expect(data.provincial.brackets.length).toBeGreaterThan(0);
+      expect(data.provincial.basicPersonalAmount).toBeGreaterThan(0);
+
+      // Each province should have dividend tax credit rates
+      expect(data.dividend.eligible.provincialCredit).toBeGreaterThanOrEqual(0);
+      expect(data.dividend.nonEligible.provincialCredit).toBeGreaterThanOrEqual(0);
+
+      // Each province should have corporate rates
+      expect(data.corporate.smallBusiness).toBeGreaterThan(0.05); // At least 5%
+      expect(data.corporate.general).toBeGreaterThan(0.2); // At least 20%
+
+      // CPP and EI should be present
+      expect(data.cpp.ympe).toBeGreaterThan(60000);
+      expect(data.ei.maxInsurableEarnings).toBeGreaterThan(50000);
+    }
+  });
+
   it('should project 2027 from 2026 with default inflation', () => {
     const data2027 = getTaxYearData(2027, 0.02);
     const data2026 = KNOWN_TAX_YEARS[2026];
