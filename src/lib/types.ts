@@ -1,10 +1,24 @@
+import type { ProvinceCode } from './tax/provinces';
+
 // User input types
 export interface UserInputs {
-  // Required after-tax income per year
+  // Province for tax calculations (default: ON)
+  province: ProvinceCode;
+
+  // Required after-tax income per year (Year 1 baseline)
   requiredIncome: number;
 
-  // Planning horizon (3, 4, or 5 years)
-  planningHorizon: 3 | 4 | 5;
+  // Planning horizon (3-10 years)
+  planningHorizon: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+  // Starting year for projections (defaults to current year)
+  startingYear: number;
+
+  // Expected inflation rate for projecting future years (default: CRA indexation factor)
+  expectedInflationRate: number;
+
+  // Whether to inflate spending needs each year (default: true)
+  inflateSpendingNeeds: boolean;
 
   // Current balances
   corporateInvestmentBalance: number;
@@ -42,6 +56,11 @@ export interface UserInputs {
   // Salary strategy
   salaryStrategy: 'dynamic' | 'fixed' | 'dividends-only';
   fixedSalaryAmount?: number;
+
+  // IPP (Individual Pension Plan) - optional
+  considerIPP?: boolean;
+  ippMemberAge?: number;
+  ippYearsOfService?: number;
 }
 
 // Notional account balances
@@ -80,10 +99,21 @@ export interface InvestmentReturns {
 export interface TaxCalculation {
   personalTax: number;
   corporateTax: number;
-  cpp: number;
-  ei: number;
+  cpp: number;       // CPP or QPP (Quebec)
+  cpp2: number;      // CPP2 or QPP2 (Quebec)
+  ei: number;        // EI (reduced rate in Quebec)
+  qpip: number;      // Quebec Parental Insurance Plan (Quebec only, 0 elsewhere)
   totalTax: number;
   dividendRefund: number;
+}
+
+// Passive income grind (SBD clawback) result
+export interface PassiveIncomeGrindInfo {
+  totalPassiveIncome: number;      // Total AAII for the year
+  reducedSBDLimit: number;         // SBD limit after grind (0-500,000)
+  sbdReduction: number;            // Amount SBD was reduced
+  additionalTaxFromGrind: number;  // Extra tax paid due to grind
+  isFullyGrounded: boolean;        // True if SBD = $0
 }
 
 // Yearly result
@@ -93,11 +123,12 @@ export interface YearlyResult {
   dividends: DividendFunding;
   personalTax: number;
   corporateTax: number;
-  cpp: number;
-  cpp2: number;
-  ei: number;
-  ontarioSurtax: number;
-  ontarioHealthPremium: number;
+  cpp: number;       // CPP or QPP (Quebec)
+  cpp2: number;      // CPP2 or QPP2 (Quebec)
+  ei: number;        // EI (reduced rate in Quebec)
+  qpip: number;      // Quebec Parental Insurance Plan (Quebec only, 0 elsewhere)
+  provincialSurtax: number; // Ontario surtax, PEI surtax, etc.
+  healthPremium: number; // Ontario Health Premium, Quebec Health Contribution, etc.
   totalTax: number;
   afterTaxIncome: number;
   rrspRoomGenerated: number;
@@ -107,6 +138,7 @@ export interface YearlyResult {
   debtPaydown: number;
   notionalAccounts: NotionalAccounts;
   investmentReturns: InvestmentReturns;
+  passiveIncomeGrind: PassiveIncomeGrindInfo;  // SBD clawback details
 }
 
 // Summary of all years

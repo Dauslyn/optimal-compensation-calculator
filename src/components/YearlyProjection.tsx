@@ -66,9 +66,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
             </tr>
           </thead>
           <tbody>
-            {results.map((year, idx) => {
-              const targetIncome = year.afterTaxIncome - year.tfsaContribution - year.rrspContribution - year.debtPaydown + year.tfsaContribution + year.rrspContribution + year.debtPaydown;
-              const totalRequired = targetIncome + year.tfsaContribution + year.rrspContribution + year.debtPaydown;
+            {results.map((year) => {
               return (
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
@@ -228,8 +226,8 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
               <th>CPP</th>
               <th>CPP2</th>
               <th>EI</th>
-              <th>ON Surtax</th>
-              <th>Health Prem</th>
+              <th>Prov. Surtax</th>
+              <th>Health Prem.</th>
               <th>Corp Tax</th>
               <th>Total Tax</th>
             </tr>
@@ -242,8 +240,8 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
                 <td>{formatCurrency(year.cpp)}</td>
                 <td>{formatCurrency(year.cpp2)}</td>
                 <td>{formatCurrency(year.ei)}</td>
-                <td>{formatCurrency(year.ontarioSurtax)}</td>
-                <td>{formatCurrency(year.ontarioHealthPremium)}</td>
+                <td>{formatCurrency(year.provincialSurtax)}</td>
+                <td>{formatCurrency(year.healthPremium)}</td>
                 <td>{formatCurrency(year.corporateTax)}</td>
                 <td style={{ fontWeight: 600, color: '#fb7185' }}>{formatCurrency(year.totalTax)}</td>
               </tr>

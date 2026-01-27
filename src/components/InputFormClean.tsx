@@ -1,8 +1,15 @@
-import { useState, memo } from 'react';
+import { useState, useEffect, useRef, memo, useMemo } from 'react';
 import type { UserInputs } from '../lib/types';
+import type { ProvinceCode } from '../lib/tax/provinces';
+import { PROVINCES } from '../lib/tax/provinces';
+import { getDefaultInflationRate } from '../lib/tax/indexation';
+import { validateInputs } from '../lib/validation';
+import { InfoLabel, TAX_TOOLTIPS } from './Tooltip';
+import { saveInputsToStorage, loadInputsFromStorage, getDefaultInputs, clearStoredInputs } from '../lib/localStorage';
 
 interface InputFormProps {
   onCalculate: (inputs: UserInputs) => void;
+  initialInputs?: UserInputs | null;
 }
 
 // InputField component moved OUTSIDE the main component to prevent re-creation on render
@@ -16,6 +23,7 @@ interface InputFieldProps {
   placeholder?: string;
   step?: string;
   hint?: string;
+  tooltip?: string;
 }
 
 const InputField = memo(function InputField({
@@ -28,10 +36,15 @@ const InputField = memo(function InputField({
   placeholder,
   step = "1",
   hint,
+  tooltip,
 }: InputFieldProps) {
   return (
     <div>
-      <label htmlFor={id}>{label}</label>
+      {tooltip ? (
+        <InfoLabel label={label} tooltip={tooltip} htmlFor={id} />
+      ) : (
+        <label htmlFor={id}>{label}</label>
+      )}
       <div className="relative">
         {prefix && (
           <span
@@ -64,44 +77,66 @@ const InputField = memo(function InputField({
   );
 });
 
-export function InputFormClean({ onCalculate }: InputFormProps) {
-  const [formData, setFormData] = useState<UserInputs>({
-    requiredIncome: 100000,
-    planningHorizon: 5 as 3 | 4 | 5,
-    investmentReturnRate: 0.0431,
-    canadianEquityPercent: 33.33,
-    usEquityPercent: 33.33,
-    internationalEquityPercent: 33.33,
-    fixedIncomePercent: 0,
-    annualCorporateRetainedEarnings: 50000,
-    corporateInvestmentBalance: 500000,
-    tfsaBalance: 0,
-    rrspBalance: 0,
-    cdaBalance: 0,
-    eRDTOHBalance: 0,
-    nRDTOHBalance: 0,
-    gripBalance: 0,
-    maximizeTFSA: false,
-    contributeToRRSP: false,
-    contributeToRESP: false,
-    payDownDebt: false,
-    salaryStrategy: 'dynamic',
-    debtPaydownAmount: 0,
-    totalDebtAmount: 0,
-    debtInterestRate: 0.05,
-  });
+// Initialize form data: shared link > localStorage > defaults
+const getInitialFormData = (initialInputs?: UserInputs | null): UserInputs => {
+  // Priority: shared link inputs > localStorage > defaults
+  if (initialInputs) {
+    return initialInputs;
+  }
+
+  const storedInputs = loadInputsFromStorage();
+  if (storedInputs) {
+    return storedInputs;
+  }
+
+  return getDefaultInputs();
+};
+
+export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
+  const [formData, setFormData] = useState<UserInputs>(() => getInitialFormData(initialInputs));
+  const isFirstRender = useRef(true);
+
+  // Update form data when initialInputs changes (e.g., from shared link)
+  useEffect(() => {
+    if (initialInputs) {
+      setFormData(initialInputs);
+    }
+  }, [initialInputs]);
+
+  // Auto-save to localStorage when form data changes (debounced)
+  useEffect(() => {
+    // Skip saving on first render (already loaded from storage)
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      saveInputsToStorage(formData);
+    }, 500); // Debounce 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [formData]);
 
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     portfolio: true,
     balances: true,
+    inflation: false,
     strategy: false,
     debt: false,
+    ipp: false,
   });
+
+  // Validation
+  const validationErrors = useMemo(() => validateInputs(formData), [formData]);
+  const isFormValid = validationErrors.length === 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCalculate(formData);
+    if (isFormValid) {
+      onCalculate(formData);
+    }
   };
 
   const handleNumberChange = (field: keyof UserInputs, value: string) => {
@@ -181,7 +216,22 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
 
         {expandedSections.basic && (
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+              <div>
+                <label htmlFor="province">Province</label>
+                <select
+                  id="province"
+                  value={formData.province}
+                  onChange={(e) => setFormData({ ...formData, province: e.target.value as ProvinceCode })}
+                >
+                  {Object.values(PROVINCES).map((province) => (
+                    <option key={province.code} value={province.code}>
+                      {province.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Tax jurisdiction</p>
+              </div>
               <InputField
                 label="Required After-Tax Income"
                 id="requiredIncome"
@@ -220,17 +270,22 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
                 <select
                   id="planningHorizon"
                   value={formData.planningHorizon}
-                  onChange={(e) => setFormData({ ...formData, planningHorizon: parseInt(e.target.value) as 3 | 4 | 5 })}
+                  onChange={(e) => setFormData({ ...formData, planningHorizon: parseInt(e.target.value) as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 })}
                 >
                   <option value={3}>3 years</option>
                   <option value={4}>4 years</option>
                   <option value={5}>5 years</option>
+                  <option value={6}>6 years</option>
+                  <option value={7}>7 years</option>
+                  <option value={8}>8 years</option>
+                  <option value={9}>9 years</option>
+                  <option value={10}>10 years</option>
                 </select>
                 <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Projection timeframe</p>
               </div>
 
               <div>
-                <label htmlFor="returnRate">Expected Total Return</label>
+                <InfoLabel label="Expected Total Return" tooltip={TAX_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
                 <div className="relative">
                   <input
                     id="returnRate"
@@ -256,6 +311,85 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
                 </div>
                 <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Annual portfolio return</p>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Inflation & Indexing */}
+      <div className="p-4 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+        <SectionHeader
+          title="Inflation & Indexing"
+          section="inflation"
+          description="Adjust spending needs and tax brackets for inflation"
+        />
+
+        {expandedSections.inflation && (
+          <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div>
+                <label htmlFor="startingYear">Starting Year</label>
+                <select
+                  id="startingYear"
+                  value={formData.startingYear}
+                  onChange={(e) => setFormData({ ...formData, startingYear: parseInt(e.target.value) })}
+                >
+                  <option value={2025}>2025</option>
+                  <option value={2026}>2026</option>
+                </select>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>First year of projection</p>
+              </div>
+
+              <div>
+                <InfoLabel label="Expected Inflation Rate" tooltip={TAX_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
+                <div className="relative">
+                  <input
+                    id="inflationRate"
+                    type="number"
+                    value={(formData.expectedInflationRate * 100).toFixed(1)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setFormData({ ...formData, expectedInflationRate: 0 });
+                      } else {
+                        setFormData({ ...formData, expectedInflationRate: parseFloat(val) / 100 });
+                      }
+                    }}
+                    placeholder="2.0"
+                    step="0.1"
+                    min="0"
+                    max="10"
+                  />
+                  <span
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    %
+                  </span>
+                </div>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>CRA default: {(getDefaultInflationRate() * 100).toFixed(1)}%</p>
+              </div>
+
+              <div className="flex items-center">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.inflateSpendingNeeds}
+                    onChange={(e) => setFormData({ ...formData, inflateSpendingNeeds: e.target.checked })}
+                  />
+                  <div>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Inflate Spending Needs</span>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Increase income requirement each year</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div
+              className="p-3 rounded-lg text-xs"
+              style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}
+            >
+              Tax brackets, CPP/EI limits, and contribution limits are automatically indexed using CRA values for 2025-2026, then projected forward using your expected inflation rate.
             </div>
           </div>
         )}
@@ -329,7 +463,8 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.cdaBalance}
               onChange={(v) => handleNumberChange('cdaBalance', v)}
               prefix="$"
-              hint="Capital Dividend Account"
+              hint="From your T2 Schedule 89"
+              tooltip={TAX_TOOLTIPS.cda}
             />
             <InputField
               label="GRIP Balance"
@@ -337,7 +472,8 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.gripBalance}
               onChange={(v) => handleNumberChange('gripBalance', v)}
               prefix="$"
-              hint="General Rate Income Pool"
+              hint="From your T2 Schedule 53"
+              tooltip={TAX_TOOLTIPS.grip}
             />
             <InputField
               label="eRDTOH Balance"
@@ -345,7 +481,8 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.eRDTOHBalance}
               onChange={(v) => handleNumberChange('eRDTOHBalance', v)}
               prefix="$"
-              hint="Eligible Refundable Dividend Tax"
+              hint="From your T2 Schedule 3"
+              tooltip={TAX_TOOLTIPS.erdtoh}
             />
             <InputField
               label="nRDTOH Balance"
@@ -353,7 +490,8 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.nRDTOHBalance}
               onChange={(v) => handleNumberChange('nRDTOHBalance', v)}
               prefix="$"
-              hint="Non-Eligible Refundable Dividend Tax"
+              hint="From your T2 Schedule 3"
+              tooltip={TAX_TOOLTIPS.nrdtoh}
             />
             <InputField
               label="Available RRSP Room"
@@ -361,7 +499,7 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.rrspBalance}
               onChange={(v) => handleNumberChange('rrspBalance', v)}
               prefix="$"
-              hint="Existing contribution room"
+              hint="From CRA My Account or NOA"
             />
             <InputField
               label="Available TFSA Room"
@@ -369,7 +507,7 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
               value={formData.tfsaBalance}
               onChange={(v) => handleNumberChange('tfsaBalance', v)}
               prefix="$"
-              hint="Unused contribution room"
+              hint="From CRA My Account"
             />
           </div>
         )}
@@ -491,13 +629,135 @@ export function InputFormClean({ onCalculate }: InputFormProps) {
         )}
       </div>
 
-      {/* Submit */}
-      <button type="submit" className="btn-primary w-full mt-4">
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-        Calculate Optimal Compensation
-      </button>
+      {/* IPP (Individual Pension Plan) */}
+      <div className="p-4 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+        <SectionHeader
+          title="IPP Analysis"
+          section="ipp"
+          description="Individual Pension Plan comparison"
+        />
+
+        {expandedSections.ipp && (
+          <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.considerIPP || false}
+                onChange={(e) => setFormData({ ...formData, considerIPP: e.target.checked })}
+              />
+              <div>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Include IPP Analysis</span>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Compare IPP contributions vs RRSP</p>
+              </div>
+            </label>
+
+            {formData.considerIPP && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <InputField
+                  label="Your Age"
+                  id="ippAge"
+                  value={formData.ippMemberAge || 45}
+                  onChange={(v) => handleNumberChange('ippMemberAge', v)}
+                  hint="Current age for IPP calculations"
+                />
+                <InputField
+                  label="Years of Service"
+                  id="ippService"
+                  value={formData.ippYearsOfService || 10}
+                  onChange={(v) => handleNumberChange('ippYearsOfService', v)}
+                  hint="Years employed by your corporation"
+                />
+              </div>
+            )}
+
+            <div
+              className="p-3 rounded-lg"
+              style={{ background: 'rgba(59, 130, 246, 0.1)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                IPP allows higher tax-deductible contributions than RRSP for older individuals (typically 40+).
+                The corporation contributes directly to the IPP, providing corporate tax deductions.
+                An actuary must administer the plan (adds $2,000-3,000/year in costs).
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div
+          className="p-4 rounded-xl mt-4"
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 mt-0.5 flex-shrink-0"
+              style={{ color: '#ef4444' }}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <p className="font-medium text-sm" style={{ color: '#ef4444' }}>
+                Please fix the following errors:
+              </p>
+              <ul className="mt-2 text-sm space-y-1" style={{ color: 'var(--text-muted)' }}>
+                {validationErrors.map((error, index) => (
+                  <li key={index}>• {error.message}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 mt-4">
+        <button
+          type="button"
+          onClick={() => {
+            clearStoredInputs();
+            setFormData(getDefaultInputs());
+          }}
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all"
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span className="text-sm font-medium">Reset</span>
+        </button>
+
+        <button
+          type="submit"
+          className="btn-primary flex-1"
+          disabled={!isFormValid}
+          style={{
+            opacity: isFormValid ? 1 : 0.5,
+            cursor: isFormValid ? 'pointer' : 'not-allowed',
+          }}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          Calculate Optimal Compensation
+        </button>
+      </div>
     </form>
   );
 }

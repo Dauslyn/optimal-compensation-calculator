@@ -1,123 +1,205 @@
-import type { TaxRates, TaxBracket } from '../types';
+/**
+ * Tax Constants Module
+ *
+ * This module provides tax rates and constants for the current tax year.
+ * It uses the indexation module as the source of truth for year-specific values.
+ *
+ * For multi-year projections, use getTaxYearData() from indexation.ts directly.
+ * This module provides backward compatibility for single-year calculations.
+ */
 
-// Ontario 2025/2026 Tax Rates
-// Note: These rates are used for projection purposes. Actual future rates may vary.
+import type { TaxRates, TaxBracket } from '../types';
+import { getTaxYearData, getStartingYear, type TaxYearData } from './indexation';
+
+// Get current year's tax data
+const currentYear = getStartingYear();
+const currentYearData: TaxYearData = getTaxYearData(currentYear);
+
+/**
+ * TAX_RATES - Current year tax rates (backward compatible export)
+ *
+ * Note: For multi-year projections, use getTaxYearData(year, inflationRate)
+ * from the indexation module instead.
+ */
 export const TAX_RATES: TaxRates = {
-    federal: {
-        brackets: [
-            { threshold: 0, rate: 0.15 },
-            { threshold: 53359, rate: 0.205 },
-            { threshold: 106717, rate: 0.26 },
-            { threshold: 165430, rate: 0.29 },
-            { threshold: 235675, rate: 0.33 },
-        ],
-        basicPersonalAmount: 15000,
+  federal: {
+    brackets: currentYearData.federal.brackets,
+    basicPersonalAmount: currentYearData.federal.basicPersonalAmount,
+  },
+  provincial: {
+    brackets: currentYearData.provincial.brackets,
+    basicPersonalAmount: currentYearData.provincial.basicPersonalAmount,
+  },
+  corporate: {
+    smallBusiness: currentYearData.corporate.smallBusiness,
+    transition: 0.182, // 18.2% (15% federal + 3.2% Ontario) - rarely used
+    general: currentYearData.corporate.general,
+  },
+  dividend: {
+    eligible: {
+      grossUp: currentYearData.dividend.eligible.grossUp,
+      federalCredit: currentYearData.dividend.eligible.federalCredit,
+      provincialCredit: currentYearData.dividend.eligible.provincialCredit,
+      // Calculate effective rate: top marginal rate on grossed-up amount minus credits
+      // This is approximate and varies by income level
+      effectiveRate: 0.3934,
     },
-    provincial: {
-        brackets: [
-            { threshold: 0, rate: 0.0505 },
-            { threshold: 49231, rate: 0.0915 },
-            { threshold: 98463, rate: 0.1116 },
-            { threshold: 150000, rate: 0.1216 },
-            { threshold: 220000, rate: 0.1316 },
-        ],
-        basicPersonalAmount: 11141,
+    nonEligible: {
+      grossUp: currentYearData.dividend.nonEligible.grossUp,
+      federalCredit: currentYearData.dividend.nonEligible.federalCredit,
+      provincialCredit: currentYearData.dividend.nonEligible.provincialCredit,
+      effectiveRate: 0.4774,
     },
-    corporate: {
-        smallBusiness: 0.122, // 12.2% (9% federal + 3.2% Ontario)
-        transition: 0.182, // 18.2% (15% federal + 3.2% Ontario)
-        general: 0.265, // 26.5% (15% federal + 11.5% Ontario)
-    },
-    dividend: {
-        eligible: {
-            grossUp: 0.38, // 38% gross-up
-            federalCredit: 0.150198, // 15.0198%
-            provincialCredit: 0.10, // 10%
-            effectiveRate: 0.3934, // 39.34% combined personal tax rate
-        },
-        nonEligible: {
-            grossUp: 0.15, // 15% gross-up
-            federalCredit: 0.090301, // 9.0301%
-            provincialCredit: 0.029863, // 2.9863%
-            effectiveRate: 0.4774, // 47.74% combined personal tax rate
-        },
-    },
-    cpp: {
-        rate: 0.0595, // 5.95% (employee portion)
-        maximumPensionableEarnings: 68500, // YMPE for 2025
-        basicExemption: 3500,
-        maxContribution: 3867.50, // (68500 - 3500) * 0.0595
-    },
-    cpp2: {
-        rate: 0.04, // 4% (employee portion) - second tier since 2024
-        firstCeiling: 68500, // YMPE - first ceiling
-        secondCeiling: 73200, // YAMPE - second ceiling for 2025
-        maxContribution: 188, // (73200 - 68500) * 0.04
-    },
-    ei: {
-        rate: 0.0164, // 1.64% for 2025
-        maximumInsurableEarnings: 65700, // 2025 max insurable earnings
-        maxContribution: 1077.48, // 65700 * 0.0164
-        employerMultiplier: 1.4, // Employer pays 1.4x employee premium
-    },
-    ontarioSurtax: {
-        // Ontario surtax on provincial tax payable
-        firstThreshold: 5554,
-        firstRate: 0.20, // 20% on provincial tax over $5,554
-        secondThreshold: 7108,
-        secondRate: 0.36, // Additional 36% on provincial tax over $7,108
-    },
-    ontarioHealthPremium: {
-        // Ontario Health Premium brackets (based on taxable income)
-        brackets: [
-            { threshold: 0, base: 0, rate: 0, maxPremium: 0 },
-            { threshold: 20000, base: 0, rate: 0.06, maxPremium: 300 },
-            { threshold: 25000, base: 300, rate: 0.06, maxPremium: 450 },
-            { threshold: 36000, base: 450, rate: 0.25, maxPremium: 600 },
-            { threshold: 38500, base: 600, rate: 0.25, maxPremium: 750 },
-            { threshold: 48000, base: 750, rate: 0.25, maxPremium: 900 },
-            { threshold: 72000, base: 750, rate: 0.25, maxPremium: 900 },
-            { threshold: 200000, base: 900, rate: 0, maxPremium: 900 },
-        ],
-    },
-    rdtoh: {
-        refundRate: 0.3833, // 38.33% refund rate
-    },
+  },
+  cpp: {
+    rate: currentYearData.cpp.rate,
+    maximumPensionableEarnings: currentYearData.cpp.ympe,
+    basicExemption: currentYearData.cpp.basicExemption,
+    maxContribution: currentYearData.cpp.maxContribution,
+  },
+  cpp2: {
+    rate: currentYearData.cpp2.rate,
+    firstCeiling: currentYearData.cpp2.firstCeiling,
+    secondCeiling: currentYearData.cpp2.secondCeiling,
+    maxContribution: currentYearData.cpp2.maxContribution,
+  },
+  ei: {
+    rate: currentYearData.ei.rate,
+    maximumInsurableEarnings: currentYearData.ei.maxInsurableEarnings,
+    maxContribution: currentYearData.ei.maxContribution,
+    employerMultiplier: currentYearData.ei.employerMultiplier,
+  },
+  ontarioSurtax: {
+    firstThreshold: currentYearData.provincial.surtax.firstThreshold,
+    firstRate: currentYearData.provincial.surtax.firstRate,
+    secondThreshold: currentYearData.provincial.surtax.secondThreshold,
+    secondRate: currentYearData.provincial.surtax.secondRate,
+  },
+  ontarioHealthPremium: {
+    brackets: currentYearData.provincial.healthPremium.brackets,
+  },
+  rdtoh: {
+    refundRate: currentYearData.rdtoh.refundRate,
+  },
 };
 
-// TFSA contribution limit (2026)
-export const TFSA_ANNUAL_LIMIT = 7000;
+// TFSA contribution limit (current year)
+export const TFSA_ANNUAL_LIMIT = currentYearData.tfsa.annualLimit;
 
-// RRSP contribution rate
-export const RRSP_CONTRIBUTION_RATE = 0.18; // 18% of previous year's earned income
-export const RRSP_ANNUAL_LIMIT = 32490; // 2026 limit
+// RRSP contribution rate and limit
+export const RRSP_CONTRIBUTION_RATE = currentYearData.rrsp.contributionRate;
+export const RRSP_ANNUAL_LIMIT = currentYearData.rrsp.dollarLimit;
 
-// Small business deduction thresholds
-export const SBD_THRESHOLD = 500000; // Small business limit
-export const PASSIVE_INCOME_THRESHOLD = 50000; // Passive income threshold
-export const PASSIVE_INCOME_GRIND_RATE = 5; // $1 reduction per $5 of passive income over threshold
+// Small business deduction thresholds (not indexed)
+export const SBD_THRESHOLD = 500000;
+export const PASSIVE_INCOME_THRESHOLD = 50000;
+export const PASSIVE_INCOME_GRIND_RATE = 5;
 
 /**
  * Helper function to calculate tax using bracket system
  */
 export function calculateTaxByBrackets(income: number, brackets: TaxBracket[]): number {
-    let tax = 0;
+  let tax = 0;
 
-    for (let i = 0; i < brackets.length; i++) {
-        const bracket = brackets[i];
-        const nextThreshold = i < brackets.length - 1 ? brackets[i + 1].threshold : Infinity;
+  for (let i = 0; i < brackets.length; i++) {
+    const bracket = brackets[i];
+    const nextThreshold = i < brackets.length - 1 ? brackets[i + 1].threshold : Infinity;
 
-        if (income <= bracket.threshold) {
-            break;
-        }
-
-        const taxableInThisBracket = Math.min(income, nextThreshold) - bracket.threshold;
-        tax += taxableInThisBracket * bracket.rate;
-
-        if (income <= nextThreshold) {
-            break;
-        }
+    if (income <= bracket.threshold) {
+      break;
     }
 
-    return tax;
+    const taxableInThisBracket = Math.min(income, nextThreshold) - bracket.threshold;
+    tax += taxableInThisBracket * bracket.rate;
+
+    if (income <= nextThreshold) {
+      break;
+    }
+  }
+
+  return tax;
+}
+
+/**
+ * Get tax rates for a specific year
+ * Convenience function that converts TaxYearData to TaxRates format
+ */
+export function getTaxRatesForYear(year: number, inflationRate?: number): TaxRates {
+  const yearData = getTaxYearData(year, inflationRate);
+
+  return {
+    federal: {
+      brackets: yearData.federal.brackets,
+      basicPersonalAmount: yearData.federal.basicPersonalAmount,
+    },
+    provincial: {
+      brackets: yearData.provincial.brackets,
+      basicPersonalAmount: yearData.provincial.basicPersonalAmount,
+    },
+    corporate: {
+      smallBusiness: yearData.corporate.smallBusiness,
+      transition: 0.182,
+      general: yearData.corporate.general,
+    },
+    dividend: {
+      eligible: {
+        grossUp: yearData.dividend.eligible.grossUp,
+        federalCredit: yearData.dividend.eligible.federalCredit,
+        provincialCredit: yearData.dividend.eligible.provincialCredit,
+        effectiveRate: 0.3934,
+      },
+      nonEligible: {
+        grossUp: yearData.dividend.nonEligible.grossUp,
+        federalCredit: yearData.dividend.nonEligible.federalCredit,
+        provincialCredit: yearData.dividend.nonEligible.provincialCredit,
+        effectiveRate: 0.4774,
+      },
+    },
+    cpp: {
+      rate: yearData.cpp.rate,
+      maximumPensionableEarnings: yearData.cpp.ympe,
+      basicExemption: yearData.cpp.basicExemption,
+      maxContribution: yearData.cpp.maxContribution,
+    },
+    cpp2: {
+      rate: yearData.cpp2.rate,
+      firstCeiling: yearData.cpp2.firstCeiling,
+      secondCeiling: yearData.cpp2.secondCeiling,
+      maxContribution: yearData.cpp2.maxContribution,
+    },
+    ei: {
+      rate: yearData.ei.rate,
+      maximumInsurableEarnings: yearData.ei.maxInsurableEarnings,
+      maxContribution: yearData.ei.maxContribution,
+      employerMultiplier: yearData.ei.employerMultiplier,
+    },
+    ontarioSurtax: {
+      firstThreshold: yearData.provincial.surtax.firstThreshold,
+      firstRate: yearData.provincial.surtax.firstRate,
+      secondThreshold: yearData.provincial.surtax.secondThreshold,
+      secondRate: yearData.provincial.surtax.secondRate,
+    },
+    ontarioHealthPremium: {
+      brackets: yearData.provincial.healthPremium.brackets,
+    },
+    rdtoh: {
+      refundRate: yearData.rdtoh.refundRate,
+    },
+  };
+}
+
+/**
+ * Get RRSP/TFSA limits for a specific year
+ */
+export function getContributionLimitsForYear(year: number, inflationRate?: number): {
+  tfsaLimit: number;
+  rrspLimit: number;
+  rrspRate: number;
+} {
+  const yearData = getTaxYearData(year, inflationRate);
+  return {
+    tfsaLimit: yearData.tfsa.annualLimit,
+    rrspLimit: yearData.rrsp.dollarLimit,
+    rrspRate: yearData.rrsp.contributionRate,
+  };
 }

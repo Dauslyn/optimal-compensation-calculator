@@ -58,6 +58,68 @@
   /* Font */
   --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, monospace;
+
+  /* Success color */
+  --success: #34d399;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  /* Color Palette */
+  --bg-app: #f8f9fa;
+  --bg-dark: #f1f3f5;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-card-solid: #ffffff;
+  --bg-elevated: rgba(255, 255, 255, 0.8);
+  --bg-input: rgba(0, 0, 0, 0.03);
+  --bg-input-hover: rgba(0, 0, 0, 0.05);
+  --bg-input-focus: rgba(0, 0, 0, 0.07);
+  --bg-base: #f1f3f5;
+
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --border-hover: rgba(0, 0, 0, 0.15);
+  --border-focus: rgba(99, 102, 241, 0.5);
+
+  --text-primary: rgba(0, 0, 0, 0.9);
+  --text-secondary: rgba(0, 0, 0, 0.7);
+  --text-muted: rgba(0, 0, 0, 0.5);
+  --text-dim: rgba(0, 0, 0, 0.35);
+
+  /* Accents - slightly darker for light mode */
+  --accent-primary: #4f46e5;
+  --accent-primary-glow: rgba(79, 70, 229, 0.15);
+  --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+
+  --emerald: #059669;
+  --emerald-dim: rgba(5, 150, 105, 0.1);
+  --amber: #d97706;
+  --amber-dim: rgba(217, 119, 6, 0.1);
+  --rose: #e11d48;
+  --rose-dim: rgba(225, 29, 72, 0.1);
+  --sky: #0284c7;
+  --violet: #7c3aed;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --shadow-glow: 0 0 40px var(--accent-primary-glow);
+
+  /* Success color */
+  --success: #059669;
+}
+
+/* Light mode body background */
+[data-theme="light"] body {
+  background: var(--bg-app);
+}
+
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(79, 70, 229, 0.08), transparent),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(124, 58, 237, 0.05), transparent),
+    radial-gradient(ellipse 40% 30% at 20% 80%, rgba(79, 70, 229, 0.04), transparent);
 }
 
 /* Base */
@@ -533,4 +595,402 @@ tr:last-child td {
   .container {
     padding: 0 32px;
   }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE IMPROVEMENTS
+   ============================================ */
+
+/* Mobile-first table improvements */
+@media (max-width: 768px) {
+  /* Reduce table font size on mobile */
+  th {
+    font-size: 0.5625rem;
+    padding: 10px 6px;
+    letter-spacing: 0.02em;
+  }
+
+  td {
+    font-size: 0.6875rem;
+    padding: 10px 6px;
+  }
+
+  /* Make tables horizontally scrollable */
+  .table-scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .table-scroll-container table {
+    min-width: 600px;
+  }
+
+  /* Smaller stat cards on mobile */
+  .stat-card {
+    padding: 12px 14px;
+  }
+
+  .stat-value {
+    font-size: 1.125rem;
+  }
+
+  .stat-label {
+    font-size: 0.625rem;
+  }
+
+  /* Reduce form padding on mobile */
+  .glass-card {
+    padding: 16px;
+  }
+
+  /* Smaller inputs on mobile */
+  input,
+  select,
+  textarea {
+    font-size: 0.875rem;
+    padding: 10px 12px;
+  }
+
+  /* Smaller labels on mobile */
+  label {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+  }
+
+  /* Smaller buttons on mobile */
+  .btn-primary {
+    padding: 12px 20px;
+    font-size: 0.875rem;
+  }
+
+  /* Stack header on mobile */
+  header .flex.items-center.gap-4 {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Smaller header icon on mobile */
+  header .w-12.h-12 {
+    width: 40px;
+    height: 40px;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  /* Smaller badges on mobile */
+  .badge {
+    font-size: 0.625rem;
+    padding: 3px 8px;
+  }
+
+  /* Reduce section padding */
+  .p-6 {
+    padding: 16px;
+  }
+
+  .p-5 {
+    padding: 14px;
+  }
+
+  .p-4 {
+    padding: 12px;
+  }
+
+  /* Make disclaimer more compact on mobile */
+  #disclaimer {
+    padding: 14px;
+  }
+
+  #disclaimer .text-xs {
+    font-size: 0.6875rem;
+    line-height: 1.5;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  h1 {
+    font-size: 1.125rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  /* Even smaller table text */
+  th {
+    font-size: 0.5rem;
+    padding: 8px 4px;
+  }
+
+  td {
+    font-size: 0.625rem;
+    padding: 8px 4px;
+  }
+
+  /* Reduce grid gap on small screens */
+  .gap-5 {
+    gap: 14px;
+  }
+
+  .gap-4 {
+    gap: 12px;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  /* Reset background for printing */
+  body {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body::before {
+    display: none !important;
+  }
+
+  /* Hide elements not needed in print */
+  .no-print,
+  header,
+  .glass-card > form,
+  footer,
+  .btn-primary,
+  button[type="submit"] {
+    display: none !important;
+  }
+
+  /* Show only results */
+  .glass-card {
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+
+  /* Container adjustments */
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Typography for print */
+  h1, h2, h3 {
+    color: black !important;
+  }
+
+  .stat-label {
+    color: #666 !important;
+  }
+
+  .stat-value {
+    color: black !important;
+  }
+
+  .stat-value.positive {
+    color: #059669 !important;
+  }
+
+  .stat-value.negative {
+    color: #dc2626 !important;
+  }
+
+  /* Table styling for print */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    border-bottom: 2px solid #333 !important;
+  }
+
+  td {
+    color: #333 !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  tr:hover td {
+    background: transparent !important;
+  }
+
+  /* Stat cards */
+  .stat-card {
+    background: #f9f9f9 !important;
+    border: 1px solid #ddd !important;
+  }
+
+  /* Charts - hide as they don't print well */
+  .recharts-wrapper {
+    display: none !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  /* Print header - add report title */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #333;
+  }
+
+  .print-header h1 {
+    font-size: 24px;
+    margin-bottom: 5px;
+  }
+
+  .print-header p {
+    color: #666;
+    font-size: 12px;
+  }
+
+  /* Disclaimer in print */
+  #disclaimer {
+    background: #f9f9f9 !important;
+    border: 1px solid #ddd !important;
+    margin-top: 30px;
+    page-break-inside: avoid;
+  }
+
+  #disclaimer h3,
+  #disclaimer p {
+    color: #333 !important;
+  }
+
+  /* Fix badge colors for print */
+  .badge {
+    background: #e5e5e5 !important;
+    color: #333 !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .badge-success {
+    background: #d1fae5 !important;
+    color: #065f46 !important;
+    border: 1px solid #6ee7b7 !important;
+  }
+}
+
+/* When body has .printing class, show print header */
+body.printing .print-header {
+  display: block !important;
+}
+
+/* Hide print header normally */
+.print-header {
+  display: none;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+/* Spin animation for loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse animation for skeleton loading */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Slide up animation for results */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+/* Scale in animation */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+/* Smooth fade transition for theme changes */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Staggered animation delay utilities */
+.animate-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animate-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animate-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animate-delay-400 {
+  animation-delay: 400ms;
 }

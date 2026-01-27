@@ -5,28 +5,300 @@ import type {
   ProjectionSummary,
 } from './types';
 import {
-  calculateSalaryTax,
-  calculateCombinedPersonalTax,
-  calculateCPP,
-  calculateCPP2,
-  calculateEI,
-  calculateRequiredSalary,
-  TFSA_ANNUAL_LIMIT,
-  RRSP_CONTRIBUTION_RATE,
-  RRSP_ANNUAL_LIMIT,
-} from './taxRates';
+  getTaxYearData,
+  getContributionLimitsForYear,
+  inflateAmount,
+  getStartingYear,
+  getDefaultInflationRate,
+  getQuebecPayrollData,
+  calculateQPP,
+  calculateQPP2,
+  calculateQPIPEmployee,
+  calculateQuebecEI,
+  calculatePassiveIncomeGrind,
+} from './tax';
+import type { TaxYearData } from './tax';
 import {
   calculateInvestmentReturns,
   updateAccountsFromReturns,
-  depleteAccounts,
+  depleteAccountsWithRates,
   processSalaryPayment,
 } from './notionalAccounts';
+
+/**
+ * Calculate personal tax using year-specific rates
+ */
+function calculatePersonalTaxForYear(
+  salary: number,
+  eligibleDividends: number,
+  nonEligibleDividends: number,
+  rrspDeduction: number,
+  taxData: TaxYearData
+): {
+  federalTax: number;
+  provincialTax: number;
+  provincialSurtax: number;
+  healthPremium: number;
+  dividendTaxCredits: number;
+  totalTax: number;
+} {
+  // Step 1: Calculate grossed-up dividend amounts
+  const eligibleGrossUp = eligibleDividends * (1 + taxData.dividend.eligible.grossUp);
+  const nonEligibleGrossUp = nonEligibleDividends * (1 + taxData.dividend.nonEligible.grossUp);
+
+  // Step 2: Calculate total taxable income (salary + grossed-up dividends - RRSP)
+  const grossedUpIncome = salary + eligibleGrossUp + nonEligibleGrossUp;
+  const taxableIncome = Math.max(0, grossedUpIncome - rrspDeduction);
+
+  if (taxableIncome <= 0) {
+    return {
+      federalTax: 0,
+      provincialTax: 0,
+      provincialSurtax: 0,
+      healthPremium: 0,
+      dividendTaxCredits: 0,
+      totalTax: 0,
+    };
+  }
+
+  // Step 3: Calculate federal tax on combined income (minus BPA)
+  const federalTaxableIncome = Math.max(0, taxableIncome - taxData.federal.basicPersonalAmount);
+  const federalTaxBeforeCredits = calculateTaxByBrackets(federalTaxableIncome, taxData.federal.brackets);
+
+  // Step 4: Calculate provincial tax on combined income (minus BPA)
+  const provincialTaxableIncome = Math.max(0, taxableIncome - taxData.provincial.basicPersonalAmount);
+  const provincialTaxBeforeCredits = calculateTaxByBrackets(provincialTaxableIncome, taxData.provincial.brackets);
+
+  // Step 5: Calculate dividend tax credits
+  const federalEligibleDTC = eligibleGrossUp * taxData.dividend.eligible.federalCredit;
+  const federalNonEligibleDTC = nonEligibleGrossUp * taxData.dividend.nonEligible.federalCredit;
+  const totalFederalDTC = federalEligibleDTC + federalNonEligibleDTC;
+
+  const provincialEligibleDTC = eligibleGrossUp * taxData.dividend.eligible.provincialCredit;
+  const provincialNonEligibleDTC = nonEligibleGrossUp * taxData.dividend.nonEligible.provincialCredit;
+  const totalProvincialDTC = provincialEligibleDTC + provincialNonEligibleDTC;
+
+  const dividendTaxCredits = totalFederalDTC + totalProvincialDTC;
+
+  // Step 6: Calculate net federal and provincial tax (after credits)
+  const federalTax = Math.max(0, federalTaxBeforeCredits - totalFederalDTC);
+  const provincialTaxBeforeSurtax = Math.max(0, provincialTaxBeforeCredits - totalProvincialDTC);
+
+  // Step 7: Provincial surtax on provincial tax payable (AFTER credits)
+  let provincialSurtax = 0;
+  if (provincialTaxBeforeSurtax > taxData.provincial.surtax.firstThreshold) {
+    provincialSurtax += (provincialTaxBeforeSurtax - taxData.provincial.surtax.firstThreshold) *
+      taxData.provincial.surtax.firstRate;
+  }
+  if (provincialTaxBeforeSurtax > taxData.provincial.surtax.secondThreshold) {
+    provincialSurtax += (provincialTaxBeforeSurtax - taxData.provincial.surtax.secondThreshold) *
+      taxData.provincial.surtax.secondRate;
+  }
+
+  // Step 8: Health Premium (based on actual taxable income, not grossed-up)
+  const actualIncome = salary + eligibleDividends + nonEligibleDividends - rrspDeduction;
+  const healthPremium = calculateHealthPremium(Math.max(0, actualIncome), taxData);
+
+  // Total provincial tax includes surtax
+  const provincialTax = provincialTaxBeforeSurtax + provincialSurtax;
+
+  // Step 9: Total personal tax
+  const totalTax = federalTax + provincialTax + healthPremium;
+
+  return {
+    federalTax,
+    provincialTax,
+    provincialSurtax,
+    healthPremium,
+    dividendTaxCredits,
+    totalTax,
+  };
+}
+
+/**
+ * Calculate tax by brackets
+ */
+function calculateTaxByBrackets(
+  income: number,
+  brackets: Array<{ threshold: number; rate: number }>
+): number {
+  let tax = 0;
+
+  for (let i = 0; i < brackets.length; i++) {
+    const bracket = brackets[i];
+    const nextThreshold = i < brackets.length - 1 ? brackets[i + 1].threshold : Infinity;
+
+    if (income <= bracket.threshold) {
+      break;
+    }
+
+    const taxableInThisBracket = Math.min(income, nextThreshold) - bracket.threshold;
+    tax += taxableInThisBracket * bracket.rate;
+
+    if (income <= nextThreshold) {
+      break;
+    }
+  }
+
+  return tax;
+}
+
+/**
+ * Calculate Ontario Health Premium
+ */
+function calculateHealthPremium(taxableIncome: number, taxData: TaxYearData): number {
+  const brackets = taxData.provincial.healthPremium.brackets;
+
+  if (taxableIncome <= 20000) return 0;
+
+  // Find applicable bracket
+  let applicableBracket = brackets[0];
+  for (let i = brackets.length - 1; i >= 0; i--) {
+    if (taxableIncome > brackets[i].threshold) {
+      applicableBracket = brackets[i];
+      break;
+    }
+  }
+
+  const premium = applicableBracket.base +
+    (taxableIncome - applicableBracket.threshold) * applicableBracket.rate;
+
+  return Math.min(premium, applicableBracket.maxPremium);
+}
+
+/**
+ * Calculate CPP for year-specific limits
+ */
+function calculateCPPForYear(salary: number, taxData: TaxYearData): number {
+  if (salary <= taxData.cpp.basicExemption) return 0;
+
+  const pensionableEarnings = Math.min(
+    salary - taxData.cpp.basicExemption,
+    taxData.cpp.ympe - taxData.cpp.basicExemption
+  );
+
+  return pensionableEarnings * taxData.cpp.rate;
+}
+
+/**
+ * Calculate CPP2 for year-specific limits
+ */
+function calculateCPP2ForYear(salary: number, taxData: TaxYearData): number {
+  if (salary <= taxData.cpp2.firstCeiling) return 0;
+
+  const cpp2Earnings = Math.min(
+    salary - taxData.cpp2.firstCeiling,
+    taxData.cpp2.secondCeiling - taxData.cpp2.firstCeiling
+  );
+
+  return cpp2Earnings * taxData.cpp2.rate;
+}
+
+/**
+ * Calculate EI for year-specific limits
+ */
+function calculateEIForYear(salary: number, taxData: TaxYearData): number {
+  if (salary <= 0) return 0;
+
+  const insurableEarnings = Math.min(salary, taxData.ei.maxInsurableEarnings);
+
+  return insurableEarnings * taxData.ei.rate;
+}
+
+/**
+ * Calculate payroll deductions for any province
+ * Returns { cpp, cpp2, ei, qpip } - uses QPP for Quebec
+ */
+function calculatePayrollDeductions(
+  salary: number,
+  taxData: TaxYearData,
+  province: string,
+  calendarYear: number,
+  inflationRate: number
+): { cpp: number; cpp2: number; ei: number; qpip: number; employerCost: number } {
+  if (province === 'QC') {
+    // Quebec uses QPP/QPP2/QPIP with reduced EI
+    const qcData = getQuebecPayrollData(calendarYear, inflationRate);
+    const cpp = calculateQPP(salary, qcData.qpp);
+    const cpp2 = calculateQPP2(salary, qcData.qpp2);
+    const ei = calculateQuebecEI(salary, qcData.ei);
+    const qpip = calculateQPIPEmployee(salary, qcData.qpip);
+
+    // Employer costs: matches employee for QPP/QPP2, higher rate for QPIP
+    const employerQPP = cpp;
+    const employerQPP2 = cpp2;
+    const employerEI = ei * qcData.ei.employerMultiplier;
+    const employerQPIP = salary > 0
+      ? Math.min(salary, qcData.qpip.maxInsurableEarnings) * qcData.qpip.employerRate
+      : 0;
+
+    return {
+      cpp,
+      cpp2,
+      ei,
+      qpip,
+      employerCost: employerQPP + employerQPP2 + employerEI + employerQPIP,
+    };
+  } else {
+    // Rest of Canada uses CPP/CPP2/EI
+    const cpp = calculateCPPForYear(salary, taxData);
+    const cpp2 = calculateCPP2ForYear(salary, taxData);
+    const ei = calculateEIForYear(salary, taxData);
+
+    // Employer costs: matches employee for CPP/CPP2, multiplier for EI
+    const employerCost = cpp + cpp2 + (ei * taxData.ei.employerMultiplier);
+
+    return {
+      cpp,
+      cpp2,
+      ei,
+      qpip: 0, // No QPIP outside Quebec
+      employerCost,
+    };
+  }
+}
+
+/**
+ * Calculate required gross salary to achieve target after-tax amount
+ */
+function calculateRequiredSalaryForYear(
+  targetAfterTax: number,
+  taxData: TaxYearData,
+  province: string,
+  calendarYear: number,
+  inflationRate: number,
+  maxIterations: number = 10
+): number {
+  let estimatedSalary = targetAfterTax * 1.5;
+
+  for (let i = 0; i < maxIterations; i++) {
+    const taxResult = calculatePersonalTaxForYear(estimatedSalary, 0, 0, 0, taxData);
+    const payroll = calculatePayrollDeductions(estimatedSalary, taxData, province, calendarYear, inflationRate);
+    const totalPayroll = payroll.cpp + payroll.cpp2 + payroll.ei + payroll.qpip;
+    const afterTax = estimatedSalary - taxResult.totalTax - totalPayroll;
+
+    const difference = targetAfterTax - afterTax;
+
+    if (Math.abs(difference) < 1) {
+      return estimatedSalary;
+    }
+
+    estimatedSalary += difference * 1.4;
+  }
+
+  return estimatedSalary;
+}
 
 /**
  * Main calculation function to project compensation over multiple years
  */
 export function calculateProjection(inputs: UserInputs): ProjectionSummary {
   const yearlyResults: YearlyResult[] = [];
+
+  // Get starting year and inflation rate (with defaults for backward compatibility)
+  const startingYear = inputs.startingYear || getStartingYear();
+  const inflationRate = inputs.expectedInflationRate ?? getDefaultInflationRate();
+  const inflateSpending = inputs.inflateSpendingNeeds ?? true;
 
   // Initialize notional accounts
   let currentAccounts: NotionalAccounts = {
@@ -44,13 +316,29 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
   let availableTFSARoom = inputs.tfsaBalance || 0;
 
   // Calculate each year
-  for (let year = 1; year <= inputs.planningHorizon; year++) {
+  for (let yearIndex = 0; yearIndex < inputs.planningHorizon; yearIndex++) {
+    const calendarYear = startingYear + yearIndex;
+
+    // Get tax data for this specific year and province
+    const taxData = getTaxYearData(calendarYear, inflationRate, inputs.province);
+    const contributionLimits = getContributionLimitsForYear(calendarYear, inflationRate);
+
+    // Calculate inflation-adjusted spending needs
+    const inflatedRequiredIncome = inflateSpending
+      ? inflateAmount(inputs.requiredIncome, yearIndex, inflationRate)
+      : inputs.requiredIncome;
+
     const yearResult = calculateYear(
       inputs,
       currentAccounts,
-      year,
+      yearIndex + 1, // Display year (1-indexed)
+      calendarYear,
       availableRRSPRoom,
-      availableTFSARoom
+      availableTFSARoom,
+      inflatedRequiredIncome,
+      taxData,
+      contributionLimits,
+      inflationRate
     );
 
     yearlyResults.push(yearResult);
@@ -62,7 +350,7 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
     availableRRSPRoom += yearResult.rrspRoomGenerated - yearResult.rrspContribution;
 
     // Update TFSA room for next year (annual limit minus contribution)
-    availableTFSARoom += TFSA_ANNUAL_LIMIT - yearResult.tfsaContribution;
+    availableTFSARoom += contributionLimits.tfsaLimit - yearResult.tfsaContribution;
   }
 
   // Calculate summary statistics
@@ -75,17 +363,23 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
 function calculateYear(
   inputs: UserInputs,
   startingAccounts: NotionalAccounts,
-  year: number,
+  displayYear: number,
+  calendarYear: number,
   availableRRSPRoom: number,
-  availableTFSARoom: number
+  _availableTFSARoom: number, // TODO: Implement TFSA contribution logic
+  inflatedRequiredIncome: number,
+  taxData: TaxYearData,
+  contributionLimits: { tfsaLimit: number; rrspLimit: number; rrspRate: number },
+  inflationRate: number
 ): YearlyResult {
   let accounts = { ...startingAccounts };
+  const province = inputs.province;
 
   // Track corporate tax on active business income (will be calculated after we know salary)
-  let activeBusinessIncome = inputs.annualCorporateRetainedEarnings || 0;
+  const activeBusinessIncome = inputs.annualCorporateRetainedEarnings || 0;
   let corpTaxOnActiveIncome = 0;
 
-  // 2. Calculate investment returns at the start of the year
+  // Calculate investment returns at the start of the year
   const investmentReturns = calculateInvestmentReturns(
     accounts.corporateInvestments,
     inputs.investmentReturnRate,
@@ -98,35 +392,34 @@ function calculateYear(
   // Update accounts with investment returns
   accounts = updateAccountsFromReturns(accounts, investmentReturns);
 
-  // 3. Calculate required income (base + optional contributions)
-  let requiredIncome = inputs.requiredIncome;
+  // Calculate required income (base + optional contributions)
+  let requiredIncome = inflatedRequiredIncome;
   let tfsaContribution = 0;
   let rrspContribution = 0;
   let respContribution = 0;
   let debtPaydown = 0;
 
-  // TFSA contribution - use available room (carried forward) + annual limit
+  // TFSA contribution
   if (inputs.maximizeTFSA) {
-    // Can contribute up to available room (which includes any accumulated room)
-    tfsaContribution = Math.min(availableTFSARoom + TFSA_ANNUAL_LIMIT, availableTFSARoom + TFSA_ANNUAL_LIMIT);
-    // For now, just use annual limit for simplicity (room accumulation tracked separately)
-    tfsaContribution = TFSA_ANNUAL_LIMIT;
+    tfsaContribution = contributionLimits.tfsaLimit;
     requiredIncome += tfsaContribution;
   }
 
-  // RESP contribution
+  // RESP contribution (may also be inflated)
   if (inputs.contributeToRESP && inputs.respContributionAmount) {
-    respContribution = inputs.respContributionAmount;
+    respContribution = inputs.inflateSpendingNeeds
+      ? inflateAmount(inputs.respContributionAmount, displayYear - 1, inflationRate)
+      : inputs.respContributionAmount;
     requiredIncome += respContribution;
   }
 
-  // Debt paydown
+  // Debt paydown (typically NOT inflated - it's a fixed nominal amount)
   if (inputs.payDownDebt && inputs.debtPaydownAmount) {
     debtPaydown = inputs.debtPaydownAmount;
     requiredIncome += debtPaydown;
   }
 
-  // 4. Determine salary and dividend mix based on strategy
+  // Determine salary and dividend mix based on strategy
   let salary = 0;
   let dividendFunding = {
     capitalDividends: 0,
@@ -137,133 +430,151 @@ function calculateYear(
     afterTaxIncome: 0,
   };
 
-  if (inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount) {
-    // Fixed salary strategy
-    salary = inputs.fixedSalaryAmount;
-    const salaryTax = calculateSalaryTax(salary);
-    const cpp = calculateCPP(salary);
-    const cpp2Fixed = calculateCPP2(salary);
-    const ei = calculateEI(salary);
-    const salaryAfterTax = salary - salaryTax - cpp - cpp2Fixed - ei;
+  // Effective dividend tax rates for this year (approximations)
+  const eligibleEffectiveRate = 0.3934;
+  const nonEligibleEffectiveRate = 0.4774;
 
-    // Process salary payment - employer pays CPP + CPP2 matching
-    const employerCPP = cpp + cpp2Fixed; // Employer matches employee CPP + CPP2
-    const employerEI = ei * 1.4; // Employer pays 1.4x employee EI
-    accounts = processSalaryPayment(accounts, salary, employerCPP, employerEI);
+  if (inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount) {
+    // Fixed salary strategy - may also want to inflate the fixed amount
+    const fixedSalary = inputs.inflateSpendingNeeds
+      ? inflateAmount(inputs.fixedSalaryAmount, displayYear - 1, inflationRate)
+      : inputs.fixedSalaryAmount;
+
+    salary = fixedSalary;
+    const salaryTaxResult = calculatePersonalTaxForYear(salary, 0, 0, 0, taxData);
+    const payroll = calculatePayrollDeductions(salary, taxData, province, calendarYear, inflationRate);
+    const salaryAfterTax = salary - salaryTaxResult.totalTax - payroll.cpp - payroll.cpp2 - payroll.ei - payroll.qpip;
+
+    // Process salary payment - employer pays matching contributions
+    accounts = processSalaryPayment(accounts, salary, payroll.employerCost - payroll.cpp - payroll.cpp2, payroll.cpp + payroll.cpp2);
 
     // Fund remaining with dividends
     const remainingNeeded = Math.max(0, requiredIncome - salaryAfterTax);
     if (remainingNeeded > 0) {
-      const result = depleteAccounts(remainingNeeded, accounts);
+      const result = depleteAccountsWithRates(
+        remainingNeeded,
+        accounts,
+        taxData.rdtoh.refundRate,
+        eligibleEffectiveRate,
+        nonEligibleEffectiveRate
+      );
       dividendFunding = result.funding;
       accounts = result.updatedAccounts;
     }
   } else if (inputs.salaryStrategy === 'dividends-only') {
     // Dividends only - no salary
-    const result = depleteAccounts(requiredIncome, accounts);
+    const result = depleteAccountsWithRates(
+      requiredIncome,
+      accounts,
+      taxData.rdtoh.refundRate,
+      eligibleEffectiveRate,
+      nonEligibleEffectiveRate
+    );
     dividendFunding = result.funding;
     accounts = result.updatedAccounts;
   } else {
     // Dynamic strategy: deplete notional accounts first, then salary
-    const result = depleteAccounts(requiredIncome, accounts);
+    const result = depleteAccountsWithRates(
+      requiredIncome,
+      accounts,
+      taxData.rdtoh.refundRate,
+      eligibleEffectiveRate,
+      nonEligibleEffectiveRate
+    );
     dividendFunding = result.funding;
     accounts = result.updatedAccounts;
 
     // If dividends don't cover full amount, take salary for remainder
     const remainingNeeded = requiredIncome - dividendFunding.afterTaxIncome;
     if (remainingNeeded > 1) {
-      // Need salary to cover the gap
-      salary = calculateRequiredSalary(remainingNeeded);
+      salary = calculateRequiredSalaryForYear(remainingNeeded, taxData, province, calendarYear, inflationRate);
 
-      // Process salary payment - include CPP2 in employer costs
-      const cppDynamic = calculateCPP(salary);
-      const cpp2Dynamic = calculateCPP2(salary);
-      const eiDynamic = calculateEI(salary);
-      const employerCPP = cppDynamic + cpp2Dynamic; // Employer matches CPP + CPP2
-      const employerEI = eiDynamic * 1.4;
-      accounts = processSalaryPayment(accounts, salary, employerCPP, employerEI);
+      // Process salary payment
+      const payrollDynamic = calculatePayrollDeductions(salary, taxData, province, calendarYear, inflationRate);
+      accounts = processSalaryPayment(accounts, salary, payrollDynamic.employerCost - payrollDynamic.cpp - payrollDynamic.cpp2, payrollDynamic.cpp + payrollDynamic.cpp2);
     }
   }
 
-  // 5. Calculate RRSP contribution first (affects tax calculation)
-  // 6. RRSP contribution (if enabled and room available)
+  // RRSP contribution (if enabled and room available)
   if (inputs.contributeToRRSP && availableRRSPRoom > 0) {
-    // Try to contribute up to available room (subject to annual limit)
-    const maxContribution = Math.min(availableRRSPRoom, RRSP_ANNUAL_LIMIT);
-    // Only contribute if we have the funds
+    const maxContribution = Math.min(availableRRSPRoom, contributionLimits.rrspLimit);
     rrspContribution = Math.min(maxContribution, dividendFunding.afterTaxIncome * 0.1);
   }
 
-  // 6. Calculate UNIFIED personal tax on combined salary + dividends
-  // This properly applies:
-  // - Basic personal amount to combined income
-  // - Graduated brackets on total grossed-up income
-  // - Dividend tax credits
-  // - Ontario surtax on total provincial tax
-  // - Ontario health premium on actual total income
-  const combinedTaxResult = calculateCombinedPersonalTax(
+  // Calculate UNIFIED personal tax on combined salary + dividends
+  const combinedTaxResult = calculatePersonalTaxForYear(
     salary,
     dividendFunding.eligibleDividends,
     dividendFunding.nonEligibleDividends,
-    rrspContribution
+    rrspContribution,
+    taxData
   );
   const personalTax = combinedTaxResult.totalTax;
-  const ontarioSurtax = combinedTaxResult.ontarioSurtax;
-  const ontarioHealthPremium = combinedTaxResult.ontarioHealthPremium;
+  const provincialSurtax = combinedTaxResult.provincialSurtax;
+  const healthPremium = combinedTaxResult.healthPremium;
 
-  // CPP (base) and CPP2 (second tier since 2024)
-  const cpp = calculateCPP(salary);
-  const cpp2 = calculateCPP2(salary);
-  const ei = calculateEI(salary);
+  // Payroll deductions (uses QPP/QPIP for Quebec, CPP/EI for others)
+  const payroll = calculatePayrollDeductions(salary, taxData, province, calendarYear, inflationRate);
+  const cpp = payroll.cpp;
+  const cpp2 = payroll.cpp2;
+  const ei = payroll.ei;
+  const qpip = payroll.qpip;
 
-  // Corporate tax calculation:
-  // 1. Active business income is taxed AFTER deducting salary
-  // Salary is a deductible expense, so taxable business income = Gross income - Salary
-  const employerCPPCost = cpp + cpp2; // Employer matches employee CPP + CPP2
-  const employerEICost = ei * 1.4; // Employer pays 1.4x employee EI
-  const totalSalaryCost = salary + employerCPPCost + employerEICost;
+  // Corporate tax calculation with passive income grind (SBD clawback)
+  const totalSalaryCost = salary + payroll.employerCost;
 
-  // Taxable corporate income from active business (after salary deduction)
+  // Calculate passive income for SBD grind
+  // AAII = interest + foreign income + 50% of capital gains
+  const taxableCapitalGain = investmentReturns.realizedCapitalGain * 0.5;
+  const totalPassiveIncome = investmentReturns.foreignIncome + taxableCapitalGain;
+
+  // Calculate the passive income grind and its impact on SBD
+  const grindResult = calculatePassiveIncomeGrind(
+    totalPassiveIncome,
+    Math.max(0, activeBusinessIncome - totalSalaryCost),
+    taxData.corporate.smallBusiness,
+    taxData.corporate.general
+  );
+
+  // Calculate corporate tax on active business income with grind applied
   const taxableBusinessIncome = Math.max(0, activeBusinessIncome - totalSalaryCost);
 
-  // Small business tax rate: 12.2% (9% federal + 3.2% Ontario)
-  const SMALL_BUSINESS_RATE = 0.122;
-  corpTaxOnActiveIncome = taxableBusinessIncome * SMALL_BUSINESS_RATE;
+  // If SBD is reduced, some income gets taxed at general rate instead
+  const sbdIncome = Math.min(taxableBusinessIncome, grindResult.reducedSBDLimit);
+  const generalIncome = Math.max(0, taxableBusinessIncome - grindResult.reducedSBDLimit);
 
-  // After-tax business income is what's available for retained earnings
+  corpTaxOnActiveIncome = (sbdIncome * taxData.corporate.smallBusiness) +
+                          (generalIncome * taxData.corporate.general);
+
   const afterTaxBusinessIncome = taxableBusinessIncome - corpTaxOnActiveIncome;
-
-  // Add after-tax business income to corporate investments
   accounts.corporateInvestments += afterTaxBusinessIncome;
 
-  // Add to GRIP: taxable income qualifies for GRIP if NOT taxed at small business rate
-  // Since we're using small business rate, we don't add to GRIP here
-  // GRIP is generated when income is taxed at the general rate (26.5%)
-
-  // 2. Investment income tax
-  // Foreign income + taxable capital gains: 50.17% total (26.5% non-refundable + 30.67% refundable)
-  // Canadian dividends: Already taxed at source, generates 38.33% refundable credit
-  const taxableCapitalGain = investmentReturns.realizedCapitalGain * 0.5;
+  // Investment income tax (passive income is taxed at higher rate with RDTOH refund mechanism)
   const taxableInvestmentIncome = investmentReturns.foreignIncome + taxableCapitalGain;
   const corpTaxOnInvestments = taxableInvestmentIncome * 0.5017;
 
-  // Total corporate tax paid (both on active business and investment income)
   const corporateTax = corpTaxOnActiveIncome + corpTaxOnInvestments;
 
-  // 7. Calculate RRSP room generated this year (18% of salary)
-  const rrspRoomGenerated = salary * RRSP_CONTRIBUTION_RATE;
+  // Store passive income grind info for reporting
+  const passiveIncomeGrind = {
+    totalPassiveIncome,
+    reducedSBDLimit: grindResult.reducedSBDLimit,
+    sbdReduction: grindResult.sbdReduction,
+    additionalTaxFromGrind: grindResult.additionalTaxFromGrind,
+    isFullyGrounded: grindResult.isFullyGrounded,
+  };
 
-  // 8. Calculate total after-tax income
-  // Total gross income = salary + actual dividends (capital dividends are tax-free)
-  // personalTax now includes ALL tax on combined salary + dividends (unified calculation)
-  // cpp/cpp2/ei are payroll deductions only on salary
+  // RRSP room generated this year
+  const rrspRoomGenerated = salary * contributionLimits.rrspRate;
+
+  // Total after-tax income (include QPIP for Quebec)
   const totalGrossDividends = dividendFunding.capitalDividends +
     dividendFunding.eligibleDividends +
     dividendFunding.nonEligibleDividends;
-  const afterTaxIncome = salary + totalGrossDividends - personalTax - cpp - cpp2 - ei;
+  const afterTaxIncome = salary + totalGrossDividends - personalTax - cpp - cpp2 - ei - qpip;
 
   return {
-    year,
+    year: displayYear,
     salary,
     dividends: dividendFunding,
     personalTax,
@@ -271,9 +582,10 @@ function calculateYear(
     cpp,
     cpp2,
     ei,
-    ontarioSurtax,
-    ontarioHealthPremium,
-    totalTax: personalTax + corporateTax + cpp + cpp2 + ei,
+    qpip,
+    provincialSurtax,
+    healthPremium,
+    totalTax: personalTax + corporateTax + cpp + cpp2 + ei + qpip,
     afterTaxIncome,
     rrspRoomGenerated,
     rrspContribution,
@@ -282,6 +594,7 @@ function calculateYear(
     debtPaydown,
     notionalAccounts: accounts,
     investmentReturns,
+    passiveIncomeGrind,
   };
 }
 

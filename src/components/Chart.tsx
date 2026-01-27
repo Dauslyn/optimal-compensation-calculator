@@ -2,7 +2,6 @@ import type { YearlyResult } from '../lib/types';
 import {
   BarChart,
   Bar,
-  LineChart,
   Line,
   XAxis,
   YAxis,
