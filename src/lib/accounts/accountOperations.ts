@@ -36,6 +36,9 @@ export function updateAccountsFromReturns(
 }
 
 /**
+ * @deprecated Use depleteAccountsWithRates instead for province-specific rates.
+ * This function uses hardcoded Ontario rates.
+ *
  * Deplete notional accounts to fund required income
  * Priority order: CDA → eRDTOH → nRDTOH → GRIP
  * Returns the dividend funding breakdown and updated accounts
@@ -287,6 +290,10 @@ export function addToGRIP(
 }
 
 /**
+ * @deprecated Uses hardcoded TAX_RATES. The RDTOH refund rate (38.33%) is
+ * federal and doesn't vary by province, but this function should accept
+ * the rate as a parameter for consistency.
+ *
  * Calculate total available dividend capacity
  */
 export function calculateDividendCapacity(accounts: NotionalAccounts): {

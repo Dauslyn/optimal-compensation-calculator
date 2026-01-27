@@ -26,6 +26,42 @@ import {
 } from './notionalAccounts';
 
 /**
+ * Calculate effective dividend tax rate at top marginal bracket
+ * This is the combined federal + provincial tax on dividends minus credits
+ * Used for estimating gross dividend needed to achieve target after-tax income
+ */
+function calculateEffectiveDividendRate(
+  taxData: TaxYearData,
+  dividendType: 'eligible' | 'nonEligible'
+): number {
+  const dividendInfo = dividendType === 'eligible'
+    ? taxData.dividend.eligible
+    : taxData.dividend.nonEligible;
+
+  // Get the gross-up factor
+  const grossUp = dividendInfo.grossUp;
+
+  // Get top marginal rates (federal and provincial)
+  const federalBrackets = taxData.federal.brackets;
+  const provincialBrackets = taxData.provincial.brackets;
+  const topFederalRate = federalBrackets[federalBrackets.length - 1].rate;
+  const topProvincialRate = provincialBrackets[provincialBrackets.length - 1].rate;
+
+  // Tax on grossed-up dividend
+  const grossedUpTax = (1 + grossUp) * (topFederalRate + topProvincialRate);
+
+  // Credits (as a percentage of grossed-up amount)
+  const federalCredit = (1 + grossUp) * dividendInfo.federalCredit;
+  const provincialCredit = (1 + grossUp) * dividendInfo.provincialCredit;
+
+  // Net tax as percentage of actual dividend received
+  const effectiveRate = grossedUpTax - federalCredit - provincialCredit;
+
+  // Ensure non-negative (some low-bracket scenarios could have negative rates)
+  return Math.max(0, effectiveRate);
+}
+
+/**
  * Calculate personal tax using year-specific rates
  */
 function calculatePersonalTaxForYear(
@@ -430,9 +466,9 @@ function calculateYear(
     afterTaxIncome: 0,
   };
 
-  // Effective dividend tax rates for this year (approximations)
-  const eligibleEffectiveRate = 0.3934;
-  const nonEligibleEffectiveRate = 0.4774;
+  // Effective dividend tax rates based on province-specific rates
+  const eligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'eligible');
+  const nonEligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'nonEligible');
 
   if (inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount) {
     // Fixed salary strategy - may also want to inflate the fixed amount

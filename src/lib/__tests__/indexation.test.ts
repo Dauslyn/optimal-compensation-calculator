@@ -186,6 +186,69 @@ describe('getTaxYearData', () => {
     expect(ontarioData.provincial.surtax.firstThreshold).toBe(5710);
   });
 
+  it('should return correct Quebec tax rates for 2025', () => {
+    const quebecData = getTaxYearData(2025, 0.02, 'QC');
+    const ontarioData = getTaxYearData(2025, 0.02, 'ON');
+
+    // Federal data should be the same
+    expect(quebecData.federal).toEqual(ontarioData.federal);
+
+    // Quebec has distinct tax brackets (QC uses 14%, 19%, 24%, 25.75%)
+    expect(quebecData.provincial.brackets[0].rate).toBe(0.14);
+    expect(quebecData.provincial.brackets[1].rate).toBe(0.19);
+    expect(quebecData.provincial.brackets[2].rate).toBe(0.24);
+    expect(quebecData.provincial.brackets[3].rate).toBe(0.2575);
+
+    // Quebec bracket thresholds (2025)
+    expect(quebecData.provincial.brackets[1].threshold).toBe(51780);
+    expect(quebecData.provincial.brackets[2].threshold).toBe(103545);
+    expect(quebecData.provincial.brackets[3].threshold).toBe(126000);
+
+    // Quebec basic personal amount (2025)
+    expect(quebecData.provincial.basicPersonalAmount).toBe(18056);
+
+    // Quebec has no Ontario-style surtax
+    expect(quebecData.provincial.surtax.firstThreshold).toBe(Infinity);
+
+    // Quebec dividend tax credits differ from Ontario
+    expect(quebecData.dividend.eligible.provincialCredit).toBe(0.117);
+    expect(quebecData.dividend.nonEligible.provincialCredit).toBe(0.0342);
+
+    // Quebec corporate rates
+    expect(quebecData.corporate.smallBusiness).toBeCloseTo(0.122, 3); // 9% federal + 3.2% QC
+    expect(quebecData.corporate.general).toBeCloseTo(0.265, 3); // 15% federal + 11.5% QC
+
+    // Verify Quebec rates are different from Ontario
+    expect(quebecData.provincial.brackets[0].rate).not.toBe(ontarioData.provincial.brackets[0].rate);
+    expect(quebecData.dividend.eligible.provincialCredit).not.toBe(ontarioData.dividend.eligible.provincialCredit);
+  });
+
+  it('should provide province-specific data for effective dividend rate calculations', () => {
+    // This test verifies that each province has unique dividend tax credit rates
+    // which are used to calculate province-specific effective dividend tax rates
+    const provinces = ['ON', 'QC', 'AB', 'BC'] as const;
+    const eligibleCredits: number[] = [];
+    const nonEligibleCredits: number[] = [];
+
+    for (const province of provinces) {
+      const data = getTaxYearData(2025, 0.02, province);
+      eligibleCredits.push(data.dividend.eligible.provincialCredit);
+      nonEligibleCredits.push(data.dividend.nonEligible.provincialCredit);
+
+      // Verify credits are reasonable (between 0 and 20%)
+      expect(data.dividend.eligible.provincialCredit).toBeGreaterThanOrEqual(0);
+      expect(data.dividend.eligible.provincialCredit).toBeLessThan(0.2);
+      expect(data.dividend.nonEligible.provincialCredit).toBeGreaterThanOrEqual(0);
+      expect(data.dividend.nonEligible.provincialCredit).toBeLessThan(0.1);
+    }
+
+    // Verify not all provinces have the same credits (they should vary)
+    const uniqueEligible = new Set(eligibleCredits);
+    const uniqueNonEligible = new Set(nonEligibleCredits);
+    expect(uniqueEligible.size).toBeGreaterThan(1);
+    expect(uniqueNonEligible.size).toBeGreaterThan(1);
+  });
+
   it('should project 2027 from 2026 with default inflation', () => {
     const data2027 = getTaxYearData(2027, 0.02);
     const data2026 = KNOWN_TAX_YEARS[2026];
