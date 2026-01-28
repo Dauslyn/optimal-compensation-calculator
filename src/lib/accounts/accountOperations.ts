@@ -36,6 +36,9 @@ export function updateAccountsFromReturns(
 }
 
 /**
+ * @deprecated Use depleteAccountsWithRates instead for province-specific rates.
+ * This function uses hardcoded Ontario rates.
+ *
  * Deplete notional accounts to fund required income
  * Priority order: CDA → eRDTOH → nRDTOH → GRIP
  * Returns the dividend funding breakdown and updated accounts
@@ -132,6 +135,96 @@ export function depleteAccounts(
 }
 
 /**
+ * Deplete notional accounts to fund required income with explicit rates
+ * This version accepts rates as parameters for year-specific calculations
+ * Priority order: CDA → eRDTOH → nRDTOH → GRIP
+ */
+export function depleteAccountsWithRates(
+    requiredIncome: number,
+    accounts: NotionalAccounts,
+    rdtohRefundRate: number,
+    eligibleEffectiveRate: number,
+    nonEligibleEffectiveRate: number
+): { funding: DividendFunding; updatedAccounts: NotionalAccounts } {
+    const updatedAccounts = { ...accounts };
+    let remaining = requiredIncome;
+
+    const funding: DividendFunding = {
+        capitalDividends: 0,
+        eligibleDividends: 0,
+        nonEligibleDividends: 0,
+        regularDividends: 0,
+        grossDividends: 0,
+        afterTaxIncome: 0,
+    };
+
+    // 1. Capital Dividends (tax-free from CDA)
+    if (remaining > 0 && updatedAccounts.CDA > 0) {
+        const cdaAmount = Math.min(remaining, updatedAccounts.CDA);
+        funding.capitalDividends = cdaAmount;
+        funding.afterTaxIncome += cdaAmount;
+        remaining -= cdaAmount;
+        updatedAccounts.CDA -= cdaAmount;
+        updatedAccounts.corporateInvestments -= cdaAmount;
+    }
+
+    // 2. Eligible Dividends from eRDTOH (generates refund)
+    if (remaining > 0 && updatedAccounts.eRDTOH > 0) {
+        const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);
+        const maxGrossDividend = updatedAccounts.eRDTOH / rdtohRefundRate;
+
+        const actualDividend = Math.min(grossDividendNeeded, maxGrossDividend);
+        const refund = actualDividend * rdtohRefundRate;
+        const afterTax = actualDividend * (1 - eligibleEffectiveRate);
+
+        funding.eligibleDividends += actualDividend;
+        funding.afterTaxIncome += afterTax;
+        remaining -= afterTax;
+        updatedAccounts.eRDTOH -= refund;
+        updatedAccounts.corporateInvestments -= (actualDividend - refund);
+    }
+
+    // 3. Non-Eligible Dividends from nRDTOH (generates refund)
+    if (remaining > 0 && updatedAccounts.nRDTOH > 0) {
+        const grossDividendNeeded = remaining / (1 - nonEligibleEffectiveRate);
+        const maxGrossDividend = updatedAccounts.nRDTOH / rdtohRefundRate;
+
+        const actualDividend = Math.min(grossDividendNeeded, maxGrossDividend);
+        const refund = actualDividend * rdtohRefundRate;
+        const afterTax = actualDividend * (1 - nonEligibleEffectiveRate);
+
+        funding.nonEligibleDividends += actualDividend;
+        funding.afterTaxIncome += afterTax;
+        remaining -= afterTax;
+        updatedAccounts.nRDTOH -= refund;
+        updatedAccounts.corporateInvestments -= (actualDividend - refund);
+    }
+
+    // 4. Regular Eligible Dividends from GRIP (no refund)
+    if (remaining > 0 && updatedAccounts.GRIP > 0) {
+        const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);
+
+        const actualDividend = Math.min(grossDividendNeeded, updatedAccounts.GRIP);
+        const afterTax = actualDividend * (1 - eligibleEffectiveRate);
+
+        funding.eligibleDividends += actualDividend;
+        funding.regularDividends += actualDividend;
+        funding.afterTaxIncome += afterTax;
+        remaining -= afterTax;
+        updatedAccounts.GRIP -= actualDividend;
+        updatedAccounts.corporateInvestments -= actualDividend;
+    }
+
+    // Calculate total gross dividends
+    funding.grossDividends =
+        funding.capitalDividends +
+        funding.eligibleDividends +
+        funding.nonEligibleDividends;
+
+    return { funding, updatedAccounts };
+}
+
+/**
  * Process a salary payment from the corporation
  * Reduces corporate investments by salary amount plus employer CPP/EI
  */
@@ -197,6 +290,10 @@ export function addToGRIP(
 }
 
 /**
+ * @deprecated Uses hardcoded TAX_RATES. The RDTOH refund rate (38.33%) is
+ * federal and doesn't vary by province, but this function should accept
+ * the rate as a parameter for consistency.
+ *
  * Calculate total available dividend capacity
  */
 export function calculateDividendCapacity(accounts: NotionalAccounts): {

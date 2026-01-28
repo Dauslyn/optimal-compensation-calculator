@@ -13,6 +13,7 @@ export {
   calculateInvestmentReturns,
   updateAccountsFromReturns,
   depleteAccounts,
+  depleteAccountsWithRates,
   processSalaryPayment,
   addCapitalGainToCDA,
   addRDTOH,

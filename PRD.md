@@ -4,15 +4,17 @@
 
 A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners to optimize their compensation strategy. The tool helps determine the optimal mix of salary and dividends to minimize taxes while meeting personal income needs.
 
+**Core Question**: "How much salary vs. dividends should I pay myself for the next 5-10 years to optimize my taxes and maximize spending?"
+
 **Repository**: [github.com/Dauslyn/optimal-compensation-calculator](https://github.com/Dauslyn/optimal-compensation-calculator)
 
 ---
 
-## Current Status: MVP Complete ✅
+## Current Status: Production Ready (v1.7.1)
 
 ### Core Features Completed
 
-- [x] **Multi-year compensation projection** (3-5 year horizon)
+- [x] **Multi-year compensation projection** (3-10 year horizon)
 - [x] **Salary/Dividend optimization strategies**
   - Dynamic (exhaust notional accounts first)
   - Fixed salary amount
@@ -23,42 +25,33 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
   - nRDTOH (Non-Eligible Refundable Dividend Tax on Hand)
   - GRIP (General Rate Income Pool)
 - [x] **Corporate tax calculations**
-  - Small business rate (12.2% ON) on active business income
+  - Small business rate by province
   - Investment income taxation (~50.17% with refundable portion)
   - Salary deductibility
+  - Passive income grind (SBD clawback)
 - [x] **Personal tax calculations**
   - Unified salary + dividend calculation
-  - Federal and provincial brackets
+  - Federal and provincial brackets (all 13 provinces/territories)
   - Dividend gross-up and tax credits (eligible & non-eligible)
-  - Basic personal amounts applied correctly
-  - Ontario surtax on all income
-  - Ontario Health Premium on all income
+  - Basic personal amounts
+  - Provincial surtaxes (ON, PE)
+  - Health premiums (ON)
 - [x] **Payroll deductions**
-  - CPP (first tier)
-  - CPP2 (second tier, 2024+)
+  - CPP/QPP (first tier)
+  - CPP2/QPP2 (second tier, 2024+)
   - EI (employee + employer portions)
+  - QPIP (Quebec only)
 - [x] **Investment portfolio modeling**
-  - Canadian equity (dividend yield)
-  - US equity (dividend yield)
-  - International equity
-  - Fixed income
-- [x] **Contribution strategies**
-  - RRSP (room tracking, contribution optimization)
-  - TFSA (annual limit)
-  - RESP
-  - Debt paydown
-- [x] **Year-by-year projection tables**
-  - Income flow breakdown
-  - Compensation breakdown
-  - Notional account activity (added/used/balance)
-  - RDTOH tracking
-  - Corporate investment account
-  - Tax breakdown detail
-- [x] **Summary metrics**
-  - Total tax paid
-  - Effective tax rate
-  - Final corporate balance
-  - Total RRSP contributions
+  - Canadian equity, US equity, International equity, Fixed income
+  - Investment returns affect notional accounts
+- [x] **RRSP room tracking** - Salary generates room, affects personal tax
+- [x] **TFSA contribution planning**
+- [x] **Inflation indexing** - Tax brackets, CPP/EI limits auto-indexed
+- [x] **Scenario comparison** - Side-by-side "what if" analysis
+- [x] **Monte Carlo simulation** - Investment return risk analysis
+- [x] **PDF export** - Professional reports for accountants
+- [x] **Year-end planning alerts** - Contextual guidance for year-end decisions
+- [x] **IPP (Individual Pension Plan) analysis** - Compare IPP vs RRSP contributions
 
 ---
 
@@ -68,161 +61,47 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 - **Styling**: Vanilla CSS with CSS variables (dark theme)
 - **Charts**: Recharts
 - **State**: React useState (local state)
+- **Tests**: Vitest (188 tests)
 
 ---
 
 ## Roadmap
 
-### 🎯 Quick Wins (Low effort, High impact)
+### v1.8.0 - Spousal Income (v2 feature)
 
-- [ ] **Print/PDF Export** - One-click professional report for accountants
-- [ ] **Share link** - Generate shareable URL with encoded inputs
-- [ ] **Dark/Light mode toggle**
-- [ ] **Input validation & error messages**
-- [ ] **Tooltips explaining each field** (hover for help)
-- [ ] **"Reset to defaults" button**
-- [ ] **Keyboard navigation** for power users
-- [ ] **Mobile responsive layout** improvements
-- [ ] **Loading states & animations**
-- [ ] **Save to browser local storage**
-
----
-
-### Phase 2: Multi-Province Support 🗓️
-
-Add support for all Canadian provinces and territories:
-
-- [ ] **Provincial tax brackets** (all 13 provinces/territories)
-- [ ] **Provincial-specific nuances**
-  - Quebec Pension Plan (QPP) instead of CPP
-  - Quebec Parental Insurance Plan (QPIP)
-  - BC employer health tax
-  - Manitoba health and education levy
-  - Quebec Health Services Fund
-  - Different dividend tax credit rates per province
-- [ ] **Provincial corporate tax rates**
-  - Small business rates by province
-  - General rates by province
-- [ ] **UI: Province selector** in input form
-
----
-
-### Phase 3: Game-Changing Features 🚀
-
-#### Scenario Builder & Comparison
-
-- [ ] **"What If" Scenario Builder** - Create multiple scenarios side-by-side
-- [ ] **Side-by-side strategy comparison** with clear winner highlighted
-- [ ] **Save/load scenarios** (local storage or user accounts)
-
-#### Monte Carlo Analysis
-
-- [ ] **Monte Carlo simulation** for investment returns
-  - Run 1000+ simulations with variable returns
-  - Show probability distribution of outcomes
-  - Confidence intervals (10th, 50th, 90th percentile)
-  - Risk-adjusted recommendations
-
-#### Professional Output
-
-- [ ] **Export to PDF** - Branded professional report
-  - Summary page with key metrics
-  - Year-by-year tables
-  - Charts and graphs
-  - Accountant-ready format
-- [ ] **Email report** directly to accountant
-- [ ] **White-label version** for accountants/advisors
-
-#### AI Tax Advisor
-
-- [ ] **Embedded AI chat** for tax questions
-  - "Should I pay myself a bonus before year-end?"
-  - "Explain GRIP in simple terms"
-  - Context-aware recommendations based on user's data
-
----
-
-### Phase 4: Exit & Succession Planning 🏠
-
-- [ ] **Lifetime Capital Gains Exemption (LCGE)** calculator
-- [ ] **Holdco structure optimization**
-- [ ] **Family trust scenarios**
-- [ ] **Estate freeze analysis**
-- [ ] **Business succession timeline**
-- [ ] **IPP (Individual Pension Plan)** analysis
-
----
-
-### Phase 5: Advanced Tax Strategies 💼
-
-- [ ] **Passive income grind** (SBD clawback calculation)
-- [ ] **Tax loss harvesting** simulation
-- [ ] **Family income splitting** (dividends to spouse/adult children)
+- [ ] **Spouse as employee** - Second salary in the corporation
 - [ ] **Spousal RRSP** optimization
-- [ ] **Corporate class reorganization** analysis
-- [ ] **Year-end tax planning mode** ("It's November - what should I do?")
+- [ ] **Income splitting** via dividends to spouse
+
+### Future Considerations (not committed)
+
+- BC employer health tax, MB health/education levy
+- Quebec Health Services Fund
+- Email report to accountant
 
 ---
 
-### Phase 6: Data Integration & Automation 🔗
+## Out of Scope
 
-- [ ] **Accounting software integration** (QuickBooks, Xero, Wave)
-  - Auto-pull corporate income
-  - Sync actual expenses
-- [ ] **Tax slip import** (T4, T5, T3 upload)
-- [ ] **CRA My Account integration** (future, if API available)
-  - Real RRSP/TFSA room
-  - Actual notional account balances
-- [ ] **Bank integration** for real-time cash flow
+These features don't answer "salary vs dividends" and belong in separate tools:
 
----
-
-### Phase 7: Platform & Monetization 💰
-
-#### Advisor Platform
-
-- [ ] **Accountant/Advisor white-label version**
-  - Client management dashboard
-  - Firm branding on reports
-  - Multi-client scenarios
-- [ ] **Subscription model** ($29/month per advisor seat)
-
-#### Consumer Features
-
-- [ ] **User accounts** with saved scenarios
-- [ ] **Push notifications** for deadlines (RRSP, TFSA, year-end)
-- [ ] **Mobile PWA** (offline capable)
-- [ ] **Benchmark comparisons** ("How do you compare to similar businesses?")
-
----
-
-### Phase 8: Content & Growth 📈
-
-- [ ] **SEO optimization** for "CCPC salary vs dividend" keywords
-- [ ] **Embeddable widget** for accountant blogs/websites
-- [ ] **Annual "Tax Optimization Report"** (lead generation)
-- [ ] **YouTube explainer series** ("Understanding GRIP in 5 minutes")
-- [ ] **Integration guides** for accounting software
-- [ ] **Affiliate program** for accountants/advisors
-
----
-
-## The North Star Vision
-
-> **"Connect your accounting software, and we'll tell you exactly how much less tax you'd pay with optimal compensation — in 30 seconds."**
-
-Instant, personalized, actionable. The ultimate hook.
+- LCGE (Lifetime Capital Gains Exemption) - exit planning
+- Holdco structure optimization - corporate restructuring
+- Family trust scenarios - estate planning
+- Estate freeze analysis - succession planning
+- Tax loss harvesting - investment management
+- AI chatbot - scope creep
+- Accounting software integration - platform play
+- White-label advisor platform - B2B pivot
 
 ---
 
 ## Known Limitations
 
-1. **Ontario only** - Currently only supports Ontario provincial rates
+1. **Single shareholder** - Does not model multiple shareholders (spouse support planned for v1.8)
 2. **Simplified deductions** - Does not model all possible deductions
 3. **No capital gains deferral** - Assumes 50% of gains realized annually
-4. **Single shareholder** - Does not model family trusts or multiple shareholders
-5. **Passive income grind** - Not yet implemented (SBD clawback)
-6. **Static returns** - No Monte Carlo uncertainty modeling yet
+4. **Some provincial payroll taxes** - BC employer health tax, MB levy not implemented
 
 ---
 
@@ -230,17 +109,97 @@ Instant, personalized, actionable. The ultimate hook.
 
 - PWL Capital research on CCPC compensation
 - CRA dividend tax credit rates
-- Ontario Ministry of Finance tax tables
+- Provincial Ministry of Finance tax tables
 - Canada Revenue Agency CPP/EI rates
+- Retraite Québec QPP/QPIP rates
 
 ---
 
 ## Changelog
 
-### v1.0.0 (2026-01-24)
+### v1.7.1 (2025-01-28)
 
-- Initial release
-- Ontario tax support
+- **Math Accuracy Audit & Fixes**: Comprehensive verification of all tax calculations
+  - Fixed effective dividend tax rates - now uses province-specific rates instead of hardcoded Ontario values
+  - Added Quebec tax integration test to verify QC-specific brackets, credits, and corporate rates
+  - Verified main calculator correctly uses province-aware `getTaxYearData()` for all calculations
+  - Deprecated legacy functions that used hardcoded Ontario rates
+- **188 Tests**: Comprehensive test coverage
+  - Quebec and multi-province tax rate verification
+  - All 13 provinces/territories validated
+  - End-to-end calculator tests for realistic scenarios
+
+### v1.7.0 (2025-01-27)
+
+- **IPP (Individual Pension Plan) Analysis**: Compare IPP vs RRSP contribution limits
+  - Calculate current service cost based on age and salary
+  - Pension Adjustment (PA) calculation for RRSP room reduction
+  - Projected annual pension at retirement
+  - Corporate tax savings from IPP contributions
+  - Administration cost estimates (setup + annual fees)
+  - Notes and recommendations based on member age and income
+- **21 IPP Tests**: Full test coverage for IPP calculations
+
+### v1.6.0 (2025-01-27)
+
+- **Extended Planning Horizon**: Now supports 3-10 year projections
+  - Users can model longer-term compensation strategies
+  - All calculations properly indexed for inflation over the extended period
+- **Year-End Planning Alerts**: Contextual guidance during Q4 and RRSP season
+  - Shows days until year-end when planning in October-December
+  - RRSP contribution deadline awareness in January-February
+  - Timing recommendations for salary bonuses vs dividend declarations
+  - Quebec-specific reminders for QPP/QPIP considerations
+  - Dismissible alerts that appear only during relevant periods
+- **154 Tests**: Added validation tests for extended planning horizon
+
+### v1.5.0 (2025-01-27)
+
+- **Quebec Payroll Support**: Full QPP/QPIP implementation
+  - Quebec Pension Plan (QPP) at 6.4% rate (higher than CPP's 5.95%)
+  - QPP2 (second additional contribution) for earnings above YMPE
+  - Quebec Parental Insurance Plan (QPIP) at 0.494% employee / 0.692% employer
+  - Quebec EI rate reduced to 1.278% (vs 1.64% for rest of Canada)
+  - Auto-detects Quebec province and applies correct payroll deductions
+- **Passive Income Grind (SBD Clawback)**: Corporate tax optimization
+  - Calculates reduced Small Business Deduction limit based on passive income
+  - AAII threshold at $50,000, $5 reduction per $1 over threshold
+  - SBD fully eliminated at $150,000 passive income
+- **153 Tests**: Added Quebec payroll and passive income grind test suites
+
+### v1.4.0 (2025-01-27)
+
+- **Monte Carlo Simulation**: Risk analysis with variable investment returns
+  - Run 100-10,000 simulations with configurable volatility
+  - Probability distribution visualizations with confidence intervals
+  - Year-by-year balance projection with confidence bands
+- **PDF Export**: Professional accountant-ready reports
+
+### v1.3.0 (2025-01-27)
+
+- **Scenario Builder**: "What If" analysis feature
+  - Create and compare multiple scenarios side-by-side
+  - Preset strategies (Maximize Dividends, Balanced, CPP Maximizer, Tax Minimizer)
+  - Best Overall winner badge
+
+### v1.2.0 (2025-01-27)
+
+- **Multi-Province Support**: All 13 Canadian provinces and territories
+  - Provincial tax brackets, dividend credits, corporate rates
+  - Ontario surtax and health premium, PEI surtax
+
+### v1.1.0 (2025-01-27)
+
+- **Inflation Indexing**: Auto-index tax brackets, CPP/EI limits
+- **Input Validation**: Real-time validation with error messages
+- **Legal Disclaimers**: First-visit modal + footer disclaimer
+- **Mobile Responsive**: Optimized for phones and tablets
+- **Share Link**: Generate shareable URLs
+- **Dark/Light Mode**: Theme toggle
+- **Keyboard Shortcuts**: Power user shortcuts
+
+### v1.0.0 (2025-01-24)
+
+- Initial release with Ontario tax support
 - Full notional account tracking
-- Unified personal tax calculation
-- Multi-year projection
+- Multi-year projection (3-5 years)

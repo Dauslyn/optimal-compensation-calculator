@@ -1,10 +1,24 @@
-import type { ProjectionSummary } from '../lib/types';
+import { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
+import { Printer } from 'lucide-react';
+import type { ProjectionSummary, UserInputs } from '../lib/types';
+import { ReportTemplate } from './ReportTemplate';
+import { IPPAnalysis } from './IPPAnalysis';
+import { RRSP_ANNUAL_LIMIT } from '../lib/tax';
 
 interface SummaryProps {
   summary: ProjectionSummary;
+  inputs: UserInputs;
 }
 
-export function Summary({ summary }: SummaryProps) {
+export function Summary({ summary, inputs }: SummaryProps) {
+  const componentRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Optimal_Compensation_Report_${new Date().toISOString().split('T')[0]}`,
+  });
+
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
@@ -27,7 +41,22 @@ export function Summary({ summary }: SummaryProps) {
     <div className="glass-card p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg">Results Summary</h2>
-        <span className="badge badge-success">{summary.yearlyResults.length} Year Projection</span>
+        <div className="flex items-center gap-3">
+          <span className="badge badge-success">{summary.yearlyResults.length} Year Projection</span>
+          <button
+            onClick={() => handlePrint()}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:bg-[var(--accent-primary)] hover:text-white transition-all text-sm font-medium"
+            title="Export detailed PDF report"
+          >
+            <Printer size={16} />
+            <span>Export Report</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Hidden Report Template (only renders for print) */}
+      <div style={{ display: 'none' }}>
+        <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} />
       </div>
 
       {/* Main Stats */}
@@ -144,6 +173,18 @@ export function Summary({ summary }: SummaryProps) {
           </div>
         </div>
       </div>
+
+      {/* IPP Analysis (if enabled) */}
+      {inputs.considerIPP && inputs.ippMemberAge && inputs.ippYearsOfService && (
+        <IPPAnalysis
+          memberAge={inputs.ippMemberAge}
+          yearsOfService={inputs.ippYearsOfService}
+          currentSalary={summary.totalSalary / summary.yearlyResults.length}
+          corporateTaxRate={0.122} // Small business rate (Ontario default)
+          rrspLimit={RRSP_ANNUAL_LIMIT}
+          year={inputs.startingYear}
+        />
+      )}
     </div>
   );
 }

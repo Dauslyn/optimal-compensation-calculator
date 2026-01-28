@@ -1,4 +1,5 @@
 import { TAX_RATES, calculateTaxByBrackets } from './constants';
+import { calculateCPP, calculateEI } from './payrollTax';
 
 /**
  * Calculate Ontario surtax on provincial tax payable
@@ -235,8 +236,6 @@ export function calculateRequiredSalary(
     targetAfterTax: number,
     maxIterations: number = 10
 ): number {
-    // Import here to avoid circular dependency
-    const { calculateCPP, calculateEI } = require('./payrollTax');
 
     let estimatedSalary = targetAfterTax * 1.5;
 
