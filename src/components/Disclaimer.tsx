@@ -75,9 +75,9 @@ export function Disclaimer({ variant = 'full', className = '' }: DisclaimerProps
               and may vary based on individual circumstances not captured by this tool.
             </p>
             <p>
-              The calculations assume Ontario residency and use simplified assumptions about
-              tax treatment, investment returns, and corporate structures. Actual results may differ
-              significantly based on your specific situation.
+              The calculations use simplified assumptions about tax treatment, investment returns,
+              and corporate structures. While we support all 13 Canadian provinces and territories,
+              actual results may differ significantly based on your specific situation.
             </p>
             <p>
               <strong>Before making any financial decisions</strong>, consult with a qualified
@@ -87,6 +87,18 @@ export function Disclaimer({ variant = 'full', className = '' }: DisclaimerProps
             <p>
               The creators of this tool are not liable for any decisions made based on its output.
               By using this calculator, you acknowledge that you understand and accept these limitations.
+            </p>
+            <p>
+              <strong>Found an error?</strong>{' '}
+              Please report it to{' '}
+              <a
+                href="mailto:info@phynance.ca"
+                className="underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                info@phynance.ca
+              </a>
+              {' '}so we can fix it.
             </p>
             <p className="pt-2" style={{ color: 'var(--text-dim)' }}>
               Tax rates current as of: {lastUpdated} | Supports tax years: {taxYearsSupported}
@@ -162,6 +174,16 @@ export function DisclaimerModal({ isOpen, onAccept }: DisclaimerModalProps) {
           <p>
             <strong>Always consult a qualified accountant or tax professional</strong>{' '}
             before making any financial decisions based on these estimates.
+          </p>
+          <p>
+            Found an error? Email{' '}
+            <a
+              href="mailto:info@phynance.ca"
+              className="underline"
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              info@phynance.ca
+            </a>
           </p>
         </div>
 
