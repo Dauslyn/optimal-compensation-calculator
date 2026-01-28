@@ -485,6 +485,7 @@ function calculateYear(
     grossDividends: 0,
     afterTaxIncome: 0,
   };
+  let rdtohRefundReceived = 0;
 
   // Effective dividend tax rates based on province-specific rates at estimated income level
   // Estimate taxable income as ~1.5x required after-tax (rough gross-up)
@@ -518,6 +519,7 @@ function calculateYear(
       );
       dividendFunding = result.funding;
       accounts = result.updatedAccounts;
+      rdtohRefundReceived = result.rdtohRefund;
     }
   } else if (inputs.salaryStrategy === 'dividends-only') {
     // Dividends only - no salary
@@ -530,6 +532,7 @@ function calculateYear(
     );
     dividendFunding = result.funding;
     accounts = result.updatedAccounts;
+    rdtohRefundReceived = result.rdtohRefund;
   } else {
     // Dynamic strategy: deplete notional accounts first, then salary
     const result = depleteAccountsWithRates(
@@ -541,6 +544,7 @@ function calculateYear(
     );
     dividendFunding = result.funding;
     accounts = result.updatedAccounts;
+    rdtohRefundReceived = result.rdtohRefund;
 
     // If dividends don't cover full amount, take salary for remainder
     const remainingNeeded = requiredIncome - dividendFunding.afterTaxIncome;
@@ -637,6 +641,9 @@ function calculateYear(
     dividends: dividendFunding,
     personalTax,
     corporateTax,
+    corporateTaxOnActive: corpTaxOnActiveIncome,
+    corporateTaxOnPassive: corpTaxOnInvestments,
+    rdtohRefundReceived,
     cpp,
     cpp2,
     ei,
@@ -667,23 +674,45 @@ function calculateSummary(
   let totalDividends = 0;
   let totalPersonalTax = 0;
   let totalCorporateTax = 0;
+  let totalCorporateTaxOnActive = 0;
+  let totalCorporateTaxOnPassive = 0;
+  let totalRdtohRefund = 0;
   let totalRRSPRoomGenerated = 0;
   let totalRRSPContributions = 0;
   let totalTFSAContributions = 0;
+  let totalCpp = 0;
+  let totalPassiveIncome = 0;
 
   for (const year of yearlyResults) {
     totalSalary += year.salary;
     totalDividends += year.dividends.grossDividends;
     totalPersonalTax += year.personalTax;
     totalCorporateTax += year.corporateTax;
+    totalCorporateTaxOnActive += year.corporateTaxOnActive;
+    totalCorporateTaxOnPassive += year.corporateTaxOnPassive;
+    totalRdtohRefund += year.rdtohRefundReceived;
     totalRRSPRoomGenerated += year.rrspRoomGenerated;
     totalRRSPContributions += year.rrspContribution;
     totalTFSAContributions += year.tfsaContribution;
+    totalCpp += year.cpp + year.cpp2 + year.ei + year.qpip;
+    totalPassiveIncome += year.investmentReturns.totalReturn;
   }
 
   const totalCompensation = totalSalary + totalDividends;
   const totalTax = totalPersonalTax + totalCorporateTax;
   const effectiveTaxRate = totalCompensation > 0 ? totalTax / totalCompensation : 0;
+
+  // Effective rate on compensation (personal tax + payroll on salary/dividends)
+  const effectiveCompensationRate = totalCompensation > 0
+    ? (totalPersonalTax + totalCpp) / totalCompensation
+    : 0;
+
+  // Net effective rate on passive investment income (gross tax - RDTOH refund)
+  const netPassiveTax = totalCorporateTaxOnPassive - totalRdtohRefund;
+  const effectivePassiveRate = totalPassiveIncome > 0
+    ? netPassiveTax / totalPassiveIncome
+    : 0;
+
   const finalCorporateBalance =
     yearlyResults[yearlyResults.length - 1].notionalAccounts.corporateInvestments;
   const averageAnnualIncome = totalCompensation / yearlyResults.length;
@@ -694,8 +723,13 @@ function calculateSummary(
     totalDividends,
     totalPersonalTax,
     totalCorporateTax,
+    totalCorporateTaxOnActive,
+    totalCorporateTaxOnPassive,
+    totalRdtohRefund,
     totalTax,
     effectiveTaxRate,
+    effectiveCompensationRate,
+    effectivePassiveRate,
     finalCorporateBalance,
     totalRRSPRoomGenerated,
     totalRRSPContributions,
