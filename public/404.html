@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+      // Single Page App redirect for GitHub Pages
+      const path = window.location.pathname;
+      const repo = '/optimal-compensation-calculator';
+      if (path.startsWith(repo)) {
+        sessionStorage.setItem('redirect', path.slice(repo.length) + window.location.search);
+        window.location.replace(repo + '/');
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
