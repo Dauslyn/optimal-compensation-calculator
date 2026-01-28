@@ -635,6 +635,12 @@ function calculateYear(
     dividendFunding.nonEligibleDividends;
   const afterTaxIncome = salary + totalGrossDividends - personalTax - cpp - cpp2 - ei - qpip;
 
+  // Per-year effective integrated tax rate (corp + personal tax on compensation)
+  const yearCompensation = salary + totalGrossDividends;
+  const effectiveIntegratedRate = yearCompensation > 0
+    ? (personalTax + corpTaxOnActiveIncome) / yearCompensation
+    : 0;
+
   return {
     year: displayYear,
     salary,
@@ -651,6 +657,7 @@ function calculateYear(
     provincialSurtax,
     healthPremium,
     totalTax: personalTax + corporateTax + cpp + cpp2 + ei + qpip,
+    effectiveIntegratedRate,
     afterTaxIncome,
     rrspRoomGenerated,
     rrspContribution,

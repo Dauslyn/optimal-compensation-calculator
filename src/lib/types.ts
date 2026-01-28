@@ -133,6 +133,7 @@ export interface YearlyResult {
   provincialSurtax: number; // Ontario surtax, PEI surtax, etc.
   healthPremium: number; // Ontario Health Premium, Quebec Health Contribution, etc.
   totalTax: number;
+  effectiveIntegratedRate: number;    // Per-year effective tax rate (corp + personal) / compensation
   afterTaxIncome: number;
   rrspRoomGenerated: number;
   rrspContribution: number;

@@ -92,11 +92,11 @@ export function Summary({ summary, inputs }: SummaryProps) {
         className="p-5 rounded-xl"
         style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
       >
-        <div className="text-sm font-semibold mb-4">Effective Tax Rates by Income Source</div>
+        <div className="text-sm font-semibold mb-4">Average Effective Tax Rates ({summary.yearlyResults.length}-Year)</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
             <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Integrated Rate
+              Avg Integrated Rate
             </div>
             <div className="text-2xl font-bold" style={{ color: '#818cf8' }}>
               {formatPercent(summary.effectiveCompensationRate)}
@@ -108,7 +108,7 @@ export function Summary({ summary, inputs }: SummaryProps) {
 
           <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(251, 146, 60, 0.1)' }}>
             <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Tax on Corp Investments
+              Avg Investment Tax
             </div>
             <div className="text-2xl font-bold" style={{ color: '#fb923c' }}>
               {formatPercent(summary.effectivePassiveRate)}
@@ -120,9 +120,9 @@ export function Summary({ summary, inputs }: SummaryProps) {
 
           <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
             <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Combined Rate
+              Avg Combined Rate
             </div>
-            <div className={`text-2xl font-bold ${summary.effectiveTaxRate > 0.40 ? '' : ''}`} style={{ color: '#ef4444' }}>
+            <div className="text-2xl font-bold" style={{ color: '#ef4444' }}>
               {formatPercent(summary.effectiveTaxRate)}
             </div>
             <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
