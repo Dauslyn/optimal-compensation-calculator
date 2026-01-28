@@ -26,13 +26,14 @@ import {
 } from './notionalAccounts';
 
 /**
- * Calculate effective dividend tax rate at top marginal bracket
+ * Calculate effective dividend tax rate at a given income level
  * This is the combined federal + provincial tax on dividends minus credits
  * Used for estimating gross dividend needed to achieve target after-tax income
  */
 function calculateEffectiveDividendRate(
   taxData: TaxYearData,
-  dividendType: 'eligible' | 'nonEligible'
+  dividendType: 'eligible' | 'nonEligible',
+  estimatedTaxableIncome: number = 150000 // Default to mid-income estimate
 ): number {
   const dividendInfo = dividendType === 'eligible'
     ? taxData.dividend.eligible
@@ -41,14 +42,15 @@ function calculateEffectiveDividendRate(
   // Get the gross-up factor
   const grossUp = dividendInfo.grossUp;
 
-  // Get top marginal rates (federal and provincial)
+  // Get marginal rates at the estimated income level (not top rates)
   const federalBrackets = taxData.federal.brackets;
   const provincialBrackets = taxData.provincial.brackets;
-  const topFederalRate = federalBrackets[federalBrackets.length - 1].rate;
-  const topProvincialRate = provincialBrackets[provincialBrackets.length - 1].rate;
+
+  const federalRate = getMarginalRateAtIncome(federalBrackets, estimatedTaxableIncome);
+  const provincialRate = getMarginalRateAtIncome(provincialBrackets, estimatedTaxableIncome);
 
   // Tax on grossed-up dividend
-  const grossedUpTax = (1 + grossUp) * (topFederalRate + topProvincialRate);
+  const grossedUpTax = (1 + grossUp) * (federalRate + provincialRate);
 
   // Credits (as a percentage of grossed-up amount)
   const federalCredit = (1 + grossUp) * dividendInfo.federalCredit;
@@ -59,6 +61,24 @@ function calculateEffectiveDividendRate(
 
   // Ensure non-negative (some low-bracket scenarios could have negative rates)
   return Math.max(0, effectiveRate);
+}
+
+/**
+ * Get the marginal tax rate at a specific income level
+ */
+function getMarginalRateAtIncome(
+  brackets: Array<{ threshold: number; rate: number }>,
+  income: number
+): number {
+  let rate = brackets[0].rate;
+  for (const bracket of brackets) {
+    if (income > bracket.threshold) {
+      rate = bracket.rate;
+    } else {
+      break;
+    }
+  }
+  return rate;
 }
 
 /**
@@ -466,9 +486,11 @@ function calculateYear(
     afterTaxIncome: 0,
   };
 
-  // Effective dividend tax rates based on province-specific rates
-  const eligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'eligible');
-  const nonEligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'nonEligible');
+  // Effective dividend tax rates based on province-specific rates at estimated income level
+  // Estimate taxable income as ~1.5x required after-tax (rough gross-up)
+  const estimatedTaxableIncome = inflatedRequiredIncome * 1.5;
+  const eligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'eligible', estimatedTaxableIncome);
+  const nonEligibleEffectiveRate = calculateEffectiveDividendRate(taxData, 'nonEligible', estimatedTaxableIncome);
 
   if (inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount) {
     // Fixed salary strategy - may also want to inflate the fixed amount
