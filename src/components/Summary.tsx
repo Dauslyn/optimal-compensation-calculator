@@ -102,7 +102,7 @@ export function Summary({ summary, inputs }: SummaryProps) {
               {formatPercent(summary.effectiveCompensationRate)}
             </div>
             <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Corp + personal + payroll
+              Corp + personal tax
             </div>
           </div>
 
