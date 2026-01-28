@@ -123,6 +123,9 @@ export interface YearlyResult {
   dividends: DividendFunding;
   personalTax: number;
   corporateTax: number;
+  corporateTaxOnActive: number;      // Tax on active business income
+  corporateTaxOnPassive: number;     // Tax on passive investment income (gross, before RDTOH)
+  rdtohRefundReceived: number;       // RDTOH refund from paying dividends
   cpp: number;       // CPP or QPP (Quebec)
   cpp2: number;      // CPP2 or QPP2 (Quebec)
   ei: number;        // EI (reduced rate in Quebec)
@@ -130,6 +133,7 @@ export interface YearlyResult {
   provincialSurtax: number; // Ontario surtax, PEI surtax, etc.
   healthPremium: number; // Ontario Health Premium, Quebec Health Contribution, etc.
   totalTax: number;
+  effectiveIntegratedRate: number;    // Per-year effective tax rate (corp + personal) / compensation
   afterTaxIncome: number;
   rrspRoomGenerated: number;
   rrspContribution: number;
@@ -148,8 +152,13 @@ export interface ProjectionSummary {
   totalDividends: number;
   totalPersonalTax: number;
   totalCorporateTax: number;
+  totalCorporateTaxOnActive: number;   // Tax on active business income
+  totalCorporateTaxOnPassive: number;  // Gross tax on passive income
+  totalRdtohRefund: number;            // RDTOH refunds received
   totalTax: number;
   effectiveTaxRate: number;
+  effectiveCompensationRate: number;   // Tax rate on compensation (personal + payroll)
+  effectivePassiveRate: number;        // Net tax rate on passive income (after RDTOH)
   finalCorporateBalance: number;
   totalRRSPRoomGenerated: number;
   totalRRSPContributions: number;

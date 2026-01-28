@@ -27,6 +27,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       minimumFractionDigits: 0,
     }).format(value);
 
+  // Get effective tax rate from payload (stored as hidden data)
+  const effectiveRate = payload[0]?.payload?.effectiveRate;
+
   return (
     <div
       style={{
@@ -57,6 +60,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           </span>
         </div>
       ))}
+      {effectiveRate !== undefined && (
+        <div
+          style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: '13px',
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#818cf8' }} />
+          <span style={{ color: 'rgba(255,255,255,0.6)' }}>Effective Tax Rate:</span>
+          <span style={{ fontWeight: 600, color: '#818cf8' }}>
+            {(effectiveRate * 100).toFixed(1)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -74,6 +96,7 @@ export function Chart({ results }: ChartProps) {
     'Capital Div': year.dividends.capitalDividends,
     'Eligible Div': year.dividends.eligibleDividends,
     'Non-Elig Div': year.dividends.nonEligibleDividends,
+    effectiveRate: year.effectiveIntegratedRate,
   }));
 
   const accountsData = results.map((year) => ({
