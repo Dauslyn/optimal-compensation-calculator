@@ -702,9 +702,14 @@ function calculateSummary(
   const totalTax = totalPersonalTax + totalCorporateTax;
   const effectiveTaxRate = totalCompensation > 0 ? totalTax / totalCompensation : 0;
 
-  // Effective rate on compensation (personal tax + payroll on salary/dividends)
+  // Effective INTEGRATED rate on compensation
+  // This includes:
+  // - Personal tax on salary and dividends
+  // - Payroll taxes (CPP/EI)
+  // - Corporate tax on active income (since dividends are paid from after-tax corp funds)
+  // This shows the TRUE cost of extracting money from the corp
   const effectiveCompensationRate = totalCompensation > 0
-    ? (totalPersonalTax + totalCpp) / totalCompensation
+    ? (totalPersonalTax + totalCpp + totalCorporateTaxOnActive) / totalCompensation
     : 0;
 
   // Net effective rate on passive investment income (gross tax - RDTOH refund)

@@ -96,13 +96,13 @@ export function Summary({ summary, inputs }: SummaryProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
             <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Tax on Compensation
+              Integrated Rate
             </div>
             <div className="text-2xl font-bold" style={{ color: '#818cf8' }}>
               {formatPercent(summary.effectiveCompensationRate)}
             </div>
             <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Personal tax + payroll
+              Corp + personal + payroll
             </div>
           </div>
 
