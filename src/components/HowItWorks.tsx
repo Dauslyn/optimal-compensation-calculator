@@ -118,6 +118,56 @@ export function HowItWorks() {
             </p>
           </div>
 
+          {/* Research Credit */}
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)' }}
+          >
+            <h3 className="font-semibold mb-2 text-sm" style={{ color: 'var(--text-primary)' }}>
+              Based on PWL Capital Research
+            </h3>
+            <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-secondary)' }}>
+              This calculator implements the methodology from PWL Capital's research paper{' '}
+              <a
+                href="https://pwlcapital.com/wp-content/uploads/2024/04/OptimalCompensationSavingandConsumptionforOwners_2023.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                "Optimal Compensation, Savings, and Consumption for Owners of CCPCs"
+              </a>
+              {' '}by Ben Felix and the PWL Capital team. Their work found that a dynamic approach—varying
+              the salary/dividend mix based on notional account balances—often outperforms static strategies.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="https://pwlcapital.com/wp-content/uploads/2024/04/OptimalCompensationSavingandConsumptionforOwners_2023.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Read the Paper (PDF)
+              </a>
+              <a
+                href="https://pwlcapital.com/episode-13-optimal-compensation-from-a-ccpc/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                Listen to Episode 13
+              </a>
+            </div>
+          </div>
+
           {/* Methodology Note */}
           <div
             className="p-4 rounded-lg"
