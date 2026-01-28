@@ -154,7 +154,6 @@ describe('Calculator End-to-End', () => {
       const result = calculateProjection(inputs);
 
       // With high returns and low withdrawal, balance should grow
-      const startBalance = inputs.corporateInvestmentBalance;
       const endBalance = result.finalCorporateBalance;
 
       // May not always grow due to withdrawals, but should be reasonable

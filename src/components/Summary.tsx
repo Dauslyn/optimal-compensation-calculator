@@ -4,6 +4,7 @@ import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
 import { ReportTemplate } from './ReportTemplate';
 import { IPPAnalysis } from './IPPAnalysis';
+import { EmailCapture } from './EmailCapture';
 import { RRSP_ANNUAL_LIMIT } from '../lib/tax';
 
 interface SummaryProps {
@@ -185,6 +186,9 @@ export function Summary({ summary, inputs }: SummaryProps) {
           year={inputs.startingYear}
         />
       )}
+
+      {/* Email Capture */}
+      <EmailCapture source="calculator-results" />
     </div>
   );
 }
