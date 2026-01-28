@@ -12,6 +12,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
 import { ScenarioBuilder } from './components/ScenarioBuilder';
 import { YearEndAlert } from './components/YearEndAlert';
+import { HowItWorks } from './components/HowItWorks';
 import type { ProjectionSummary, UserInputs } from './lib/types';
 import { calculateProjection } from './lib/calculator';
 import { getInputsFromUrl, generateShareUrl } from './lib/shareLink';
@@ -267,6 +268,9 @@ function App() {
               <section className="glass-card p-6">
                 <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
               </section>
+
+              {/* How It Works - Educational Content */}
+              <HowItWorks />
 
               {/* Loading State */}
               {isCalculating && (
