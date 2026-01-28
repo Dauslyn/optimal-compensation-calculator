@@ -37,7 +37,13 @@ export function EmailCapture({ source = 'calculator' }: EmailCaptureProps) {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Store locally until Beehiiv is connected
-      const subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
+      let subscribers: Array<{ email: string; source: string; timestamp: string }> = [];
+      try {
+        subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');
+        if (!Array.isArray(subscribers)) subscribers = [];
+      } catch {
+        subscribers = [];
+      }
       subscribers.push({ email, source, timestamp: new Date().toISOString() });
       localStorage.setItem('newsletter_subscribers', JSON.stringify(subscribers));
 
