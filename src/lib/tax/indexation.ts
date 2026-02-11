@@ -107,7 +107,7 @@ export const KNOWN_TAX_YEARS: Record<number, TaxYearData> = {
         { threshold: 177882, rate: 0.29 },
         { threshold: 253414, rate: 0.33 },
       ],
-      basicPersonalAmount: 15705,
+      basicPersonalAmount: 16129, // CRA 2025: $16,129 (enhanced BPA, clawed back for high income)
     },
     provincial: {
       // Ontario 2025 (indexed at 2.8%)

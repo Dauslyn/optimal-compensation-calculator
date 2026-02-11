@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { UserInputs, ProjectionSummary } from '../lib/types';
 import { formatCurrency, formatPercentage } from '../lib/utils';
+import { PROVINCES } from '../lib/tax/provinces';
 
 interface ReportTemplateProps {
     inputs: UserInputs;
@@ -153,7 +154,7 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                 <div className="footer">
                     <p>
                         <strong>Disclaimer:</strong> This report is for planning purposes only and does not constitute professional tax advice.
-                        All calculations are based on Ontario {new Date().getFullYear()} tax rates and provided assumptions.
+                        All calculations are based on {PROVINCES[inputs.province].name} {inputs.startingYear} tax rates and provided assumptions.
                         Actual tax outcomes may vary. Please consult with a designated accountant (CPA) before making compensation decisions.
                     </p>
                     <p className="mt-2">

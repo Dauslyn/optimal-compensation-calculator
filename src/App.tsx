@@ -48,17 +48,7 @@ function App() {
   const handleShare = useCallback(async () => {
     if (currentInputs) {
       const url = generateShareUrl(currentInputs);
-      try {
-        await navigator.clipboard.writeText(url);
-      } catch {
-        // Fallback
-        const tempInput = document.createElement('input');
-        tempInput.value = url;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempInput);
-      }
+      await navigator.clipboard.writeText(url);
     }
   }, [currentInputs]);
 
@@ -107,9 +97,6 @@ function App() {
     setIsCalculating(true);
     setResults(null); // Clear previous results to show loading state
 
-    // Small delay to show loading state (calculation is fast, but UX feels better)
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
     const projection = calculateProjection(inputs);
     setResults(projection);
     setCurrentInputs(inputs);
@@ -122,7 +109,7 @@ function App() {
         {/* Print Header (only shown when printing) */}
         <div className="print-header">
           <h1>CCPC Compensation Analysis Report</h1>
-          <p>Generated on {new Date().toLocaleDateString('en-CA')} | Ontario Tax Year 2025/2026</p>
+          <p>Generated on {new Date().toLocaleDateString('en-CA')} | {currentInputs ? PROVINCES[currentInputs.province].name : PROVINCES[DEFAULT_PROVINCE].name} Tax Year {currentInputs?.startingYear ?? getStartingYear()}/{(currentInputs?.startingYear ?? getStartingYear()) + 1}</p>
         </div>
 
         {/* Header */}
@@ -175,7 +162,7 @@ function App() {
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="badge badge-success">
-                {currentInputs ? PROVINCES[currentInputs.province].name : PROVINCES[DEFAULT_PROVINCE].name} 2025/2026
+                {currentInputs ? PROVINCES[currentInputs.province].name : PROVINCES[DEFAULT_PROVINCE].name} {currentInputs?.startingYear ?? getStartingYear()}/{(currentInputs?.startingYear ?? getStartingYear()) + 1}
               </span>
               <span className="badge" style={{ background: 'var(--accent-primary-glow)', color: 'var(--accent-primary)' }}>
                 CPP2 + Provincial Taxes
@@ -306,7 +293,7 @@ function App() {
 
         {/* Disclaimer */}
         <section className="mt-12">
-          <Disclaimer variant="full" />
+          <Disclaimer variant="full" province={currentInputs?.province ?? DEFAULT_PROVINCE} />
         </section>
 
         {/* Footer */}

@@ -7,8 +7,7 @@
 
 import type { UserInputs } from './types';
 import type { ProvinceCode } from './tax/provinces';
-import { DEFAULT_PROVINCE } from './tax/provinces';
-import { getStartingYear, getDefaultInflationRate } from './tax/indexation';
+import { DEFAULT_PROVINCE, PROVINCES } from './tax/provinces';
 
 // Version for backwards compatibility if we change the format
 const SHARE_FORMAT_VERSION = 1;
@@ -115,34 +114,70 @@ function compressInputs(inputs: UserInputs): CompactInputs {
 }
 
 /**
- * Expand compact format back to UserInputs
+ * Validate and clamp a number to a range
+ */
+function clamp(value: number, min: number, max: number): number {
+  if (typeof value !== 'number' || isNaN(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Validate a province code against known provinces
+ */
+function validateProvinceCode(code: string): ProvinceCode {
+  if (code in PROVINCES) {
+    return code as ProvinceCode;
+  }
+  console.warn(`Invalid province code in share link: "${code}", falling back to ${DEFAULT_PROVINCE}`);
+  return DEFAULT_PROVINCE;
+}
+
+/**
+ * Validate salary strategy
+ */
+function validateSalaryStrategy(strategy: string): 'dynamic' | 'fixed' | 'dividends-only' {
+  const valid = ['dynamic', 'fixed', 'dividends-only'];
+  if (valid.includes(strategy)) {
+    return strategy as 'dynamic' | 'fixed' | 'dividends-only';
+  }
+  return 'dynamic';
+}
+
+/**
+ * Expand compact format back to UserInputs with validation
  */
 function expandInputs(compact: CompactInputs): UserInputs {
+  // Normalize investmentReturnRate: if > 1, assume it was stored as percentage
+  let investmentReturnRate = compact.irr;
+  if (investmentReturnRate > 1) {
+    investmentReturnRate = investmentReturnRate / 100;
+  }
+
   return {
-    province: (compact.pv || DEFAULT_PROVINCE) as ProvinceCode,
-    requiredIncome: compact.ri,
-    planningHorizon: compact.ph as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
-    startingYear: compact.sy,
-    expectedInflationRate: compact.ei,
-    inflateSpendingNeeds: compact.is,
-    corporateInvestmentBalance: compact.cib,
-    tfsaBalance: compact.tb,
-    rrspBalance: compact.rb,
-    cdaBalance: compact.cda,
-    eRDTOHBalance: compact.erd,
-    nRDTOHBalance: compact.nrd,
-    gripBalance: compact.grp,
-    investmentReturnRate: compact.irr,
-    canadianEquityPercent: compact.ce,
-    usEquityPercent: compact.ue,
-    internationalEquityPercent: compact.ie,
-    fixedIncomePercent: compact.fi,
-    annualCorporateRetainedEarnings: compact.are,
-    maximizeTFSA: compact.mt,
-    contributeToRRSP: compact.cr,
-    contributeToRESP: compact.ce2,
-    payDownDebt: compact.pd,
-    salaryStrategy: compact.ss as 'dynamic' | 'fixed' | 'dividends-only',
+    province: validateProvinceCode(compact.pv || DEFAULT_PROVINCE),
+    requiredIncome: clamp(compact.ri, 0, 10_000_000),
+    planningHorizon: clamp(compact.ph, 3, 10) as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
+    startingYear: clamp(compact.sy, 2025, 2050),
+    expectedInflationRate: clamp(compact.ei, 0, 0.2),
+    inflateSpendingNeeds: Boolean(compact.is),
+    corporateInvestmentBalance: clamp(compact.cib, 0, 100_000_000),
+    tfsaBalance: clamp(compact.tb, 0, 1_000_000),
+    rrspBalance: clamp(compact.rb, 0, 10_000_000),
+    cdaBalance: clamp(compact.cda, 0, 100_000_000),
+    eRDTOHBalance: clamp(compact.erd, 0, 100_000_000),
+    nRDTOHBalance: clamp(compact.nrd, 0, 100_000_000),
+    gripBalance: clamp(compact.grp, 0, 100_000_000),
+    investmentReturnRate: clamp(investmentReturnRate, -0.5, 0.5),
+    canadianEquityPercent: clamp(compact.ce, 0, 100),
+    usEquityPercent: clamp(compact.ue, 0, 100),
+    internationalEquityPercent: clamp(compact.ie, 0, 100),
+    fixedIncomePercent: clamp(compact.fi, 0, 100),
+    annualCorporateRetainedEarnings: clamp(compact.are, 0, 10_000_000),
+    maximizeTFSA: Boolean(compact.mt),
+    contributeToRRSP: Boolean(compact.cr),
+    contributeToRESP: Boolean(compact.ce2),
+    payDownDebt: Boolean(compact.pd),
+    salaryStrategy: validateSalaryStrategy(compact.ss),
     respContributionAmount: compact.rca,
     debtPaydownAmount: compact.dpa,
     totalDebtAmount: compact.tda,
@@ -225,35 +260,6 @@ export function getInputsFromUrl(): UserInputs | null {
   return decodeShareLink(shareParam);
 }
 
-/**
- * Get default inputs (used when no share link is present)
- */
-export function getDefaultInputs(): UserInputs {
-  return {
-    province: DEFAULT_PROVINCE,
-    requiredIncome: 150000,
-    planningHorizon: 5,
-    startingYear: getStartingYear(),
-    expectedInflationRate: getDefaultInflationRate(),
-    inflateSpendingNeeds: true,
-    corporateInvestmentBalance: 500000,
-    tfsaBalance: 50000,
-    rrspBalance: 100000,
-    cdaBalance: 25000,
-    eRDTOHBalance: 10000,
-    nRDTOHBalance: 5000,
-    gripBalance: 50000,
-    investmentReturnRate: 4.31,
-    canadianEquityPercent: 25,
-    usEquityPercent: 25,
-    internationalEquityPercent: 25,
-    fixedIncomePercent: 25,
-    annualCorporateRetainedEarnings: 200000,
-    maximizeTFSA: true,
-    contributeToRRSP: true,
-    contributeToRESP: false,
-    payDownDebt: false,
-    salaryStrategy: 'dynamic',
-    considerIPP: false,
-  };
-}
+// getDefaultInputs() is exported from localStorage.ts as the single source of truth.
+// Previously this file had a duplicate with different values (including investmentReturnRate: 4.31 = 431%!).
+// Import from localStorage.ts if you need default inputs.

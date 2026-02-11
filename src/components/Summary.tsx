@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
@@ -6,6 +6,7 @@ import { ReportTemplate } from './ReportTemplate';
 import { IPPAnalysis } from './IPPAnalysis';
 import { EmailCapture } from './EmailCapture';
 import { RRSP_ANNUAL_LIMIT } from '../lib/tax';
+import { getProvincialTaxData } from '../lib/tax/provincialRates';
 
 interface SummaryProps {
   summary: ProjectionSummary;
@@ -32,6 +33,12 @@ export function Summary({ summary, inputs }: SummaryProps) {
   const formatPercent = (decimal: number): string => {
     return `${(decimal * 100).toFixed(1)}%`;
   };
+
+  // Combined federal (9%) + provincial small business corporate tax rate
+  const combinedSmallBusinessRate = useMemo(() => {
+    const provincialData = getProvincialTaxData(inputs.province, inputs.startingYear);
+    return 0.09 + provincialData.corporateSmallBusinessRate;
+  }, [inputs.province, inputs.startingYear]);
 
   const salaryPercent = summary.totalCompensation > 0
     ? (summary.totalSalary / summary.totalCompensation) * 100
@@ -226,7 +233,7 @@ export function Summary({ summary, inputs }: SummaryProps) {
           memberAge={inputs.ippMemberAge}
           yearsOfService={inputs.ippYearsOfService}
           currentSalary={summary.totalSalary / summary.yearlyResults.length}
-          corporateTaxRate={0.122} // Small business rate (Ontario default)
+          corporateTaxRate={combinedSmallBusinessRate}
           rrspLimit={RRSP_ANNUAL_LIMIT}
           year={inputs.startingYear}
         />

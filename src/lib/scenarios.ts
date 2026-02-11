@@ -7,6 +7,8 @@
 
 import type { UserInputs, ProjectionSummary } from './types';
 import { getDefaultInputs } from './localStorage';
+import { getTaxYearData } from './tax/indexation';
+import { getStartingYear } from './tax/indexation';
 
 /**
  * A scenario represents a complete set of inputs and calculated results
@@ -262,7 +264,7 @@ export function getPresetScenarios(): Array<{ name: string; description: string;
       description: 'Fixed salary at YMPE to maximize CPP benefits',
       inputs: {
         salaryStrategy: 'fixed',
-        fixedSalaryAmount: 71300, // 2025 YMPE
+        fixedSalaryAmount: getTaxYearData(getStartingYear()).cpp.ympe,
         maximizeTFSA: true,
         contributeToRRSP: true,
       },

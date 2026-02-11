@@ -5,7 +5,6 @@ export { calculateInvestmentReturns } from './investmentReturns';
 
 export {
     updateAccountsFromReturns,
-    depleteAccounts,
     depleteAccountsWithRates,
     processSalaryPayment,
     addCapitalGainToCDA,
