@@ -144,15 +144,15 @@ export interface PassiveIncomeGrindResult {
  *
  * @param passiveIncome - Total AAII (adjusted aggregate investment income)
  * @param activeBusinessIncome - Active business income amount
- * @param smallBusinessRate - Provincial small business rate (e.g., 0.122 for Ontario)
- * @param generalRate - Provincial general rate (e.g., 0.265 for Ontario)
+ * @param smallBusinessRate - Combined federal + provincial small business rate (varies by province)
+ * @param generalRate - Combined federal + provincial general rate (varies by province)
  * @returns Detailed grind calculation results
  */
 export function calculatePassiveIncomeGrind(
   passiveIncome: number,
   activeBusinessIncome: number = 0,
-  smallBusinessRate: number = 0.122,
-  generalRate: number = 0.265
+  smallBusinessRate: number,
+  generalRate: number
 ): PassiveIncomeGrindResult {
   const { threshold, sbdLimit, grindRate } = PASSIVE_INCOME_CONSTANTS;
 

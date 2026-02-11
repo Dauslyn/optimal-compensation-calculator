@@ -133,7 +133,7 @@ describe('Passive Income Grind', () => {
 
   describe('calculatePassiveIncomeGrind', () => {
     it('returns full SBD for income below threshold', () => {
-      const result = calculatePassiveIncomeGrind(40000);
+      const result = calculatePassiveIncomeGrind(40000, 0, 0.122, 0.265);
       expect(result.totalPassiveIncome).toBe(40000);
       expect(result.excessPassiveIncome).toBe(0);
       expect(result.sbdReduction).toBe(0);
@@ -143,7 +143,7 @@ describe('Passive Income Grind', () => {
     });
 
     it('calculates partial grind correctly', () => {
-      const result = calculatePassiveIncomeGrind(80000, 100000);
+      const result = calculatePassiveIncomeGrind(80000, 100000, 0.122, 0.265);
       expect(result.totalPassiveIncome).toBe(80000);
       expect(result.excessPassiveIncome).toBe(30000); // 80k - 50k
       expect(result.sbdReduction).toBe(150000);       // 30k * 5
@@ -153,7 +153,7 @@ describe('Passive Income Grind', () => {
     });
 
     it('calculates full grind at threshold', () => {
-      const result = calculatePassiveIncomeGrind(150000);
+      const result = calculatePassiveIncomeGrind(150000, 0, 0.122, 0.265);
       expect(result.reducedSBDLimit).toBe(0);
       expect(result.isFullyGrounded).toBe(true);
       expect(result.grindPercentage).toBe(100);
@@ -237,7 +237,7 @@ describe('Passive Income Grind', () => {
       // SBD reduction: $75k × 5 = $375k
       // Remaining SBD: $500k - $375k = $125k
 
-      const grind = calculatePassiveIncomeGrind(125000);
+      const grind = calculatePassiveIncomeGrind(125000, 0, 0.122, 0.265);
 
       expect(grind.reducedSBDLimit).toBe(125000);
       expect(grind.grindPercentage).toBe(75);

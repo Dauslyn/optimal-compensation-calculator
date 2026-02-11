@@ -45,8 +45,8 @@ export function IPPAnalysis({
   );
 
   const comparison = useMemo(
-    () => compareIPPvsRRSP(memberInfo, rrspLimit, year),
-    [memberInfo, rrspLimit, year]
+    () => compareIPPvsRRSP(memberInfo, rrspLimit, year, corporateTaxRate),
+    [memberInfo, rrspLimit, year, corporateTaxRate]
   );
 
   const netBenefit = useMemo(

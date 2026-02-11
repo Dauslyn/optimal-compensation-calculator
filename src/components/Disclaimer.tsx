@@ -5,12 +5,16 @@
  * and the need for professional advice.
  */
 
+import { PROVINCES, DEFAULT_PROVINCE } from '../lib/tax/provinces';
+import type { ProvinceCode } from '../lib/tax/provinces';
+
 interface DisclaimerProps {
   variant?: 'full' | 'compact';
   className?: string;
+  province?: ProvinceCode;
 }
 
-export function Disclaimer({ variant = 'full', className = '' }: DisclaimerProps) {
+export function Disclaimer({ variant = 'full', className = '', province = DEFAULT_PROVINCE }: DisclaimerProps) {
   const lastUpdated = 'January 2025';
   const taxYearsSupported = '2025-2026';
 
@@ -75,7 +79,7 @@ export function Disclaimer({ variant = 'full', className = '' }: DisclaimerProps
               and may vary based on individual circumstances not captured by this tool.
             </p>
             <p>
-              The calculations assume Ontario residency and use simplified assumptions about
+              The calculations assume {PROVINCES[province].name} residency and use simplified assumptions about
               tax treatment, investment returns, and corporate structures. Actual results may differ
               significantly based on your specific situation.
             </p>

@@ -3,6 +3,7 @@ import type { UserInputs } from '../lib/types';
 import type { ProvinceCode } from '../lib/tax/provinces';
 import { PROVINCES } from '../lib/tax/provinces';
 import { getDefaultInflationRate } from '../lib/tax/indexation';
+import { getContributionLimitsForYear } from '../lib/tax/constants';
 import { validateInputs } from '../lib/validation';
 import { InfoLabel, TAX_TOOLTIPS } from './Tooltip';
 import { saveInputsToStorage, loadInputsFromStorage, getDefaultInputs, clearStoredInputs } from '../lib/localStorage';
@@ -528,7 +529,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               <select
                 id="salaryStrategy"
                 value={formData.salaryStrategy}
-                onChange={(e) => setFormData({ ...formData, salaryStrategy: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, salaryStrategy: e.target.value as UserInputs['salaryStrategy'] })}
               >
                 <option value="dynamic">Dynamic (Optimize Automatically)</option>
                 <option value="fixed">Fixed Salary Amount</option>
@@ -556,7 +557,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 />
                 <div>
                   <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Maximize TFSA</span>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contribute $7,000/year</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contribute ${getContributionLimitsForYear(formData.startingYear).tfsaLimit.toLocaleString('en-CA')}/year</p>
                 </div>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">

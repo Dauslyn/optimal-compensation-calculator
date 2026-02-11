@@ -221,7 +221,8 @@ export function calculateIPPContribution(
 export function compareIPPvsRRSP(
   memberInfo: IPPMemberInfo,
   rrspLimit: number,
-  year: number
+  year: number,
+  corporateTaxRate: number = 0.122
 ): {
   ippContribution: number;
   rrspContribution: number;
@@ -229,7 +230,7 @@ export function compareIPPvsRRSP(
   ippAdvantage: boolean;
   notes: string[];
 } {
-  const ippResult = calculateIPPContribution(memberInfo, 0.12, year);
+  const ippResult = calculateIPPContribution(memberInfo, corporateTaxRate, year);
   const ippContribution = ippResult.totalAnnualContribution;
 
   const difference = ippContribution - rrspLimit;

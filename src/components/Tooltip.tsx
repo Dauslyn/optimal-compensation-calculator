@@ -138,8 +138,66 @@ export function InfoLabel({ label, tooltip, htmlFor }: InfoLabelProps) {
   );
 }
 
+import type { ProvinceCode } from '../lib/tax/provinces';
+import { PROVINCES } from '../lib/tax/provinces';
+import { getProvincialTaxData } from '../lib/tax/provincialRates';
+import { getTaxYearData } from '../lib/tax/indexation';
+
 /**
- * Predefined tooltips for common tax concepts
+ * Get province-aware tooltips for common tax concepts
+ */
+export function getTaxTooltips(province: ProvinceCode, year: number) {
+  const provinceName = PROVINCES[province].name;
+  const provincialData = getProvincialTaxData(province, year);
+  const yearData = getTaxYearData(year);
+  const combinedSBRate = (0.09 + provincialData.corporateSmallBusinessRate) * 100;
+  const combinedGenRate = (0.15 + provincialData.corporateGeneralRate) * 100;
+  const ympe = yearData.cpp.ympe.toLocaleString('en-CA');
+  const yampe = yearData.cpp2.secondCeiling.toLocaleString('en-CA');
+
+  // Province-specific surtax tooltip
+  let surtaxTooltip = '';
+  if (provincialData.surtax) {
+    const s = provincialData.surtax;
+    surtaxTooltip = `Additional tax of ${(s.firstRate * 100).toFixed(0)}% on ${provinceName} tax over $${s.firstThreshold.toLocaleString('en-CA')} and ${(s.secondRate * 100).toFixed(0)}% on tax over $${s.secondThreshold.toLocaleString('en-CA')} (${year} indexed values).`;
+  } else if (provincialData.peiSurtax) {
+    const s = provincialData.peiSurtax;
+    surtaxTooltip = `Additional tax of ${(s.rate * 100).toFixed(0)}% on ${provinceName} tax over $${s.threshold.toLocaleString('en-CA')}.`;
+  }
+
+  // Province-specific health premium tooltip
+  let healthPremiumTooltip = '';
+  if (provincialData.healthPremium) {
+    const maxBracket = provincialData.healthPremium.brackets[provincialData.healthPremium.brackets.length - 1];
+    healthPremiumTooltip = `Provincial health levy ranging from $0 to $${maxBracket.maxPremium.toLocaleString('en-CA')} based on taxable income. Not indexed to inflation.`;
+  }
+
+  return {
+    cda: 'Capital Dividend Account - A notional account tracking the tax-free portion of capital gains. Capital dividends paid from the CDA are tax-free to shareholders.',
+    erdtoh: 'Eligible Refundable Dividend Tax on Hand - Tracks refundable taxes paid on investment income from eligible dividends. Refunded when eligible dividends are paid.',
+    nrdtoh: 'Non-Eligible Refundable Dividend Tax on Hand - Tracks refundable taxes paid on passive investment income. Refunded when non-eligible dividends are paid.',
+    grip: 'General Rate Income Pool - Tracks income taxed at the general corporate rate. Allows payment of eligible dividends even from a CCPC.',
+    eligibleDividend: 'Dividends paid from income taxed at the general corporate rate. Higher gross-up (38%) but also higher dividend tax credits, resulting in lower personal tax.',
+    nonEligibleDividend: 'Dividends paid from income taxed at the small business rate. Lower gross-up (15%) and lower dividend tax credits, resulting in higher personal tax.',
+    rdtohRefund: 'When dividends are paid, the corporation gets a refund of 38.33% of the dividend amount from RDTOH balances.',
+    cpp: 'Canada Pension Plan - Mandatory payroll deduction on employment income. Both employee and employer contribute equally.',
+    cpp2: `CPP2 (Enhanced CPP) - Additional CPP contributions on earnings between YMPE ($${ympe}) and YAMPE ($${yampe}) at 4% rate.`,
+    ei: 'Employment Insurance - Payroll deduction for employment benefits. Employer pays 1.4x the employee contribution.',
+    ympe: `Year's Maximum Pensionable Earnings - The income ceiling for base CPP contributions ($${ympe} for ${year}).`,
+    yampe: `Year's Additional Maximum Pensionable Earnings - The ceiling for CPP2 contributions ($${yampe} for ${year}).`,
+    surtax: surtaxTooltip,
+    healthPremium: healthPremiumTooltip,
+    smallBusinessRate: `Combined federal + provincial rate of ${combinedSBRate.toFixed(1)}% (${provinceName}) on active business income up to $500,000.`,
+    generalCorporateRate: `Combined federal + provincial rate of ${combinedGenRate.toFixed(1)}% (${provinceName}) on income above the small business limit.`,
+    passiveIncomeGrind: 'When passive income exceeds $50,000, the small business deduction is reduced by $5 for every $1 of passive income.',
+    investmentReturnRate: 'Expected annual total return on corporate investments, combining dividend income, interest, and capital gains.',
+    inflationRate: 'Expected annual inflation rate. Used to project future tax brackets, CPP/EI limits, and optionally your spending needs.',
+  };
+}
+
+/**
+ * Static tooltips for backward compatibility (uses generic descriptions)
+ * @deprecated Use getTaxTooltips(province, year) for province-aware tooltips
  */
 export const TAX_TOOLTIPS = {
   cda: 'Capital Dividend Account - A notional account tracking the tax-free portion of capital gains. Capital dividends paid from the CDA are tax-free to shareholders.',
@@ -150,13 +208,11 @@ export const TAX_TOOLTIPS = {
   nonEligibleDividend: 'Dividends paid from income taxed at the small business rate. Lower gross-up (15%) and lower dividend tax credits, resulting in higher personal tax.',
   rdtohRefund: 'When dividends are paid, the corporation gets a refund of 38.33% of the dividend amount from RDTOH balances.',
   cpp: 'Canada Pension Plan - Mandatory payroll deduction on employment income. Both employee and employer contribute equally.',
-  cpp2: 'CPP2 (Enhanced CPP) - Additional CPP contributions on earnings between YMPE ($74,600) and YAMPE ($85,000) at 4% rate.',
+  cpp2: 'CPP2 (Enhanced CPP) - Additional CPP contributions on earnings between YMPE and YAMPE at 4% rate.',
   ei: 'Employment Insurance - Payroll deduction for employment benefits. Employer pays 1.4x the employee contribution.',
-  ympe: "Year's Maximum Pensionable Earnings - The income ceiling for base CPP contributions ($74,600 for 2026).",
-  yampe: "Year's Additional Maximum Pensionable Earnings - The ceiling for CPP2 contributions ($85,000 for 2026).",
-  ontarioSurtax: 'Additional tax of 20% on Ontario tax over $5,824 and 36% on Ontario tax over $7,453 (2026 indexed values).',
-  ontarioHealthPremium: 'Provincial health levy ranging from $0 to $900 based on taxable income. Not indexed to inflation.',
-  smallBusinessRate: 'Combined federal + provincial rate of 12.2% (Ontario) on active business income up to $500,000.',
+  ympe: "Year's Maximum Pensionable Earnings - The income ceiling for base CPP contributions.",
+  yampe: "Year's Additional Maximum Pensionable Earnings - The ceiling for CPP2 contributions.",
+  smallBusinessRate: 'Combined federal + provincial rate on active business income up to $500,000.',
   passiveIncomeGrind: 'When passive income exceeds $50,000, the small business deduction is reduced by $5 for every $1 of passive income.',
   investmentReturnRate: 'Expected annual total return on corporate investments, combining dividend income, interest, and capital gains.',
   inflationRate: 'Expected annual inflation rate. Used to project future tax brackets, CPP/EI limits, and optionally your spending needs.',

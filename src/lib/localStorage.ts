@@ -6,7 +6,7 @@
 
 import type { UserInputs } from './types';
 import { getStartingYear, getDefaultInflationRate } from './tax/indexation';
-import { DEFAULT_PROVINCE } from './tax/provinces';
+import { DEFAULT_PROVINCE, PROVINCES } from './tax/provinces';
 
 const STORAGE_KEY = 'ccpc-calculator-inputs';
 const STORAGE_VERSION = 1;
@@ -58,11 +58,22 @@ export function loadInputsFromStorage(): UserInputs | null {
       return null;
     }
 
+    // Validate province code against known provinces
+    if (!data.inputs.province || !(data.inputs.province in PROVINCES)) {
+      console.warn(`Invalid stored province: "${data.inputs.province}", resetting to ${DEFAULT_PROVINCE}`);
+      data.inputs.province = DEFAULT_PROVINCE;
+    }
+
     // Update dynamic defaults that may have changed
     // For example, if the stored starting year is now in the past
     const currentYear = new Date().getFullYear();
     if (data.inputs.startingYear < currentYear) {
       data.inputs.startingYear = getStartingYear();
+    }
+
+    // Normalize investmentReturnRate if stored as percentage instead of decimal
+    if (data.inputs.investmentReturnRate > 1) {
+      data.inputs.investmentReturnRate = data.inputs.investmentReturnRate / 100;
     }
 
     return data.inputs;

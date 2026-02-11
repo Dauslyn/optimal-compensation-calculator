@@ -57,7 +57,7 @@ describe('KNOWN_TAX_YEARS', () => {
     });
 
     it('should have correct federal basic personal amount for 2025', () => {
-      expect(data2025.federal.basicPersonalAmount).toBe(15705);
+      expect(data2025.federal.basicPersonalAmount).toBe(16129); // CRA 2025 enhanced BPA
     });
 
     it('should have correct federal tax brackets for 2025', () => {

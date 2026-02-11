@@ -402,7 +402,7 @@ function calculateYear(
   displayYear: number,
   calendarYear: number,
   availableRRSPRoom: number,
-  _availableTFSARoom: number, // TODO: Implement TFSA contribution logic
+  availableTFSARoom: number,
   inflatedRequiredIncome: number,
   taxData: TaxYearData,
   contributionLimits: { tfsaLimit: number; rrspLimit: number; rrspRate: number },
@@ -435,9 +435,9 @@ function calculateYear(
   let respContribution = 0;
   let debtPaydown = 0;
 
-  // TFSA contribution
-  if (inputs.maximizeTFSA) {
-    tfsaContribution = contributionLimits.tfsaLimit;
+  // TFSA contribution - capped at available room
+  if (inputs.maximizeTFSA && availableTFSARoom > 0) {
+    tfsaContribution = Math.min(contributionLimits.tfsaLimit, availableTFSARoom);
     requiredIncome += tfsaContribution;
   }
 
@@ -532,9 +532,14 @@ function calculateYear(
   }
 
   // RRSP contribution (if enabled and room available)
+  // Contribute the maximum allowed when enabled: capped by available room and annual limit.
+  // RRSP contributions are tax-deductible, reducing personal tax on salary income.
+  // The contribution is sourced from after-tax income (salary + dividends).
   if (inputs.contributeToRRSP && availableRRSPRoom > 0) {
     const maxContribution = Math.min(availableRRSPRoom, contributionLimits.rrspLimit);
-    rrspContribution = Math.min(maxContribution, dividendFunding.afterTaxIncome * 0.1);
+    // Only contribute up to the total after-tax income available (salary net + dividend net)
+    const totalAfterTaxIncome = dividendFunding.afterTaxIncome + (salary > 0 ? salary * 0.6 : 0); // Approximate net salary
+    rrspContribution = Math.min(maxContribution, totalAfterTaxIncome);
   }
 
   // Calculate UNIFIED personal tax on combined salary + dividends
@@ -714,5 +719,3 @@ export function compareStrategies(
   };
 }
 
-// Prevent unused warning
-export const __unused = compareStrategies;

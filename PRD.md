@@ -57,11 +57,14 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 
 ## Technical Stack
 
-- **Frontend**: React + TypeScript + Vite
-- **Styling**: Vanilla CSS with CSS variables (dark theme)
-- **Charts**: Recharts
-- **State**: React useState (local state)
-- **Tests**: Vitest (188 tests)
+- **Frontend**: React 19 + TypeScript 5.9
+- **Build**: Vite 7
+- **Styling**: Tailwind CSS v4 + custom CSS variables (glassmorphism dark/light theme)
+- **Charts**: Recharts 3
+- **UI Primitives**: Radix UI (Select, Label)
+- **State**: React useState/useMemo (local state, no external state library)
+- **Tests**: Vitest (188+ tests)
+- **Linting**: ESLint 9 with TypeScript plugin
 
 ---
 
@@ -102,6 +105,7 @@ These features don't answer "salary vs dividends" and belong in separate tools:
 2. **Simplified deductions** - Does not model all possible deductions
 3. **No capital gains deferral** - Assumes 50% of gains realized annually
 4. **Some provincial payroll taxes** - BC employer health tax, MB levy not implemented
+5. **Monte Carlo simplification** - Uses geometric mean collapsing, losing sequence-of-returns risk
 
 ---
 
