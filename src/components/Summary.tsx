@@ -4,6 +4,7 @@ import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
 import { ReportTemplate } from './ReportTemplate';
 import { IPPAnalysis } from './IPPAnalysis';
+import { EmailCapture } from './EmailCapture';
 import { RRSP_ANNUAL_LIMIT } from '../lib/tax';
 import { getProvincialTaxData } from '../lib/tax/provincialRates';
 
@@ -74,13 +75,6 @@ export function Summary({ summary, inputs }: SummaryProps) {
         </div>
 
         <div className="stat-card">
-          <div className="stat-label">Effective Tax Rate</div>
-          <div className={`stat-value ${summary.effectiveTaxRate > 0.35 ? 'negative' : 'positive'}`}>
-            {formatPercent(summary.effectiveTaxRate)}
-          </div>
-        </div>
-
-        <div className="stat-card">
           <div className="stat-label">Avg Annual Income</div>
           <div className="stat-value">{formatCurrency(summary.averageAnnualIncome)}</div>
         </div>
@@ -89,6 +83,58 @@ export function Summary({ summary, inputs }: SummaryProps) {
           <div className="stat-label">Final Corp Balance</div>
           <div className={`stat-value ${summary.finalCorporateBalance > 0 ? 'positive' : 'negative'}`}>
             {formatCurrency(summary.finalCorporateBalance)}
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-label">RRSP Room Generated</div>
+          <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
+            {formatCurrency(summary.totalRRSPRoomGenerated)}
+          </div>
+        </div>
+      </div>
+
+      {/* Effective Tax Rates by Source */}
+      <div
+        className="p-5 rounded-xl"
+        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
+      >
+        <div className="text-sm font-semibold mb-4">Average Effective Tax Rates ({summary.yearlyResults.length}-Year)</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Avg Integrated Rate
+            </div>
+            <div className="text-2xl font-bold" style={{ color: '#818cf8' }}>
+              {formatPercent(summary.effectiveCompensationRate)}
+            </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Corp + personal tax
+            </div>
+          </div>
+
+          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(251, 146, 60, 0.1)' }}>
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Avg Investment Tax
+            </div>
+            <div className="text-2xl font-bold" style={{ color: '#fb923c' }}>
+              {formatPercent(summary.effectivePassiveRate)}
+            </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Net after RDTOH refund
+            </div>
+          </div>
+
+          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Avg Combined Rate
+            </div>
+            <div className="text-2xl font-bold" style={{ color: '#ef4444' }}>
+              {formatPercent(summary.effectiveTaxRate)}
+            </div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              All taxes / compensation
+            </div>
           </div>
         </div>
       </div>
@@ -162,21 +208,21 @@ export function Summary({ summary, inputs }: SummaryProps) {
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Corporate Tax</div>
+          <div className="stat-label">Corp Tax (Active)</div>
           <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
-            {formatCurrency(summary.totalCorporateTax)}
+            {formatCurrency(summary.totalCorporateTaxOnActive)}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">RRSP Room Generated</div>
-          <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
-            {formatCurrency(summary.totalRRSPRoomGenerated)}
+          <div className="stat-label">Corp Tax (Passive)</div>
+          <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
+            {formatCurrency(summary.totalCorporateTaxOnPassive)}
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Total Taxes Paid</div>
-          <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
-            {formatCurrency(summary.totalTax)}
+          <div className="stat-label">RDTOH Refund</div>
+          <div className="stat-value positive" style={{ fontSize: '1.25rem' }}>
+            {formatCurrency(summary.totalRdtohRefund)}
           </div>
         </div>
       </div>
@@ -192,6 +238,9 @@ export function Summary({ summary, inputs }: SummaryProps) {
           year={inputs.startingYear}
         />
       )}
+
+      {/* Email Capture */}
+      <EmailCapture source="calculator-results" />
     </div>
   );
 }

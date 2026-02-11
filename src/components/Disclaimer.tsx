@@ -92,6 +92,18 @@ export function Disclaimer({ variant = 'full', className = '', province = DEFAUL
               The creators of this tool are not liable for any decisions made based on its output.
               By using this calculator, you acknowledge that you understand and accept these limitations.
             </p>
+            <p>
+              <strong>Found an error?</strong>{' '}
+              Please report it to{' '}
+              <a
+                href="mailto:info@phynance.ca"
+                className="underline"
+                style={{ color: 'var(--accent-primary)' }}
+              >
+                info@phynance.ca
+              </a>
+              {' '}so we can fix it.
+            </p>
             <p className="pt-2" style={{ color: 'var(--text-dim)' }}>
               Tax rates current as of: {lastUpdated} | Supports tax years: {taxYearsSupported}
             </p>
@@ -166,6 +178,16 @@ export function DisclaimerModal({ isOpen, onAccept }: DisclaimerModalProps) {
           <p>
             <strong>Always consult a qualified accountant or tax professional</strong>{' '}
             before making any financial decisions based on these estimates.
+          </p>
+          <p>
+            Found an error? Email{' '}
+            <a
+              href="mailto:info@phynance.ca"
+              className="underline"
+              style={{ color: 'var(--accent-primary)' }}
+            >
+              info@phynance.ca
+            </a>
           </p>
         </div>
 

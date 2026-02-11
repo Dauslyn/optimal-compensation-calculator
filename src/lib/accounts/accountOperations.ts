@@ -46,9 +46,10 @@ export function depleteAccountsWithRates(
     rdtohRefundRate: number,
     eligibleEffectiveRate: number,
     nonEligibleEffectiveRate: number
-): { funding: DividendFunding; updatedAccounts: NotionalAccounts } {
+): { funding: DividendFunding; updatedAccounts: NotionalAccounts; rdtohRefund: number } {
     const updatedAccounts = { ...accounts };
     let remaining = requiredIncome;
+    let totalRdtohRefund = 0;
 
     const funding: DividendFunding = {
         capitalDividends: 0,
@@ -83,6 +84,7 @@ export function depleteAccountsWithRates(
         remaining -= afterTax;
         updatedAccounts.eRDTOH -= refund;
         updatedAccounts.corporateInvestments -= (actualDividend - refund);
+        totalRdtohRefund += refund;
     }
 
     // 3. Non-Eligible Dividends from nRDTOH (generates refund)
@@ -99,6 +101,7 @@ export function depleteAccountsWithRates(
         remaining -= afterTax;
         updatedAccounts.nRDTOH -= refund;
         updatedAccounts.corporateInvestments -= (actualDividend - refund);
+        totalRdtohRefund += refund;
     }
 
     // 4. Regular Eligible Dividends from GRIP (no refund)
@@ -122,7 +125,7 @@ export function depleteAccountsWithRates(
         funding.eligibleDividends +
         funding.nonEligibleDividends;
 
-    return { funding, updatedAccounts };
+    return { funding, updatedAccounts, rdtohRefund: totalRdtohRefund };
 }
 
 /**
