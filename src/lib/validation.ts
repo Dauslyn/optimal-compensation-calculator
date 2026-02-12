@@ -208,6 +208,73 @@ export function validateInputs(inputs: UserInputs): ValidationError[] {
     }
   }
 
+  // Spouse validation
+  if (inputs.hasSpouse) {
+    if (!inputs.spouseRequiredIncome || inputs.spouseRequiredIncome <= 0) {
+      errors.push({
+        field: 'spouseRequiredIncome',
+        message: "Spouse's required income must be greater than $0 when spouse is enabled",
+      });
+    } else if (inputs.spouseRequiredIncome > 10000000) {
+      errors.push({
+        field: 'spouseRequiredIncome',
+        message: "Spouse's required income cannot exceed $10,000,000",
+      });
+    }
+    if (inputs.spouseSalaryStrategy === 'fixed') {
+      if (!inputs.spouseFixedSalaryAmount || inputs.spouseFixedSalaryAmount <= 0) {
+        errors.push({
+          field: 'spouseFixedSalaryAmount',
+          message: "Spouse's fixed salary must be greater than $0",
+        });
+      }
+    }
+    if (inputs.spouseRRSPRoom !== undefined && inputs.spouseRRSPRoom < 0) {
+      errors.push({
+        field: 'spouseRRSPRoom',
+        message: "Spouse's RRSP room cannot be negative",
+      });
+    }
+    if (inputs.spouseTFSARoom !== undefined && inputs.spouseTFSARoom < 0) {
+      errors.push({
+        field: 'spouseTFSARoom',
+        message: "Spouse's TFSA room cannot be negative",
+      });
+    }
+  }
+
+  // IPP validation
+  if (inputs.considerIPP) {
+    if (inputs.ippMemberAge !== undefined && (inputs.ippMemberAge < 18 || inputs.ippMemberAge > 71)) {
+      errors.push({
+        field: 'ippMemberAge',
+        message: 'IPP member age must be between 18 and 71',
+      });
+    }
+    if (inputs.ippYearsOfService !== undefined && inputs.ippYearsOfService < 0) {
+      errors.push({
+        field: 'ippYearsOfService',
+        message: 'IPP years of service cannot be negative',
+      });
+    }
+  }
+
+  // Spouse IPP validation
+  if (inputs.hasSpouse && inputs.spouseConsiderIPP) {
+    if (inputs.spouseIPPAge !== undefined && (inputs.spouseIPPAge < 18 || inputs.spouseIPPAge > 71)) {
+      errors.push({
+        field: 'spouseIPPAge',
+        message: "Spouse's IPP age must be between 18 and 71",
+      });
+    }
+    if (inputs.spouseIPPYearsOfService !== undefined && inputs.spouseIPPYearsOfService < 0) {
+      errors.push({
+        field: 'spouseIPPYearsOfService',
+        message: "Spouse's IPP years of service cannot be negative",
+      });
+    }
+  }
+
   return errors;
 }
 

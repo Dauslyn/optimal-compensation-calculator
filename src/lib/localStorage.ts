@@ -155,5 +155,15 @@ export function getDefaultInputs(): UserInputs {
     totalDebtAmount: 0,
     debtInterestRate: 0.05,
     considerIPP: false,
+
+    // Spouse defaults
+    hasSpouse: false,
+    spouseRequiredIncome: 50000,
+    spouseSalaryStrategy: 'dynamic',
+    spouseRRSPRoom: 0,
+    spouseTFSARoom: 0,
+    spouseMaximizeTFSA: false,
+    spouseContributeToRRSP: false,
+    spouseConsiderIPP: false,
   };
 }

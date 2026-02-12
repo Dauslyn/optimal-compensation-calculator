@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
@@ -15,6 +15,7 @@ interface SummaryProps {
 
 export function Summary({ summary, inputs }: SummaryProps) {
   const componentRef = useRef<HTMLDivElement>(null);
+  const [clientName, setClientName] = useState('');
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -51,6 +52,20 @@ export function Summary({ summary, inputs }: SummaryProps) {
         <h2 className="font-semibold text-lg">Results Summary</h2>
         <div className="flex items-center gap-3">
           <span className="badge badge-success">{summary.yearlyResults.length} Year Projection</span>
+          <input
+            type="text"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="Client name (optional)"
+            className="px-3 py-1.5 rounded-lg text-sm"
+            style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-primary)',
+              width: '180px',
+            }}
+            title="Optional: Add a client name for the PDF report header"
+          />
           <button
             onClick={() => handlePrint()}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:bg-[var(--accent-primary)] hover:text-white transition-all text-sm font-medium"
@@ -64,7 +79,7 @@ export function Summary({ summary, inputs }: SummaryProps) {
 
       {/* Hidden Report Template (only renders for print) */}
       <div style={{ display: 'none' }}>
-        <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} />
+        <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} clientName={clientName || undefined} />
       </div>
 
       {/* Main Stats */}
@@ -199,6 +214,66 @@ export function Summary({ summary, inputs }: SummaryProps) {
         </div>
       </div>
 
+      {/* Family Breakdown (when spouse is enabled) */}
+      {summary.spouse && (
+        <div
+          className="p-5 rounded-xl"
+          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
+        >
+          <div className="text-sm font-semibold mb-4">Family Breakdown</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="stat-card">
+              <div className="stat-label">Primary Salary</div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.totalSalary - summary.spouse.totalSalary)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Spouse Salary</div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.spouse.totalSalary)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Primary Dividends</div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.totalDividends - summary.spouse.totalDividends)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Spouse Dividends</div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.spouse.totalDividends)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Primary Personal Tax</div>
+              <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.totalPersonalTax - summary.spouse.totalPersonalTax)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Spouse Personal Tax</div>
+              <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.spouse.totalPersonalTax)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Spouse After-Tax</div>
+              <div className="stat-value positive" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.spouse.totalAfterTaxIncome)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Spouse RRSP Room</div>
+              <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.spouse.totalRRSPRoomGenerated)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Secondary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="stat-card">
@@ -227,7 +302,73 @@ export function Summary({ summary, inputs }: SummaryProps) {
         </div>
       </div>
 
-      {/* IPP Analysis (if enabled) */}
+      {/* IPP Projection Impact (when IPP is integrated into the engine) */}
+      {summary.ipp && (
+        <div
+          className="p-5 rounded-xl"
+          style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
+        >
+          <div className="text-sm font-semibold mb-4">IPP Impact ({summary.yearlyResults.length}-Year Projection)</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="stat-card">
+              <div className="stat-label">Total IPP Contributions</div>
+              <div className="stat-value" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.ipp.totalContributions)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Corp Tax Savings</div>
+              <div className="stat-value positive" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.ipp.totalCorporateTaxSavings)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">RRSP Room Reduced (PA)</div>
+              <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.ipp.totalPensionAdjustments)}
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Projected Annual Pension</div>
+              <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.ipp.projectedAnnualPensionAtEnd)}
+              </div>
+            </div>
+          </div>
+          {summary.ipp.totalAdminCosts > 0 && (
+            <div className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+              Total admin/actuarial costs: {formatCurrency(summary.ipp.totalAdminCosts)} (included as corporate deduction)
+            </div>
+          )}
+          {summary.spouse?.ipp && (
+            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Spouse IPP</div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="stat-card">
+                  <div className="stat-label">Spouse IPP Contributions</div>
+                  <div className="stat-value" style={{ fontSize: '1.1rem' }}>
+                    {formatCurrency(summary.spouse.ipp.totalContributions)}
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Spouse Admin Costs</div>
+                  <div className="stat-value" style={{ fontSize: '1.1rem' }}>
+                    {formatCurrency(summary.spouse.ipp.totalAdminCosts)}
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Spouse PA (RRSP Reduced)</div>
+                  <div className="stat-value negative" style={{ fontSize: '1.1rem' }}>
+                    {formatCurrency(summary.spouse.ipp.totalPensionAdjustments)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* IPP Point-in-Time Comparison (standalone analysis widget) */}
       {inputs.considerIPP && typeof inputs.ippMemberAge === 'number' && typeof inputs.ippYearsOfService === 'number' && (
         <IPPAnalysis
           memberAge={inputs.ippMemberAge}

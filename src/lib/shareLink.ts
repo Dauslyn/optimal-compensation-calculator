@@ -10,7 +10,7 @@ import type { ProvinceCode } from './tax/provinces';
 import { DEFAULT_PROVINCE, PROVINCES } from './tax/provinces';
 
 // Version for backwards compatibility if we change the format
-const SHARE_FORMAT_VERSION = 1;
+const SHARE_FORMAT_VERSION = 2;
 
 interface ShareData {
   v: number; // version
@@ -51,6 +51,18 @@ interface CompactInputs {
   cip?: boolean; // considerIPP
   ima?: number;  // ippMemberAge
   iys?: number;  // ippYearsOfService
+  // Spouse (v2)
+  hs?: boolean;  // hasSpouse
+  sri?: number;  // spouseRequiredIncome
+  sss?: string;  // spouseSalaryStrategy
+  sfsa?: number; // spouseFixedSalaryAmount
+  srr?: number;  // spouseRRSPRoom
+  str?: number;  // spouseTFSARoom
+  smt?: boolean; // spouseMaximizeTFSA
+  scr?: boolean; // spouseContributeToRRSP
+  scip?: boolean; // spouseConsiderIPP
+  sipa?: number;  // spouseIPPAge
+  siys?: number;  // spouseIPPYearsOfService
 }
 
 /**
@@ -108,6 +120,40 @@ function compressInputs(inputs: UserInputs): CompactInputs {
   }
   if (inputs.ippYearsOfService !== undefined) {
     compact.iys = inputs.ippYearsOfService;
+  }
+  // Spouse fields (only include when spouse is enabled)
+  if (inputs.hasSpouse) {
+    compact.hs = true;
+    if (inputs.spouseRequiredIncome !== undefined) {
+      compact.sri = inputs.spouseRequiredIncome;
+    }
+    if (inputs.spouseSalaryStrategy !== undefined) {
+      compact.sss = inputs.spouseSalaryStrategy;
+    }
+    if (inputs.spouseFixedSalaryAmount !== undefined) {
+      compact.sfsa = inputs.spouseFixedSalaryAmount;
+    }
+    if (inputs.spouseRRSPRoom !== undefined) {
+      compact.srr = inputs.spouseRRSPRoom;
+    }
+    if (inputs.spouseTFSARoom !== undefined) {
+      compact.str = inputs.spouseTFSARoom;
+    }
+    if (inputs.spouseMaximizeTFSA !== undefined) {
+      compact.smt = inputs.spouseMaximizeTFSA;
+    }
+    if (inputs.spouseContributeToRRSP !== undefined) {
+      compact.scr = inputs.spouseContributeToRRSP;
+    }
+    if (inputs.spouseConsiderIPP !== undefined) {
+      compact.scip = inputs.spouseConsiderIPP;
+    }
+    if (inputs.spouseIPPAge !== undefined) {
+      compact.sipa = inputs.spouseIPPAge;
+    }
+    if (inputs.spouseIPPYearsOfService !== undefined) {
+      compact.siys = inputs.spouseIPPYearsOfService;
+    }
   }
 
   return compact;
@@ -186,6 +232,20 @@ function expandInputs(compact: CompactInputs): UserInputs {
     considerIPP: compact.cip,
     ippMemberAge: compact.ima,
     ippYearsOfService: compact.iys,
+    // Spouse fields (v2) — only include when present for backward compatibility
+    ...(compact.hs ? {
+      hasSpouse: true,
+      spouseRequiredIncome: compact.sri !== undefined ? clamp(compact.sri, 0, 10_000_000) : undefined,
+      spouseSalaryStrategy: compact.sss ? validateSalaryStrategy(compact.sss) : undefined,
+      spouseFixedSalaryAmount: compact.sfsa,
+      spouseRRSPRoom: compact.srr !== undefined ? clamp(compact.srr, 0, 10_000_000) : undefined,
+      spouseTFSARoom: compact.str !== undefined ? clamp(compact.str, 0, 1_000_000) : undefined,
+      spouseMaximizeTFSA: compact.smt,
+      spouseContributeToRRSP: compact.scr,
+      spouseConsiderIPP: compact.scip,
+      spouseIPPAge: compact.sipa,
+      spouseIPPYearsOfService: compact.siys !== undefined ? Math.max(0, compact.siys) : undefined,
+    } : {}),
   };
 }
 
@@ -224,10 +284,9 @@ export function decodeShareLink(encoded: string): UserInputs | null {
     const json = atob(base64);
     const shareData: ShareData = JSON.parse(json);
 
-    // Version check for future compatibility
-    if (shareData.v !== SHARE_FORMAT_VERSION) {
+    // Version check - accept v1 (no spouse) and v2 (with spouse)
+    if (shareData.v !== SHARE_FORMAT_VERSION && shareData.v !== 1) {
       console.warn(`Unknown share link version: ${shareData.v}`);
-      // Could add migration logic here in the future
     }
 
     return expandInputs(shareData.d);

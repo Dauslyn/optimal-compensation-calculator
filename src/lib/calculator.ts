@@ -24,6 +24,11 @@ import {
   depleteAccountsWithRates,
   processSalaryPayment,
 } from './notionalAccounts';
+import {
+  calculateIPPContribution,
+  estimateIPPAdminCosts,
+  calculatePensionAdjustment,
+} from './tax/ipp';
 
 /**
  * Calculate effective dividend tax rate at a given income level
@@ -371,6 +376,10 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
   // Track TFSA room - start with user's existing room
   let availableTFSARoom = inputs.tfsaBalance || 0;
 
+  // Spouse state tracking
+  let spouseRRSPRoom = inputs.hasSpouse ? (inputs.spouseRRSPRoom || 0) : 0;
+  let spouseTFSARoom = inputs.hasSpouse ? (inputs.spouseTFSARoom || 0) : 0;
+
   // Calculate each year
   for (let yearIndex = 0; yearIndex < inputs.planningHorizon; yearIndex++) {
     const calendarYear = startingYear + yearIndex;
@@ -384,6 +393,13 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
       ? inflateAmount(inputs.requiredIncome, yearIndex, inflationRate)
       : inputs.requiredIncome;
 
+    // Spouse inflation-adjusted income
+    const spouseInflatedIncome = inputs.hasSpouse && inputs.spouseRequiredIncome
+      ? (inflateSpending
+          ? inflateAmount(inputs.spouseRequiredIncome, yearIndex, inflationRate)
+          : inputs.spouseRequiredIncome)
+      : 0;
+
     const yearResult = calculateYear(
       inputs,
       currentAccounts,
@@ -394,7 +410,10 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
       inflatedRequiredIncome,
       taxData,
       contributionLimits,
-      inflationRate
+      inflationRate,
+      spouseRRSPRoom,
+      spouseTFSARoom,
+      spouseInflatedIncome
     );
 
     yearlyResults.push(yearResult);
@@ -405,8 +424,25 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
     // Update RRSP room for next year (new room from salary minus contribution)
     availableRRSPRoom += yearResult.rrspRoomGenerated - yearResult.rrspContribution;
 
+    // Deduct Pension Adjustment from RRSP room (IPP reduces future RRSP room)
+    if (yearResult.ipp) {
+      availableRRSPRoom = Math.max(0, availableRRSPRoom - yearResult.ipp.pensionAdjustment);
+    }
+
     // Update TFSA room for next year (annual limit minus contribution)
     availableTFSARoom += contributionLimits.tfsaLimit - yearResult.tfsaContribution;
+
+    // Update spouse rooms
+    if (yearResult.spouse) {
+      spouseRRSPRoom += yearResult.spouse.rrspRoomGenerated - yearResult.spouse.rrspContribution;
+
+      // Deduct spouse PA from spouse RRSP room
+      if (yearResult.spouse.ipp) {
+        spouseRRSPRoom = Math.max(0, spouseRRSPRoom - yearResult.spouse.ipp.pensionAdjustment);
+      }
+
+      spouseTFSARoom += contributionLimits.tfsaLimit - yearResult.spouse.tfsaContribution;
+    }
   }
 
   // Calculate summary statistics
@@ -426,7 +462,10 @@ function calculateYear(
   inflatedRequiredIncome: number,
   taxData: TaxYearData,
   contributionLimits: { tfsaLimit: number; rrspLimit: number; rrspRate: number },
-  inflationRate: number
+  inflationRate: number,
+  spouseRRSPRoom: number,
+  spouseTFSARoom: number,
+  spouseInflatedRequiredIncome: number
 ): YearlyResult {
   let accounts = { ...startingAccounts };
   const province = inputs.province;
@@ -557,6 +596,216 @@ function calculateYear(
     }
   }
 
+  // === SPOUSE COMPENSATION (if enabled) ===
+  let spouseResult: YearlyResult['spouse'] = undefined;
+  let spouseSalary = 0;
+  let spouseEmployerCost = 0;
+
+  if (inputs.hasSpouse && inputs.spouseRequiredIncome && spouseInflatedRequiredIncome > 0) {
+    const spouseStrategy = inputs.spouseSalaryStrategy || 'dynamic';
+    let spouseDividendFunding = {
+      capitalDividends: 0, eligibleDividends: 0, nonEligibleDividends: 0,
+      regularDividends: 0, grossDividends: 0, afterTaxIncome: 0,
+    };
+    let spouseRdtohRefund = 0;
+
+    // Spouse-specific effective dividend rates (based on SPOUSE's income, not primary's)
+    const spouseEstimatedIncome = spouseInflatedRequiredIncome * 1.5;
+    const spouseEligibleRate = calculateEffectiveDividendRate(taxData, 'eligible', spouseEstimatedIncome);
+    const spouseNonEligibleRate = calculateEffectiveDividendRate(taxData, 'nonEligible', spouseEstimatedIncome);
+
+    // Spouse required income (+ optional registered account contributions)
+    let spouseRequired = spouseInflatedRequiredIncome;
+    let spouseTfsaContrib = 0;
+    let spouseRrspContrib = 0;
+
+    if (inputs.spouseMaximizeTFSA && spouseTFSARoom > 0) {
+      spouseTfsaContrib = Math.min(contributionLimits.tfsaLimit, spouseTFSARoom);
+      spouseRequired += spouseTfsaContrib;
+    }
+
+    // Spouse salary/dividend determination — same strategies, shared accounts
+    if (spouseStrategy === 'fixed' && inputs.spouseFixedSalaryAmount) {
+      const fixedSpouseSalary = inputs.inflateSpendingNeeds
+        ? inflateAmount(inputs.spouseFixedSalaryAmount, displayYear - 1, inflationRate)
+        : inputs.spouseFixedSalaryAmount;
+
+      spouseSalary = fixedSpouseSalary;
+      const spSalaryTax = calculatePersonalTaxForYear(spouseSalary, 0, 0, 0, taxData);
+      const spPayroll = calculatePayrollDeductions(spouseSalary, taxData, province, calendarYear, inflationRate);
+      const spSalaryAfterTax = spouseSalary - spSalaryTax.totalTax - spPayroll.cpp - spPayroll.cpp2 - spPayroll.ei - spPayroll.qpip;
+
+      accounts = processSalaryPayment(accounts, spouseSalary, spPayroll.employerCost - spPayroll.cpp - spPayroll.cpp2, spPayroll.cpp + spPayroll.cpp2);
+      spouseEmployerCost = spPayroll.employerCost;
+
+      const spRemaining = Math.max(0, spouseRequired - spSalaryAfterTax);
+      if (spRemaining > 0) {
+        const spResult = depleteAccountsWithRates(
+          spRemaining, accounts, taxData.rdtoh.refundRate,
+          spouseEligibleRate, spouseNonEligibleRate
+        );
+        spouseDividendFunding = spResult.funding;
+        accounts = spResult.updatedAccounts;
+        spouseRdtohRefund = spResult.rdtohRefund;
+      }
+    } else if (spouseStrategy === 'dividends-only') {
+      const spResult = depleteAccountsWithRates(
+        spouseRequired, accounts, taxData.rdtoh.refundRate,
+        spouseEligibleRate, spouseNonEligibleRate
+      );
+      spouseDividendFunding = spResult.funding;
+      accounts = spResult.updatedAccounts;
+      spouseRdtohRefund = spResult.rdtohRefund;
+    } else {
+      // Dynamic: deplete remaining notional accounts, then salary for remainder
+      const spResult = depleteAccountsWithRates(
+        spouseRequired, accounts, taxData.rdtoh.refundRate,
+        spouseEligibleRate, spouseNonEligibleRate
+      );
+      spouseDividendFunding = spResult.funding;
+      accounts = spResult.updatedAccounts;
+      spouseRdtohRefund = spResult.rdtohRefund;
+
+      const spRemaining = spouseRequired - spouseDividendFunding.afterTaxIncome;
+      if (spRemaining > 1) {
+        spouseSalary = calculateRequiredSalaryForYear(spRemaining, taxData, province, calendarYear, inflationRate);
+        const spPayroll = calculatePayrollDeductions(spouseSalary, taxData, province, calendarYear, inflationRate);
+        accounts = processSalaryPayment(accounts, spouseSalary, spPayroll.employerCost - spPayroll.cpp - spPayroll.cpp2, spPayroll.cpp + spPayroll.cpp2);
+        spouseEmployerCost = spPayroll.employerCost;
+      }
+    }
+
+    // Spouse RRSP contribution
+    const spouseRrspRoomGenerated = spouseSalary * contributionLimits.rrspRate;
+    if (inputs.spouseContributeToRRSP && spouseRRSPRoom > 0) {
+      const maxSpRrsp = Math.min(spouseRRSPRoom, contributionLimits.rrspLimit);
+      const spAfterTaxApprox = spouseDividendFunding.afterTaxIncome + (spouseSalary > 0 ? spouseSalary * 0.6 : 0);
+      spouseRrspContrib = Math.min(maxSpRrsp, spAfterTaxApprox);
+    }
+
+    // Spouse personal tax (independent calculation)
+    const spouseTaxResult = calculatePersonalTaxForYear(
+      spouseSalary,
+      spouseDividendFunding.eligibleDividends,
+      spouseDividendFunding.nonEligibleDividends,
+      spouseRrspContrib,
+      taxData
+    );
+
+    // Spouse payroll
+    const spousePayroll = calculatePayrollDeductions(spouseSalary, taxData, province, calendarYear, inflationRate);
+
+    // Spouse after-tax income
+    const spouseGrossDivs = spouseDividendFunding.capitalDividends +
+      spouseDividendFunding.eligibleDividends + spouseDividendFunding.nonEligibleDividends;
+    const spouseAfterTax = spouseSalary + spouseGrossDivs - spouseTaxResult.totalTax -
+      spousePayroll.cpp - spousePayroll.cpp2 - spousePayroll.ei - spousePayroll.qpip;
+
+    rdtohRefundReceived += spouseRdtohRefund;
+
+    spouseResult = {
+      salary: spouseSalary,
+      dividends: spouseDividendFunding,
+      personalTax: spouseTaxResult.totalTax,
+      cpp: spousePayroll.cpp,
+      cpp2: spousePayroll.cpp2,
+      ei: spousePayroll.ei,
+      qpip: spousePayroll.qpip,
+      provincialSurtax: spouseTaxResult.provincialSurtax,
+      healthPremium: spouseTaxResult.healthPremium,
+      afterTaxIncome: spouseAfterTax,
+      rrspRoomGenerated: spouseRrspRoomGenerated,
+      rrspContribution: spouseRrspContrib,
+      tfsaContribution: spouseTfsaContrib,
+    };
+  }
+
+  // === IPP CALCULATIONS (after salary is determined, before corporate tax) ===
+  // IPP contribution depends on salary (pensionable earnings), so it runs after salary blocks.
+  // The contribution is a deductible corporate expense, reducing taxable business income.
+  let ippTotalDeductible = 0;
+  let primaryIPP: YearlyResult['ipp'] = undefined;
+
+  if (inputs.considerIPP && salary > 0) {
+    const memberAge = (inputs.ippMemberAge || 45) + displayYear - 1;
+    const yearsOfService = (inputs.ippYearsOfService || 0) + displayYear;
+
+    const ippResult = calculateIPPContribution(
+      { age: memberAge, yearsOfService, currentSalary: salary },
+      taxData.corporate.smallBusiness,
+      calendarYear
+    );
+
+    const ippAdminCosts = estimateIPPAdminCosts();
+    // Year 1 includes setup + annual; subsequent years just annual
+    const adminCosts = displayYear === 1
+      ? ippAdminCosts.setup + ippAdminCosts.annualActuarial + ippAdminCosts.annualAdmin
+      : ippAdminCosts.annualActuarial + ippAdminCosts.annualAdmin;
+
+    const totalDeductible = ippResult.totalAnnualContribution + adminCosts;
+    ippTotalDeductible += totalDeductible;
+
+    // Deduct IPP from corporate investments (clamped — can't go below zero for this expense)
+    const maxDraw = Math.max(0, accounts.corporateInvestments);
+    const actualDraw = Math.min(totalDeductible, maxDraw);
+    accounts.corporateInvestments -= actualDraw;
+
+    const pa = calculatePensionAdjustment(salary, calendarYear);
+
+    primaryIPP = {
+      memberAge,
+      contribution: ippResult.totalAnnualContribution,
+      pensionAdjustment: pa,
+      adminCosts,
+      totalDeductible,
+      projectedAnnualPension: ippResult.projectedAnnualPension,
+      corporateTaxSavings: ippResult.effectiveTaxSavings,
+    };
+  }
+
+  // Spouse IPP (when enabled and spouse has salary)
+  if (inputs.hasSpouse && inputs.spouseConsiderIPP && spouseSalary > 0) {
+    const spouseAge = (inputs.spouseIPPAge || 45) + displayYear - 1;
+    const spouseYearsOfService = (inputs.spouseIPPYearsOfService || 0) + displayYear;
+
+    const spouseIPPResult = calculateIPPContribution(
+      { age: spouseAge, yearsOfService: spouseYearsOfService, currentSalary: spouseSalary },
+      taxData.corporate.smallBusiness,
+      calendarYear
+    );
+
+    const ippAdminCosts = estimateIPPAdminCosts();
+    const spouseAdminCosts = displayYear === 1
+      ? ippAdminCosts.setup + ippAdminCosts.annualActuarial + ippAdminCosts.annualAdmin
+      : ippAdminCosts.annualActuarial + ippAdminCosts.annualAdmin;
+
+    const spouseTotalDeductible = spouseIPPResult.totalAnnualContribution + spouseAdminCosts;
+    ippTotalDeductible += spouseTotalDeductible;
+
+    // Deduct from same corporate investments
+    const maxDraw = Math.max(0, accounts.corporateInvestments);
+    const actualDraw = Math.min(spouseTotalDeductible, maxDraw);
+    accounts.corporateInvestments -= actualDraw;
+
+    const spousePA = calculatePensionAdjustment(spouseSalary, calendarYear);
+
+    // Attach to spouse result if it exists
+    if (spouseResult) {
+      spouseResult = {
+        ...spouseResult,
+        ipp: {
+          memberAge: spouseAge,
+          contribution: spouseIPPResult.totalAnnualContribution,
+          pensionAdjustment: spousePA,
+          adminCosts: spouseAdminCosts,
+          totalDeductible: spouseTotalDeductible,
+          projectedAnnualPension: spouseIPPResult.projectedAnnualPension,
+          corporateTaxSavings: spouseIPPResult.effectiveTaxSavings,
+        },
+      };
+    }
+  }
+
   // RRSP contribution (if enabled and room available)
   // Contribute the maximum allowed when enabled: capped by available room and annual limit.
   // RRSP contributions are tax-deductible, reducing personal tax on salary income.
@@ -588,7 +837,9 @@ function calculateYear(
   const qpip = payroll.qpip;
 
   // Corporate tax calculation with passive income grind (SBD clawback)
-  const totalSalaryCost = salary + payroll.employerCost;
+  // Include BOTH primary and spouse salary costs + IPP contributions as deductible corporate expenses
+  const totalSalaryCost = salary + payroll.employerCost + spouseSalary + spouseEmployerCost;
+  const totalDeductibleExpenses = totalSalaryCost + ippTotalDeductible;
 
   // Calculate passive income for SBD grind
   // AAII = interest + foreign income + 50% of capital gains
@@ -598,13 +849,13 @@ function calculateYear(
   // Calculate the passive income grind and its impact on SBD
   const grindResult = calculatePassiveIncomeGrind(
     totalPassiveIncome,
-    Math.max(0, activeBusinessIncome - totalSalaryCost),
+    Math.max(0, activeBusinessIncome - totalDeductibleExpenses),
     taxData.corporate.smallBusiness,
     taxData.corporate.general
   );
 
   // Calculate corporate tax on active business income with grind applied
-  const taxableBusinessIncome = Math.max(0, activeBusinessIncome - totalSalaryCost);
+  const taxableBusinessIncome = Math.max(0, activeBusinessIncome - totalDeductibleExpenses);
 
   // If SBD is reduced, some income gets taxed at general rate instead
   const sbdIncome = Math.min(taxableBusinessIncome, grindResult.reducedSBDLimit);
@@ -641,9 +892,19 @@ function calculateYear(
   const afterTaxIncome = salary + totalGrossDividends - personalTax - cpp - cpp2 - ei - qpip;
 
   // Per-year effective integrated tax rate (corp + personal tax on compensation)
-  const yearCompensation = salary + totalGrossDividends;
+  // Include both primary and spouse in the family-level rate
+  const spouseGrossDivTotal = spouseResult
+    ? spouseResult.dividends.capitalDividends + spouseResult.dividends.eligibleDividends + spouseResult.dividends.nonEligibleDividends
+    : 0;
+  const yearCompensation = salary + totalGrossDividends + spouseSalary + spouseGrossDivTotal;
+  const yearPersonalTax = personalTax + (spouseResult ? spouseResult.personalTax : 0);
   const effectiveIntegratedRate = yearCompensation > 0
-    ? (personalTax + corpTaxOnActiveIncome) / yearCompensation
+    ? (yearPersonalTax + corpTaxOnActiveIncome) / yearCompensation
+    : 0;
+
+  // Total tax includes both primary and spouse personal taxes + payroll
+  const spousePayrollTotal = spouseResult
+    ? spouseResult.cpp + spouseResult.cpp2 + spouseResult.ei + spouseResult.qpip
     : 0;
 
   return {
@@ -661,7 +922,8 @@ function calculateYear(
     qpip,
     provincialSurtax,
     healthPremium,
-    totalTax: personalTax + corporateTax + cpp + cpp2 + ei + qpip,
+    totalTax: personalTax + corporateTax + cpp + cpp2 + ei + qpip +
+      (spouseResult ? spouseResult.personalTax + spousePayrollTotal : 0),
     effectiveIntegratedRate,
     afterTaxIncome,
     rrspRoomGenerated,
@@ -672,6 +934,8 @@ function calculateYear(
     notionalAccounts: accounts,
     investmentReturns,
     passiveIncomeGrind,
+    ipp: primaryIPP,
+    spouse: spouseResult,
   };
 }
 
@@ -680,7 +944,7 @@ function calculateYear(
  */
 function calculateSummary(
   yearlyResults: YearlyResult[],
-  _inputs: UserInputs
+  inputs: UserInputs
 ): ProjectionSummary {
   let totalSalary = 0;
   let totalDividends = 0;
@@ -695,6 +959,29 @@ function calculateSummary(
   let totalCpp = 0;
   let totalPassiveIncome = 0;
 
+  // IPP accumulators
+  const hasIPP = yearlyResults.some(yr => yr.ipp);
+  let ippTotalContributions = 0;
+  let ippTotalAdminCosts = 0;
+  let ippTotalCorpTaxSavings = 0;
+  let ippTotalPensionAdjustments = 0;
+  let ippProjectedPensionAtEnd = 0;
+
+  // Spouse IPP accumulators
+  let spouseIPPTotalContributions = 0;
+  let spouseIPPTotalAdminCosts = 0;
+  let spouseIPPTotalPensionAdjustments = 0;
+
+  // Spouse-specific accumulators
+  const hasSpouse = inputs.hasSpouse && yearlyResults.some(yr => yr.spouse);
+  let spouseTotalSalary = 0;
+  let spouseTotalDividends = 0;
+  let spouseTotalPersonalTax = 0;
+  let spouseTotalAfterTax = 0;
+  let spouseTotalRRSPRoom = 0;
+  let spouseTotalRRSP = 0;
+  let spouseTotalTFSA = 0;
+
   for (const year of yearlyResults) {
     totalSalary += year.salary;
     totalDividends += year.dividends.grossDividends;
@@ -708,6 +995,42 @@ function calculateSummary(
     totalTFSAContributions += year.tfsaContribution;
     totalCpp += year.cpp + year.cpp2 + year.ei + year.qpip;
     totalPassiveIncome += year.investmentReturns.totalReturn;
+
+    // Spouse: add to family-level totals AND track spouse-specific breakdown
+    if (year.spouse) {
+      const spGrossDivs = year.spouse.dividends.grossDividends;
+      totalSalary += year.spouse.salary;
+      totalDividends += spGrossDivs;
+      totalPersonalTax += year.spouse.personalTax;
+      totalRRSPRoomGenerated += year.spouse.rrspRoomGenerated;
+      totalRRSPContributions += year.spouse.rrspContribution;
+      totalTFSAContributions += year.spouse.tfsaContribution;
+      totalCpp += year.spouse.cpp + year.spouse.cpp2 + year.spouse.ei + year.spouse.qpip;
+
+      spouseTotalSalary += year.spouse.salary;
+      spouseTotalDividends += spGrossDivs;
+      spouseTotalPersonalTax += year.spouse.personalTax;
+      spouseTotalAfterTax += year.spouse.afterTaxIncome;
+      spouseTotalRRSPRoom += year.spouse.rrspRoomGenerated;
+      spouseTotalRRSP += year.spouse.rrspContribution;
+      spouseTotalTFSA += year.spouse.tfsaContribution;
+
+      // Spouse IPP
+      if (year.spouse.ipp) {
+        spouseIPPTotalContributions += year.spouse.ipp.contribution;
+        spouseIPPTotalAdminCosts += year.spouse.ipp.adminCosts;
+        spouseIPPTotalPensionAdjustments += year.spouse.ipp.pensionAdjustment;
+      }
+    }
+
+    // Primary IPP
+    if (year.ipp) {
+      ippTotalContributions += year.ipp.contribution;
+      ippTotalAdminCosts += year.ipp.adminCosts;
+      ippTotalCorpTaxSavings += year.ipp.corporateTaxSavings;
+      ippTotalPensionAdjustments += year.ipp.pensionAdjustment;
+      ippProjectedPensionAtEnd = year.ipp.projectedAnnualPension; // Last year's projection
+    }
   }
 
   const totalCompensation = totalSalary + totalDividends;
@@ -716,7 +1039,7 @@ function calculateSummary(
 
   // Effective INTEGRATED tax rate on compensation
   // This includes:
-  // - Personal tax on salary and dividends
+  // - Personal tax on salary and dividends (both primary and spouse)
   // - Corporate tax on active income (since dividends are paid from after-tax corp funds)
   // NOTE: CPP/EI are NOT included - they're contributions, not taxes
   const effectiveCompensationRate = totalCompensation > 0
@@ -752,6 +1075,27 @@ function calculateSummary(
     totalTFSAContributions,
     averageAnnualIncome,
     yearlyResults,
+    ipp: hasIPP ? {
+      totalContributions: ippTotalContributions,
+      totalAdminCosts: ippTotalAdminCosts,
+      totalCorporateTaxSavings: ippTotalCorpTaxSavings,
+      totalPensionAdjustments: ippTotalPensionAdjustments,
+      projectedAnnualPensionAtEnd: ippProjectedPensionAtEnd,
+    } : undefined,
+    spouse: hasSpouse ? {
+      totalSalary: spouseTotalSalary,
+      totalDividends: spouseTotalDividends,
+      totalPersonalTax: spouseTotalPersonalTax,
+      totalAfterTaxIncome: spouseTotalAfterTax,
+      totalRRSPRoomGenerated: spouseTotalRRSPRoom,
+      totalRRSPContributions: spouseTotalRRSP,
+      totalTFSAContributions: spouseTotalTFSA,
+      ipp: (hasSpouse && spouseIPPTotalContributions > 0) ? {
+        totalContributions: spouseIPPTotalContributions,
+        totalAdminCosts: spouseIPPTotalAdminCosts,
+        totalPensionAdjustments: spouseIPPTotalPensionAdjustments,
+      } : undefined,
+    } : undefined,
   };
 }
 
