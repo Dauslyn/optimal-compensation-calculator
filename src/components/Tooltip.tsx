@@ -217,3 +217,66 @@ export const TAX_TOOLTIPS = {
   investmentReturnRate: 'Expected annual total return on corporate investments, combining dividend income, interest, and capital gains.',
   inflationRate: 'Expected annual inflation rate. Used to project future tax brackets, CPP/EI limits, and optionally your spending needs.',
 };
+
+/**
+ * Comprehensive input field tooltips for all calculator inputs.
+ * Used in InputFormClean and the PDF report assumptions section.
+ */
+export const INPUT_TOOLTIPS = {
+  // Basic Information
+  province: 'Your province or territory of residence. Determines provincial tax rates, brackets, surtaxes, health premiums, and dividend tax credits applied to your compensation.',
+  requiredIncome: 'The after-tax cash you need each year for personal living expenses. The calculator works backward from this target to determine optimal salary/dividend mix. Does not include RRSP/TFSA contributions or debt payments — those are added on top.',
+  corporateInvestmentBalance: 'Total current value of investments held inside your corporation (e.g., brokerage account, GICs). This balance earns passive income and can be drawn down via dividends to fund your income needs.',
+  annualCorporateRetainedEarnings: 'Gross active business income BEFORE any owner compensation. This is the amount your corporation earns from professional services before paying you salary or dividends. Salary is deducted from this; the remainder is taxed at the small business rate and retained.',
+  planningHorizon: 'Number of years to project. Longer horizons show compounding effects of tax deferral and notional account depletion. Most useful at 5-10 years for meaningful planning.',
+  investmentReturnRate: 'Expected annual total return on corporate investments, combining dividend income, interest, and capital gains. A balanced portfolio typically returns 4-6%. The return is split by your portfolio composition below to determine the tax character of income.',
+
+  // Inflation & Indexing
+  startingYear: 'The first tax year for the projection. 2025 and 2026 use CRA-published bracket values. Later years are projected using your inflation rate.',
+  inflationRate: 'Used for TWO purposes: (1) projecting tax brackets, CPP/EI limits, and contribution limits for years beyond published CRA values, and (2) optionally increasing your required income each year if "Inflate Spending Needs" is checked.',
+  inflateSpendingNeeds: 'When enabled, your required after-tax income increases by the inflation rate each year. For example, $100,000 at 2% inflation becomes $102,000 in Year 2, $104,040 in Year 3, etc. Disable this if you want a fixed nominal income target.',
+
+  // Portfolio Composition
+  canadianEquity: 'Allocation to Canadian stocks or equity ETFs. Returns are split into eligible dividends (taxed favorably via gross-up/credit mechanism) and capital gains (50% taxable, with CDA credit).',
+  usEquity: 'Allocation to US stocks or equity ETFs. Returns are treated as foreign income (fully taxable) and capital gains. No dividend tax credit available — higher tax cost than Canadian equities.',
+  internationalEquity: 'Allocation to international (non-US) stocks or equity ETFs. Same tax treatment as US equity — foreign income and capital gains.',
+  fixedIncome: 'Allocation to bonds, GICs, or fixed-income ETFs. Returns are 100% interest income — fully taxable at the highest corporate rate with no preferential treatment. Consider holding fixed income in registered accounts.',
+
+  // Notional Accounts
+  cdaBalance: 'Capital Dividend Account balance from your T2 Schedule 89. Tracks the tax-free portion of capital gains and life insurance proceeds. Capital dividends paid from CDA are completely tax-free to you as a shareholder.',
+  gripBalance: 'General Rate Income Pool balance from your T2 Schedule 53. Tracks income taxed at the general corporate rate (not the small business rate). Enables payment of eligible dividends, which receive preferential personal tax treatment.',
+  erdtohBalance: 'Eligible RDTOH balance from your T2 Schedule 3 (Part IV). Refundable tax on eligible dividends received from connected corporations. Refunded at 38.33% when eligible dividends are paid out.',
+  nrdtohBalance: 'Non-Eligible RDTOH balance from your T2 Schedule 3 (Part I). Refundable tax on passive investment income. Refunded at 38.33% when non-eligible dividends are paid out. This is the key mechanism that reduces effective tax on passive income.',
+  rrspRoom: 'Your available RRSP contribution room from your CRA My Account or Notice of Assessment. Created by earning salary (18% of prior year earned income, up to annual max). Salary generates RRSP room; dividends do not.',
+  tfsaRoom: 'Your available TFSA contribution room from your CRA My Account. Accumulated since age 18 (or 2009) at $5,000-$7,000/year. Unlike RRSP, TFSA room is not affected by your compensation strategy.',
+
+  // Compensation Strategy
+  salaryStrategy: 'Dynamic: The calculator optimizes salary vs dividends each year to minimize total integrated tax. Fixed: You specify an exact salary amount. Dividends Only: No salary is paid — all compensation comes as dividends (no RRSP room generated, no CPP contributions).',
+  fixedSalaryAmount: 'The exact annual salary your corporation pays you. Common choices: just above CPP maximum ($73,200 in 2025) for full CPP, or higher to generate RRSP room. Corporate tax deduction equals salary + employer CPP/EI costs.',
+  maximizeTFSA: 'Contribute the annual TFSA limit from after-tax personal funds. TFSA contributions are not tax-deductible but all growth and withdrawals are permanently tax-free. Reduces your available after-tax cash.',
+  contributeToRRSP: 'Use available RRSP room to make tax-deductible contributions. Reduces personal taxable income in the current year. Only available if you have RRSP room (generated by salary, not dividends).',
+
+  // Debt Management
+  includeDebt: 'Factor debt payments into your required cash flow. Debt payments are made from after-tax personal income, increasing the gross compensation needed from your corporation.',
+  totalDebtAmount: 'Total outstanding debt balance (e.g., mortgage, student loans, LOC). Used to track remaining balance as you pay it down over the planning horizon.',
+  annualDebtPayment: 'Annual amount allocated to debt paydown from after-tax personal funds. Added on top of your required income — the calculator ensures enough compensation to cover both living expenses and debt payments.',
+  debtInterestRate: 'Annual interest rate on your outstanding debt. Used to calculate interest costs and remaining balance each year. Consider whether this debt is tax-deductible (e.g., investment loan) — this calculator treats all debt payments as personal expenses.',
+
+  // IPP
+  includeIPP: 'Compare Individual Pension Plan (IPP) contributions to RRSP. IPP allows higher tax-deductible contributions for older individuals (typically 40+). The corporation contributes directly, getting a corporate tax deduction. Requires an actuary ($2,000-3,000/year).',
+  ippAge: 'Your current age. IPP contribution limits increase with age — the older you are, the larger the advantage over RRSP. IPP becomes most beneficial around age 45-50+.',
+  ippYearsOfService: 'Years you have been employed by your corporation. Past service can be bought back when establishing an IPP, allowing a large initial contribution. More service years = larger IPP contributions.',
+
+  // Spouse / Second Shareholder
+  hasSpouse: 'Enable to include a spouse or second shareholder who draws salary and/or dividends from the same CCPC. The family\'s total tax is optimized across two sets of personal tax brackets sharing one set of corporate accounts (CDA, RDTOH, GRIP).',
+  spouseRequiredIncome: 'The after-tax cash the spouse needs each year for personal expenses. Calculated independently using their own personal tax brackets and BPA. The calculator determines the optimal salary/dividend mix for the spouse after the primary shareholder\'s compensation is funded.',
+  spouseSalaryStrategy: 'The spouse can have a different salary strategy from the primary shareholder. Dynamic optimizes automatically, Fixed uses a set salary amount, and Dividends Only pays no salary (generates no RRSP room for the spouse).',
+  spouseFixedSalaryAmount: 'If using Fixed strategy for the spouse, this is the annual salary paid to the spouse from the corporation. Subject to its own CPP/EI contributions.',
+  spouseRRSPRoom: 'The spouse\'s available RRSP contribution room. Only relevant if the spouse is being paid salary, which generates RRSP room (18% of earned income, up to the annual max).',
+  spouseTFSARoom: 'The spouse\'s available TFSA contribution room. Independent of the primary shareholder — each person has their own cumulative TFSA limit.',
+
+  // Spouse IPP
+  spouseConsiderIPP: 'Enable Individual Pension Plan analysis for the spouse. Like the primary IPP, this provides a corporate tax deduction based on the spouse\'s salary (pensionable earnings). Both IPPs draw from the same corporate account.',
+  spouseIPPAge: 'The spouse\'s current age for IPP actuarial calculations. IPP contribution limits increase with age — the older the member, the larger the allowed contribution.',
+  spouseIPPYearsOfService: 'Years the spouse has been employed by the corporation. More years of service = larger IPP contributions and projected pension benefit.',
+};

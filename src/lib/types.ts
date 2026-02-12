@@ -61,6 +61,21 @@ export interface UserInputs {
   considerIPP?: boolean;
   ippMemberAge?: number;
   ippYearsOfService?: number;
+
+  // Spouse IPP - optional
+  spouseConsiderIPP?: boolean;
+  spouseIPPAge?: number;
+  spouseIPPYearsOfService?: number;
+
+  // Spouse / second shareholder - optional
+  hasSpouse?: boolean;
+  spouseRequiredIncome?: number;
+  spouseSalaryStrategy?: 'dynamic' | 'fixed' | 'dividends-only';
+  spouseFixedSalaryAmount?: number;
+  spouseRRSPRoom?: number;
+  spouseTFSARoom?: number;
+  spouseMaximizeTFSA?: boolean;
+  spouseContributeToRRSP?: boolean;
 }
 
 // Notional account balances
@@ -143,6 +158,43 @@ export interface YearlyResult {
   notionalAccounts: NotionalAccounts;
   investmentReturns: InvestmentReturns;
   passiveIncomeGrind: PassiveIncomeGrindInfo;  // SBD clawback details
+
+  // IPP data (only present when considerIPP = true and salary > 0)
+  ipp?: {
+    memberAge: number;
+    contribution: number;           // Annual IPP contribution (corporate deduction)
+    pensionAdjustment: number;      // PA — reduces RRSP room
+    adminCosts: number;             // Deductible admin costs
+    totalDeductible: number;        // contribution + adminCosts
+    projectedAnnualPension: number;
+    corporateTaxSavings: number;
+  };
+
+  // Spouse compensation breakdown (only present when hasSpouse = true)
+  spouse?: {
+    salary: number;
+    dividends: DividendFunding;
+    personalTax: number;
+    cpp: number;
+    cpp2: number;
+    ei: number;
+    qpip: number;
+    provincialSurtax: number;
+    healthPremium: number;
+    afterTaxIncome: number;
+    rrspRoomGenerated: number;
+    rrspContribution: number;
+    tfsaContribution: number;
+    ipp?: {
+      memberAge: number;
+      contribution: number;
+      pensionAdjustment: number;
+      adminCosts: number;
+      totalDeductible: number;
+      projectedAnnualPension: number;
+      corporateTaxSavings: number;
+    };
+  };
 }
 
 // Summary of all years
@@ -165,6 +217,31 @@ export interface ProjectionSummary {
   totalTFSAContributions: number;
   averageAnnualIncome: number;
   yearlyResults: YearlyResult[];
+
+  // IPP totals (only present when considerIPP = true)
+  ipp?: {
+    totalContributions: number;
+    totalAdminCosts: number;
+    totalCorporateTaxSavings: number;
+    totalPensionAdjustments: number;
+    projectedAnnualPensionAtEnd: number;
+  };
+
+  // Spouse totals (only present when hasSpouse = true)
+  spouse?: {
+    totalSalary: number;
+    totalDividends: number;
+    totalPersonalTax: number;
+    totalAfterTaxIncome: number;
+    totalRRSPRoomGenerated: number;
+    totalRRSPContributions: number;
+    totalTFSAContributions: number;
+    ipp?: {
+      totalContributions: number;
+      totalAdminCosts: number;
+      totalPensionAdjustments: number;
+    };
+  };
 }
 
 // Tax bracket definition

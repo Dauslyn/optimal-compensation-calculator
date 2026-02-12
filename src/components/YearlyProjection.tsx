@@ -116,6 +116,117 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
         </table>
       </TableSection>
 
+      {/* Spouse Compensation (only when spouse data exists) */}
+      {results.some(r => r.spouse) && (
+        <TableSection
+          title="Spouse Compensation Breakdown"
+          description="Spouse draws from same corporate accounts after primary shareholder"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Salary</th>
+                <th>Capital Div</th>
+                <th>Eligible Div</th>
+                <th>Non-Elig Div</th>
+                <th>Personal Tax</th>
+                <th>CPP + EI</th>
+                <th>After-Tax</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((year) => year.spouse ? (
+                <tr key={year.year}>
+                  <td>Year {year.year}</td>
+                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.spouse.salary)}</td>
+                  <td style={{ color: '#34d399' }}>{formatCurrency(year.spouse.dividends.capitalDividends)}</td>
+                  <td style={{ color: '#a78bfa' }}>{formatCurrency(year.spouse.dividends.eligibleDividends)}</td>
+                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.spouse.dividends.nonEligibleDividends)}</td>
+                  <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.personalTax)}</td>
+                  <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.cpp + year.spouse.cpp2 + year.spouse.ei + year.spouse.qpip)}</td>
+                  <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(year.spouse.afterTaxIncome)}</td>
+                </tr>
+              ) : null)}
+            </tbody>
+          </table>
+        </TableSection>
+      )}
+
+      {/* IPP Contributions (only when IPP data exists) */}
+      {results.some(r => r.ipp) && (
+        <TableSection
+          title="IPP Contributions"
+          description="Individual Pension Plan — corporate deductions, pension adjustments, and projected pension"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Age</th>
+                <th>IPP Contribution</th>
+                <th>Admin Costs</th>
+                <th>Total Deductible</th>
+                <th>Pension Adj (PA)</th>
+                <th>Corp Tax Savings</th>
+                <th>Projected Pension</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((year) => year.ipp ? (
+                <tr key={year.year}>
+                  <td>Year {year.year}</td>
+                  <td>{year.ipp.memberAge}</td>
+                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.ipp.contribution)}</td>
+                  <td>{formatCurrency(year.ipp.adminCosts)}</td>
+                  <td style={{ fontWeight: 600 }}>{formatCurrency(year.ipp.totalDeductible)}</td>
+                  <td style={{ color: '#fb7185' }}>{formatCurrency(year.ipp.pensionAdjustment)}</td>
+                  <td style={{ color: '#34d399' }}>{formatCurrency(year.ipp.corporateTaxSavings)}</td>
+                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.ipp.projectedAnnualPension)}</td>
+                </tr>
+              ) : null)}
+            </tbody>
+          </table>
+        </TableSection>
+      )}
+
+      {/* Spouse IPP Contributions (only when spouse IPP data exists) */}
+      {results.some(r => r.spouse?.ipp) && (
+        <TableSection
+          title="Spouse IPP Contributions"
+          description="Spouse's Individual Pension Plan — draws from same corporate account"
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Age</th>
+                <th>IPP Contribution</th>
+                <th>Admin Costs</th>
+                <th>Total Deductible</th>
+                <th>Pension Adj (PA)</th>
+                <th>Corp Tax Savings</th>
+                <th>Projected Pension</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((year) => year.spouse?.ipp ? (
+                <tr key={year.year}>
+                  <td>Year {year.year}</td>
+                  <td>{year.spouse.ipp.memberAge}</td>
+                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.spouse.ipp.contribution)}</td>
+                  <td>{formatCurrency(year.spouse.ipp.adminCosts)}</td>
+                  <td style={{ fontWeight: 600 }}>{formatCurrency(year.spouse.ipp.totalDeductible)}</td>
+                  <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.ipp.pensionAdjustment)}</td>
+                  <td style={{ color: '#34d399' }}>{formatCurrency(year.spouse.ipp.corporateTaxSavings)}</td>
+                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.spouse.ipp.projectedAnnualPension)}</td>
+                </tr>
+              ) : null)}
+            </tbody>
+          </table>
+        </TableSection>
+      )}
+
       {/* Notional Accounts with Flow View */}
       <TableSection
         title="Notional Account Activity"

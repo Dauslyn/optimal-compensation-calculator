@@ -5,7 +5,7 @@ import { PROVINCES } from '../lib/tax/provinces';
 import { getDefaultInflationRate } from '../lib/tax/indexation';
 import { getContributionLimitsForYear } from '../lib/tax/constants';
 import { validateInputs } from '../lib/validation';
-import { InfoLabel, TAX_TOOLTIPS } from './Tooltip';
+import { InfoLabel, Tooltip, INPUT_TOOLTIPS } from './Tooltip';
 import { saveInputsToStorage, loadInputsFromStorage, getDefaultInputs, clearStoredInputs } from '../lib/localStorage';
 
 interface InputFormProps {
@@ -127,6 +127,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     strategy: false,
     debt: false,
     ipp: false,
+    spouse: false,
   });
 
   // Validation
@@ -219,7 +220,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               <div>
-                <label htmlFor="province">Province</label>
+                <InfoLabel label="Province" tooltip={INPUT_TOOLTIPS.province} htmlFor="province" />
                 <select
                   id="province"
                   value={formData.province}
@@ -242,6 +243,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 placeholder="100,000"
                 step="5000"
                 hint="Annual amount you need to live on"
+                tooltip={INPUT_TOOLTIPS.requiredIncome}
               />
 
               <InputField
@@ -252,6 +254,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 prefix="$"
                 step="10000"
                 hint="Current corporate investment account"
+                tooltip={INPUT_TOOLTIPS.corporateInvestmentBalance}
               />
 
               <InputField
@@ -262,12 +265,13 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 prefix="$"
                 step="5000"
                 hint="Before owner compensation (salary/dividends paid from this)"
+                tooltip={INPUT_TOOLTIPS.annualCorporateRetainedEarnings}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
-                <label htmlFor="planningHorizon">Planning Horizon</label>
+                <InfoLabel label="Planning Horizon" tooltip={INPUT_TOOLTIPS.planningHorizon} htmlFor="planningHorizon" />
                 <select
                   id="planningHorizon"
                   value={formData.planningHorizon}
@@ -286,7 +290,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               </div>
 
               <div>
-                <InfoLabel label="Expected Total Return" tooltip={TAX_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
+                <InfoLabel label="Expected Total Return" tooltip={INPUT_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
                 <div className="relative">
                   <input
                     id="returnRate"
@@ -329,7 +333,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div>
-                <label htmlFor="startingYear">Starting Year</label>
+                <InfoLabel label="Starting Year" tooltip={INPUT_TOOLTIPS.startingYear} htmlFor="startingYear" />
                 <select
                   id="startingYear"
                   value={formData.startingYear}
@@ -342,7 +346,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               </div>
 
               <div>
-                <InfoLabel label="Expected Inflation Rate" tooltip={TAX_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
+                <InfoLabel label="Expected Inflation Rate" tooltip={INPUT_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
                 <div className="relative">
                   <input
                     id="inflationRate"
@@ -379,7 +383,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                     onChange={(e) => setFormData({ ...formData, inflateSpendingNeeds: e.target.checked })}
                   />
                   <div>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Inflate Spending Needs</span>
+                    <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      Inflate Spending Needs
+                      <Tooltip content={INPUT_TOOLTIPS.inflateSpendingNeeds} />
+                    </span>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Increase income requirement each year</p>
                   </div>
                 </label>
@@ -415,6 +422,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 suffix="%"
                 step="1"
                 hint="Earns eligible dividends"
+                tooltip={INPUT_TOOLTIPS.canadianEquity}
               />
               <InputField
                 label="US Equity"
@@ -424,6 +432,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 suffix="%"
                 step="1"
                 hint="Foreign income + gains"
+                tooltip={INPUT_TOOLTIPS.usEquity}
               />
               <InputField
                 label="International Equity"
@@ -433,6 +442,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 suffix="%"
                 step="1"
                 hint="Foreign income + gains"
+                tooltip={INPUT_TOOLTIPS.internationalEquity}
               />
               <InputField
                 label="Fixed Income"
@@ -442,6 +452,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 suffix="%"
                 step="1"
                 hint="Interest income (fully taxable)"
+                tooltip={INPUT_TOOLTIPS.fixedIncome}
               />
             </div>
           </div>
@@ -465,7 +476,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('cdaBalance', v)}
               prefix="$"
               hint="From your T2 Schedule 89"
-              tooltip={TAX_TOOLTIPS.cda}
+              tooltip={INPUT_TOOLTIPS.cdaBalance}
             />
             <InputField
               label="GRIP Balance"
@@ -474,7 +485,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('gripBalance', v)}
               prefix="$"
               hint="From your T2 Schedule 53"
-              tooltip={TAX_TOOLTIPS.grip}
+              tooltip={INPUT_TOOLTIPS.gripBalance}
             />
             <InputField
               label="eRDTOH Balance"
@@ -483,7 +494,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('eRDTOHBalance', v)}
               prefix="$"
               hint="From your T2 Schedule 3"
-              tooltip={TAX_TOOLTIPS.erdtoh}
+              tooltip={INPUT_TOOLTIPS.erdtohBalance}
             />
             <InputField
               label="nRDTOH Balance"
@@ -492,7 +503,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('nRDTOHBalance', v)}
               prefix="$"
               hint="From your T2 Schedule 3"
-              tooltip={TAX_TOOLTIPS.nrdtoh}
+              tooltip={INPUT_TOOLTIPS.nrdtohBalance}
             />
             <InputField
               label="Available RRSP Room"
@@ -501,6 +512,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('rrspBalance', v)}
               prefix="$"
               hint="From CRA My Account or NOA"
+              tooltip={INPUT_TOOLTIPS.rrspRoom}
             />
             <InputField
               label="Available TFSA Room"
@@ -509,6 +521,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               onChange={(v) => handleNumberChange('tfsaBalance', v)}
               prefix="$"
               hint="From CRA My Account"
+              tooltip={INPUT_TOOLTIPS.tfsaRoom}
             />
           </div>
         )}
@@ -525,7 +538,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
         {expandedSections.strategy && (
           <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div>
-              <label htmlFor="salaryStrategy">Salary Strategy</label>
+              <InfoLabel label="Salary Strategy" tooltip={INPUT_TOOLTIPS.salaryStrategy} htmlFor="salaryStrategy" />
               <select
                 id="salaryStrategy"
                 value={formData.salaryStrategy}
@@ -545,6 +558,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 onChange={(v) => handleNumberChange('fixedSalaryAmount', v)}
                 prefix="$"
                 hint="Annual salary to pay yourself"
+                tooltip={INPUT_TOOLTIPS.fixedSalaryAmount}
               />
             )}
 
@@ -556,7 +570,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   onChange={(e) => setFormData({ ...formData, maximizeTFSA: e.target.checked })}
                 />
                 <div>
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Maximize TFSA</span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Maximize TFSA
+                    <Tooltip content={INPUT_TOOLTIPS.maximizeTFSA} />
+                  </span>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contribute ${getContributionLimitsForYear(formData.startingYear).tfsaLimit.toLocaleString('en-CA')}/year</p>
                 </div>
               </label>
@@ -567,7 +584,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   onChange={(e) => setFormData({ ...formData, contributeToRRSP: e.target.checked })}
                 />
                 <div>
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Contribute to RRSP</span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Contribute to RRSP
+                    <Tooltip content={INPUT_TOOLTIPS.contributeToRRSP} />
+                  </span>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Use available room</p>
                 </div>
               </label>
@@ -593,7 +613,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 onChange={(e) => setFormData({ ...formData, payDownDebt: e.target.checked })}
               />
               <div>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Include Debt Payments</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Include Debt Payments
+                  <Tooltip content={INPUT_TOOLTIPS.includeDebt} />
+                </span>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add debt paydown to income requirements</p>
               </div>
             </label>
@@ -607,6 +630,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   onChange={(v) => handleNumberChange('totalDebtAmount', v)}
                   prefix="$"
                   hint="Outstanding balance"
+                  tooltip={INPUT_TOOLTIPS.totalDebtAmount}
                 />
                 <InputField
                   label="Annual Debt Payment"
@@ -615,6 +639,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   onChange={(v) => handleNumberChange('debtPaydownAmount', v)}
                   prefix="$"
                   hint="Amount to pay down per year"
+                  tooltip={INPUT_TOOLTIPS.annualDebtPayment}
                 />
                 <InputField
                   label="Interest Rate"
@@ -623,6 +648,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   onChange={(v) => handleNumberChange('debtInterestRate', (parseFloat(v) / 100).toString())}
                   suffix="%"
                   hint="Annual interest rate on debt"
+                  tooltip={INPUT_TOOLTIPS.debtInterestRate}
                 />
               </div>
             )}
@@ -647,7 +673,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 onChange={(e) => setFormData({ ...formData, considerIPP: e.target.checked })}
               />
               <div>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Include IPP Analysis</span>
+                <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Include IPP Analysis
+                  <Tooltip content={INPUT_TOOLTIPS.includeIPP} />
+                </span>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Compare IPP contributions vs RRSP</p>
               </div>
             </label>
@@ -660,6 +689,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   value={formData.ippMemberAge || 45}
                   onChange={(v) => handleNumberChange('ippMemberAge', v)}
                   hint="Current age for IPP calculations"
+                  tooltip={INPUT_TOOLTIPS.ippAge}
                 />
                 <InputField
                   label="Years of Service"
@@ -667,7 +697,49 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   value={formData.ippYearsOfService || 10}
                   onChange={(v) => handleNumberChange('ippYearsOfService', v)}
                   hint="Years employed by your corporation"
+                  tooltip={INPUT_TOOLTIPS.ippYearsOfService}
                 />
+              </div>
+            )}
+
+            {/* Spouse IPP sub-section (only when both IPP and spouse are enabled) */}
+            {formData.considerIPP && formData.hasSpouse && (
+              <div className="pt-3 mt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.spouseConsiderIPP || false}
+                    onChange={(e) => setFormData({ ...formData, spouseConsiderIPP: e.target.checked })}
+                  />
+                  <div>
+                    <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      Spouse IPP
+                      <Tooltip content={INPUT_TOOLTIPS.spouseConsiderIPP} />
+                    </span>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Include IPP for spouse (separate plan, same corporation)</p>
+                  </div>
+                </label>
+
+                {formData.spouseConsiderIPP && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <InputField
+                      label="Spouse Age"
+                      id="spouseIPPAge"
+                      value={formData.spouseIPPAge || 45}
+                      onChange={(v) => handleNumberChange('spouseIPPAge', v)}
+                      hint="Spouse's current age for IPP"
+                      tooltip={INPUT_TOOLTIPS.spouseIPPAge}
+                    />
+                    <InputField
+                      label="Spouse Years of Service"
+                      id="spouseIPPService"
+                      value={formData.spouseIPPYearsOfService || 0}
+                      onChange={(v) => handleNumberChange('spouseIPPYearsOfService', v)}
+                      hint="Years spouse employed by corporation"
+                      tooltip={INPUT_TOOLTIPS.spouseIPPYearsOfService}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -679,6 +751,160 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 IPP allows higher tax-deductible contributions than RRSP for older individuals (typically 40+).
                 The corporation contributes directly to the IPP, providing corporate tax deductions.
                 An actuary must administer the plan (adds $2,000-3,000/year in costs).
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Spouse / Second Shareholder */}
+      <div
+        className="p-4 rounded-xl"
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
+        <SectionHeader
+          title="Spouse / Second Shareholder"
+          section="spouse"
+          description="Split compensation between two shareholders"
+        />
+
+        {expandedSections.spouse && (
+          <div
+            className="pt-4 mt-2 animate-fade-in space-y-4"
+            style={{ borderTop: '1px solid var(--border-subtle)' }}
+          >
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasSpouse || false}
+                onChange={(e) => setFormData({ ...formData, hasSpouse: e.target.checked })}
+                className="w-4 h-4 rounded"
+              />
+              <div>
+                <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Include Spouse / Second Shareholder
+                  <Tooltip content={INPUT_TOOLTIPS.hasSpouse} />
+                </span>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Spouse draws salary/dividends from same CCPC
+                </p>
+              </div>
+            </label>
+
+            {formData.hasSpouse && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <InputField
+                    label="Spouse Required After-Tax Income"
+                    id="spouseRequiredIncome"
+                    value={formData.spouseRequiredIncome || 50000}
+                    onChange={(v) => handleNumberChange('spouseRequiredIncome', v)}
+                    prefix="$"
+                    step="5000"
+                    hint="Annual amount spouse needs"
+                    tooltip={INPUT_TOOLTIPS.spouseRequiredIncome}
+                  />
+                  <div>
+                    <InfoLabel
+                      label="Spouse Salary Strategy"
+                      tooltip={INPUT_TOOLTIPS.spouseSalaryStrategy}
+                      htmlFor="spouseSalaryStrategy"
+                    />
+                    <select
+                      id="spouseSalaryStrategy"
+                      value={formData.spouseSalaryStrategy || 'dynamic'}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        spouseSalaryStrategy: e.target.value as UserInputs['spouseSalaryStrategy'],
+                      })}
+                      className="w-full px-3 py-2 rounded-lg mt-1.5"
+                      style={{
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-primary)',
+                      }}
+                    >
+                      <option value="dynamic">Dynamic (Optimize Automatically)</option>
+                      <option value="fixed">Fixed Salary Amount</option>
+                      <option value="dividends-only">Dividends Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formData.spouseSalaryStrategy === 'fixed' && (
+                  <InputField
+                    label="Spouse Fixed Salary"
+                    id="spouseFixedSalary"
+                    value={formData.spouseFixedSalaryAmount || 0}
+                    onChange={(v) => handleNumberChange('spouseFixedSalaryAmount', v)}
+                    prefix="$"
+                    step="5000"
+                    hint="Annual salary paid to spouse"
+                    tooltip={INPUT_TOOLTIPS.spouseFixedSalaryAmount}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Spouse RRSP Room"
+                    id="spouseRRSP"
+                    value={formData.spouseRRSPRoom || 0}
+                    onChange={(v) => handleNumberChange('spouseRRSPRoom', v)}
+                    prefix="$"
+                    step="1000"
+                    hint="Available RRSP contribution room"
+                    tooltip={INPUT_TOOLTIPS.spouseRRSPRoom}
+                  />
+                  <InputField
+                    label="Spouse TFSA Room"
+                    id="spouseTFSA"
+                    value={formData.spouseTFSARoom || 0}
+                    onChange={(v) => handleNumberChange('spouseTFSARoom', v)}
+                    prefix="$"
+                    step="1000"
+                    hint="Available TFSA contribution room"
+                    tooltip={INPUT_TOOLTIPS.spouseTFSARoom}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 pt-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.spouseMaximizeTFSA || false}
+                      onChange={(e) => setFormData({ ...formData, spouseMaximizeTFSA: e.target.checked })}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      Spouse Maximize TFSA
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.spouseContributeToRRSP || false}
+                      onChange={(e) => setFormData({ ...formData, spouseContributeToRRSP: e.target.checked })}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      Spouse Contribute to RRSP
+                    </span>
+                  </label>
+                </div>
+              </>
+            )}
+
+            <div
+              className="p-3 rounded-lg"
+              style={{ background: 'rgba(59, 130, 246, 0.1)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                The spouse draws from the same corporate accounts (CDA, RDTOH, GRIP).
+                Primary shareholder's compensation is calculated first, then the spouse draws from remaining balances.
+                Each person's tax is calculated independently using their own personal brackets.
               </p>
             </div>
           </div>

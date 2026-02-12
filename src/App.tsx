@@ -6,6 +6,7 @@ import { Chart } from './components/Chart';
 import { Disclaimer, DisclaimerModal } from './components/Disclaimer';
 import { ExportButton } from './components/ExportButton';
 import { ShareButton } from './components/ShareButton';
+import { EmailAccountantButton } from './components/EmailAccountantButton';
 import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { LoadingSpinner, CardSkeleton } from './components/LoadingSpinner';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -155,6 +156,7 @@ function App() {
               </button>
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
               <ShareButton inputs={currentInputs} disabled={!results} />
+              <EmailAccountantButton inputs={currentInputs} summary={results} disabled={!results} />
               <ExportButton disabled={!results} />
             </div>
           </div>

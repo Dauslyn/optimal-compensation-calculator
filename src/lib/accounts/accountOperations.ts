@@ -60,55 +60,70 @@ export function depleteAccountsWithRates(
         afterTaxIncome: 0,
     };
 
+    // Track available corporate cash — never let it go below zero
+    let availableCash = Math.max(0, updatedAccounts.corporateInvestments);
+
     // 1. Capital Dividends (tax-free from CDA)
-    if (remaining > 0 && updatedAccounts.CDA > 0) {
-        const cdaAmount = Math.min(remaining, updatedAccounts.CDA);
+    if (remaining > 0 && updatedAccounts.CDA > 0 && availableCash > 0) {
+        const cdaAmount = Math.min(remaining, updatedAccounts.CDA, availableCash);
         funding.capitalDividends = cdaAmount;
         funding.afterTaxIncome += cdaAmount;
         remaining -= cdaAmount;
         updatedAccounts.CDA -= cdaAmount;
         updatedAccounts.corporateInvestments -= cdaAmount;
+        availableCash -= cdaAmount;
     }
 
     // 2. Eligible Dividends from eRDTOH (generates refund)
-    if (remaining > 0 && updatedAccounts.eRDTOH > 0) {
+    if (remaining > 0 && updatedAccounts.eRDTOH > 0 && availableCash > 0) {
         const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);
         const maxGrossDividend = updatedAccounts.eRDTOH / rdtohRefundRate;
+        // Net corporate cost is dividend minus RDTOH refund — cap at available cash
+        const maxByRefund = Math.min(grossDividendNeeded, maxGrossDividend);
+        const netCostPerDollar = 1 - rdtohRefundRate; // cost to corp per $1 gross dividend
+        const maxByCash = netCostPerDollar > 0 ? availableCash / netCostPerDollar : maxByRefund;
 
-        const actualDividend = Math.min(grossDividendNeeded, maxGrossDividend);
+        const actualDividend = Math.min(maxByRefund, maxByCash);
         const refund = actualDividend * rdtohRefundRate;
         const afterTax = actualDividend * (1 - eligibleEffectiveRate);
+        const netCorpCost = actualDividend - refund;
 
         funding.eligibleDividends += actualDividend;
         funding.afterTaxIncome += afterTax;
         remaining -= afterTax;
         updatedAccounts.eRDTOH -= refund;
-        updatedAccounts.corporateInvestments -= (actualDividend - refund);
+        updatedAccounts.corporateInvestments -= netCorpCost;
+        availableCash -= netCorpCost;
         totalRdtohRefund += refund;
     }
 
     // 3. Non-Eligible Dividends from nRDTOH (generates refund)
-    if (remaining > 0 && updatedAccounts.nRDTOH > 0) {
+    if (remaining > 0 && updatedAccounts.nRDTOH > 0 && availableCash > 0) {
         const grossDividendNeeded = remaining / (1 - nonEligibleEffectiveRate);
         const maxGrossDividend = updatedAccounts.nRDTOH / rdtohRefundRate;
+        const maxByRefund = Math.min(grossDividendNeeded, maxGrossDividend);
+        const netCostPerDollar = 1 - rdtohRefundRate;
+        const maxByCash = netCostPerDollar > 0 ? availableCash / netCostPerDollar : maxByRefund;
 
-        const actualDividend = Math.min(grossDividendNeeded, maxGrossDividend);
+        const actualDividend = Math.min(maxByRefund, maxByCash);
         const refund = actualDividend * rdtohRefundRate;
         const afterTax = actualDividend * (1 - nonEligibleEffectiveRate);
+        const netCorpCost = actualDividend - refund;
 
         funding.nonEligibleDividends += actualDividend;
         funding.afterTaxIncome += afterTax;
         remaining -= afterTax;
         updatedAccounts.nRDTOH -= refund;
-        updatedAccounts.corporateInvestments -= (actualDividend - refund);
+        updatedAccounts.corporateInvestments -= netCorpCost;
+        availableCash -= netCorpCost;
         totalRdtohRefund += refund;
     }
 
     // 4. Regular Eligible Dividends from GRIP (no refund)
-    if (remaining > 0 && updatedAccounts.GRIP > 0) {
+    if (remaining > 0 && updatedAccounts.GRIP > 0 && availableCash > 0) {
         const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);
-
-        const actualDividend = Math.min(grossDividendNeeded, updatedAccounts.GRIP);
+        // Full cost to corp (no refund), so cap at available cash
+        const actualDividend = Math.min(grossDividendNeeded, updatedAccounts.GRIP, availableCash);
         const afterTax = actualDividend * (1 - eligibleEffectiveRate);
 
         funding.eligibleDividends += actualDividend;
@@ -117,6 +132,7 @@ export function depleteAccountsWithRates(
         remaining -= afterTax;
         updatedAccounts.GRIP -= actualDividend;
         updatedAccounts.corporateInvestments -= actualDividend;
+        availableCash -= actualDividend;
     }
 
     // Calculate total gross dividends
@@ -131,6 +147,13 @@ export function depleteAccountsWithRates(
 /**
  * Process a salary payment from the corporation
  * Reduces corporate investments by salary amount plus employer CPP/EI
+ *
+ * Note: Salary is paid from active business income (a deductible expense),
+ * so corporateInvestments CAN go negative here — this represents the corp
+ * using current-year earnings to fund salary before year-end retained
+ * earnings are added back. The afterTaxBusinessIncome added at end-of-year
+ * in calculateYear() nets this out. Dividend payments (via depleteAccountsWithRates)
+ * are the ones constrained by accumulated retained earnings.
  */
 export function processSalaryPayment(
     accounts: NotionalAccounts,
