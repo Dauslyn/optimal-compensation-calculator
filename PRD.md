@@ -10,7 +10,7 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 
 ---
 
-## Current Status: Production Ready (v1.7.1)
+## Current Status: Production Ready (v1.7.2)
 
 ### Core Features Completed
 
@@ -63,7 +63,7 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 - **Charts**: Recharts 3
 - **UI Primitives**: Radix UI (Select, Label)
 - **State**: React useState/useMemo (local state, no external state library)
-- **Tests**: Vitest (188+ tests)
+- **Tests**: Vitest (1,347 tests)
 - **Linting**: ESLint 9 with TypeScript plugin
 
 ---
@@ -78,6 +78,7 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 
 ### Future Considerations (not committed)
 
+- [ ] **Input field tooltips** — Add educational tooltips to all input fields explaining what each value means, how it's used in the calculation, and common gotchas (e.g., "Annual Corporate Net Income" is before owner compensation, not after; what notional accounts are; how inflation toggle affects brackets vs spending)
 - BC employer health tax, MB health/education levy
 - Quebec Health Services Fund
 - Email report to accountant
@@ -120,6 +121,18 @@ These features don't answer "salary vs dividends" and belong in separate tools:
 ---
 
 ## Changelog
+
+### v1.7.2 (2025-02-11)
+
+- **Comprehensive Math Verification Test Suite**: 1,159 new tests (188 → 1,347 total)
+  - `dollarTrace.test.ts` (124 tests) — traces every dollar through the calculation pipeline, verifies accounting identities across all 13 provinces
+  - `invariants.test.ts` (186 tests) — mathematical invariants: non-negativity, tax rate bounds, monotonicity, CPP/EI caps, notional account conservation
+  - `yearOverYear.test.ts` (75 tests) — year-over-year behavior: bracket indexation, inflation toggle, notional account depletion timeline, dynamic strategy transitions
+  - `goldenDataset.test.ts` (71 tests) — hand-verified CRA 2025 values: federal/provincial brackets, CPP/EI/RRSP/TFSA limits, corporate rates, passive income grind
+  - `parameterized.test.ts` (703 tests) — full input sweep: 13 provinces x 3 strategies x 5 income levels, edge cases, inflation/horizon/balance sweeps
+- **Bug Fixes**:
+  - Fixed IPP panel not rendering when member age or years of service is 0 (truthiness check on numeric values)
+  - Fixed Ontario Health Premium thresholds being incorrectly inflated in projected years (thresholds are not indexed per CRA)
 
 ### v1.7.1 (2025-01-28)
 

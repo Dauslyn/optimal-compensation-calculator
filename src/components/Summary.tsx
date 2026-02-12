@@ -228,7 +228,7 @@ export function Summary({ summary, inputs }: SummaryProps) {
       </div>
 
       {/* IPP Analysis (if enabled) */}
-      {inputs.considerIPP && inputs.ippMemberAge && inputs.ippYearsOfService && (
+      {inputs.considerIPP && typeof inputs.ippMemberAge === 'number' && typeof inputs.ippYearsOfService === 'number' && (
         <IPPAnalysis
           memberAge={inputs.ippMemberAge}
           yearsOfService={inputs.ippYearsOfService}

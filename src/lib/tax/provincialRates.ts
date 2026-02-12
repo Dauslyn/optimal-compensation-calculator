@@ -627,16 +627,10 @@ function projectProvincialData(
     };
   }
 
-  // Project health premium thresholds if applicable
+  // Health premium thresholds are NOT indexed (e.g., Ontario Health Premium)
+  // Per CRA, these thresholds do not change with inflation
   if (base.healthPremium) {
-    projected.healthPremium = {
-      brackets: base.healthPremium.brackets.map((b) => ({
-        threshold: Math.round(b.threshold * factor),
-        base: b.base,
-        rate: b.rate,
-        maxPremium: b.maxPremium,
-      })),
-    };
+    projected.healthPremium = base.healthPremium;
   }
 
   // Project PEI surtax if applicable
