@@ -101,7 +101,7 @@ export const WidgetRenderer = memo(function WidgetRenderer({
   widgetType,
   strategyId,
   comparison,
-  inputs,
+  inputs: _inputs,
 }: WidgetRendererProps) {
   const { strategy, yearlyData } = getStrategyData(comparison, strategyId);
 

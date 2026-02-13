@@ -10,8 +10,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   WIDGET_REGISTRY,
-  type WidgetDefinition,
-  type DashboardWidget,
   createWidgetInstance,
   getAvailableWidgets,
 } from '../../components/dashboard/widgetRegistry';
@@ -180,7 +178,7 @@ describe('Dashboard Integration', () => {
     requiredIncome: 100000,
     annualCorporateRetainedEarnings: 400000,
     corporateInvestmentBalance: 500000,
-    planningHorizon: 5,
+    planningHorizon: 5 as const,
     salaryStrategy: 'dynamic' as const,
   };
   const comparison = runStrategyComparison(inputs);
