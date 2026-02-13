@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { UserInputs, ProjectionSummary } from '../lib/types';
+import type { ComparisonResult } from '../lib/strategyComparison';
 import { formatCurrency, formatPercentage } from '../lib/utils';
 import { PROVINCES } from '../lib/tax/provinces';
 import { INPUT_TOOLTIPS } from './Tooltip';
@@ -8,6 +9,7 @@ interface ReportTemplateProps {
     inputs: UserInputs;
     summary: ProjectionSummary;
     clientName?: string;
+    comparison?: ComparisonResult | null;
 }
 
 function formatStrategy(strategy: string): string {
@@ -74,7 +76,7 @@ function generateExecutiveBullets(inputs: UserInputs, summary: ProjectionSummary
 }
 
 export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
-    ({ inputs, summary, clientName }, ref) => {
+    ({ inputs, summary, clientName, comparison }, ref) => {
         const provinceName = PROVINCES[inputs.province].name;
         const executiveBullets = generateExecutiveBullets(inputs, summary);
         const reportDate = new Date().toLocaleDateString('en-CA', {
@@ -594,6 +596,102 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                         </tbody>
                     </table>
                 </div>
+
+                {/* ===== STRATEGY COMPARISON ===== */}
+                {comparison && (
+                    <div style={{ pageBreakBefore: 'always', marginBottom: '20px' }}>
+                        <h2>Strategy Comparison</h2>
+                        <p style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>
+                            Three compensation strategies evaluated using your inputs.
+                            The recommended strategy balances tax efficiency (60% weight) and corporate balance growth (40% weight).
+                        </p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    {comparison.strategies.map(s => (
+                                        <th key={s.id} style={{
+                                            background: s.id === comparison.winner.bestOverall ? '#e8f5e9' : undefined,
+                                        }}>
+                                            {s.label}
+                                            {s.id === comparison.winner.bestOverall && ' \u2605'}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Total Tax Paid</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id} style={{
+                                            fontWeight: s.id === comparison.winner.lowestTax ? 700 : 400,
+                                            color: s.id === comparison.winner.lowestTax ? '#2e7d32' : undefined,
+                                        }}>
+                                            {formatCurrency(s.summary.totalTax)}
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>Effective Tax Rate</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>
+                                            {(s.summary.effectiveTaxRate * 100).toFixed(1)}%
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>Avg Annual After-Tax</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>{formatCurrency(s.summary.averageAnnualIncome)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>Final Corp Balance</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id} style={{
+                                            fontWeight: s.id === comparison.winner.highestBalance ? 700 : 400,
+                                            color: s.id === comparison.winner.highestBalance ? '#2e7d32' : undefined,
+                                        }}>
+                                            {formatCurrency(s.summary.finalCorporateBalance)}
+                                        </td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>RRSP Room Generated</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>{formatCurrency(s.summary.totalRRSPRoomGenerated)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Salary</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>{formatCurrency(s.summary.totalSalary)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Dividends</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>{formatCurrency(s.summary.totalDividends)}</td>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <td><strong>RDTOH Refunds</strong></td>
+                                    {comparison.strategies.map(s => (
+                                        <td key={s.id}>{formatCurrency(s.summary.totalRdtohRefund)}</td>
+                                    ))}
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div style={{ marginTop: '12px', padding: '10px', background: '#f5f5f5', borderRadius: '4px', fontSize: '10px' }}>
+                            <strong>Recommendation:</strong>{' '}
+                            {(() => {
+                                const best = comparison.strategies.find(s => s.id === comparison.winner.bestOverall);
+                                if (!best) return '';
+                                return `Based on this analysis, the ${best.label} strategy is recommended. It results in ${formatCurrency(best.summary.totalTax)} total tax over the projection period with a ${(best.summary.effectiveTaxRate * 100).toFixed(1)}% effective rate, leaving ${formatCurrency(best.summary.finalCorporateBalance)} in corporate investments.`;
+                            })()}
+                        </div>
+                    </div>
+                )}
 
                 {/* ===== METHODOLOGY ===== */}
                 <div className="methodology-section" style={{ marginBottom: '20px' }}>
