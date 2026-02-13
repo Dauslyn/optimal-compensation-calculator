@@ -13,6 +13,7 @@ import {
   type WidgetDefinition,
   type DashboardWidget,
   createWidgetInstance,
+  getAvailableWidgets,
 } from '../../components/dashboard/widgetRegistry';
 import {
   saveDashboardLayout,
@@ -20,6 +21,8 @@ import {
   clearDashboardLayout,
   DASHBOARD_STORAGE_KEY,
 } from '../../components/dashboard/dashboardStorage';
+import { getDefaultInputs } from '../localStorage';
+import { runStrategyComparison } from '../strategyComparison';
 
 describe('Widget Registry', () => {
   it('contains at least 12 widget definitions', () => {
@@ -167,5 +170,67 @@ describe('Widget Renderer data extraction', () => {
 
     const result = getStrategyData(mockComparison as any, 'nonexistent');
     expect(result.strategy.id).toBe('salary-at-ympe');
+  });
+});
+
+describe('Dashboard Integration', () => {
+  const inputs = {
+    ...getDefaultInputs(),
+    province: 'ON' as const,
+    requiredIncome: 100000,
+    annualCorporateRetainedEarnings: 400000,
+    corporateInvestmentBalance: 500000,
+    planningHorizon: 5,
+    salaryStrategy: 'dynamic' as const,
+  };
+  const comparison = runStrategyComparison(inputs);
+
+  it('all comparison strategies are selectable', () => {
+    expect(comparison.strategies).toHaveLength(3);
+    const ids = comparison.strategies.map(s => s.id);
+    expect(ids).toContain('salary-at-ympe');
+    expect(ids).toContain('dividends-only');
+    expect(ids).toContain('dynamic');
+  });
+
+  it('available widgets count matches registry when IPP disabled', () => {
+    const widgets = getAvailableWidgets({ ippEnabled: false });
+    // Should have all widgets minus the conditional IPP one
+    expect(widgets.length).toBe(12);
+  });
+
+  it('available widgets count includes IPP when enabled', () => {
+    const widgets = getAvailableWidgets({ ippEnabled: true });
+    expect(widgets.length).toBe(13);
+  });
+
+  it('createWidgetInstance generates unique IDs', () => {
+    const w1 = createWidgetInstance('tax-breakdown', 'dynamic');
+    const w2 = createWidgetInstance('tax-breakdown', 'dynamic');
+    expect(w1.instanceId).not.toBe(w2.instanceId);
+    expect(w1.widgetType).toBe('tax-breakdown');
+    expect(w1.strategyId).toBe('dynamic');
+  });
+
+  it('getStrategyData extracts correct strategy for each ID', async () => {
+    const { getStrategyData } = await import('../../components/dashboard/WidgetRenderer');
+    for (const strategy of comparison.strategies) {
+      const result = getStrategyData(comparison, strategy.id);
+      expect(result.strategy.id).toBe(strategy.id);
+    }
+  });
+
+  it('layout round-trips through persistence', () => {
+    localStorage.clear();
+    const widget1 = createWidgetInstance('total-tax-comparison', 'dynamic');
+    const widget2 = createWidgetInstance('action-plan', 'salary-at-ympe');
+    const widget3 = createWidgetInstance('key-metrics', 'dividends-only');
+
+    saveDashboardLayout({ widgets: [widget1, widget2, widget3] });
+    const loaded = loadDashboardLayout();
+    expect(loaded!.widgets).toHaveLength(3);
+    expect(loaded!.widgets[0].widgetType).toBe('total-tax-comparison');
+    expect(loaded!.widgets[0].strategyId).toBe('dynamic');
+    expect(loaded!.widgets[2].strategyId).toBe('dividends-only');
   });
 });
