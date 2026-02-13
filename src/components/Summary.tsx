@@ -93,7 +93,6 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
 
       {/* Hidden Report Template (only renders for print) */}
       <div style={{ display: 'none' }}>
-        {/* @ts-expect-error -- comparison prop added in Task 4 */}
         <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} clientName={clientName || undefined} comparison={comparison} />
       </div>
 
