@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { InputFormClean } from './components/InputFormClean';
-import { YearlyProjection } from './components/YearlyProjection';
 import { Summary } from './components/Summary';
-import { Chart } from './components/Chart';
 import { Disclaimer, DisclaimerModal } from './components/Disclaimer';
 import { ExportButton } from './components/ExportButton';
 import { ShareButton } from './components/ShareButton';
@@ -278,12 +276,6 @@ function App() {
                 <div className="space-y-6">
                   <div className="animate-slide-up">
                     <Summary summary={results} inputs={currentInputs} comparison={comparisonResult} onCompare={setComparisonResult} />
-                  </div>
-                  <div className="animate-slide-up animate-delay-100">
-                    <Chart results={results.yearlyResults} />
-                  </div>
-                  <div className="animate-slide-up animate-delay-200">
-                    <YearlyProjection results={results.yearlyResults} />
                   </div>
                 </div>
               )}

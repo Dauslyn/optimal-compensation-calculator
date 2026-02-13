@@ -181,3 +181,31 @@ export function getProvinceOptions(): Array<{ code: ProvinceCode; name: string }
  * Default province (Ontario)
  */
 export const DEFAULT_PROVINCE: ProvinceCode = 'ON';
+
+/**
+ * Top combined federal + provincial marginal tax rates for 2025.
+ * Used for after-tax wealth "reality check" scenarios.
+ * Sources: CRA T1 rates, provincial finance ministries.
+ */
+const TOP_COMBINED_RATES: Record<ProvinceCode, number> = {
+  AB: 0.4800,  // 33% + 15%
+  BC: 0.5350,  // 33% + 20.5%
+  MB: 0.5040,  // 33% + 17.4%
+  NB: 0.5250,  // 33% + 19.5%
+  NL: 0.5480,  // 33% + 21.8%
+  NS: 0.5400,  // 33% + 21%
+  NT: 0.4705,  // 33% + 14.05%
+  NU: 0.4450,  // 33% + 11.5%
+  ON: 0.5353,  // 33% + 20.53% (incl. surtax effect)
+  PE: 0.5165,  // 33% + 16.65% (incl. surtax effect)
+  QC: 0.5331,  // 33% - 16.5% abatement + 25.75%
+  SK: 0.4750,  // 33% + 14.5%
+  YT: 0.4800,  // 33% + 15%
+};
+
+/**
+ * Get the top combined federal + provincial marginal tax rate for a province.
+ */
+export function getTopProvincialRate(province: ProvinceCode): number {
+  return TOP_COMBINED_RATES[province];
+}

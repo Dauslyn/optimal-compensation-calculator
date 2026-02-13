@@ -144,6 +144,49 @@ describe('runStrategyComparison', () => {
   });
 });
 
+describe('after-tax wealth in strategy comparison', () => {
+  it('includes after-tax wealth scenarios for all strategies', () => {
+    const result = runStrategyComparison(makeInputs());
+
+    result.strategies.forEach(strategy => {
+      expect(strategy.trueAfterTaxWealth).toBeDefined();
+      expect(strategy.trueAfterTaxWealth.atCurrentRate).toBeGreaterThan(0);
+      expect(strategy.trueAfterTaxWealth.atLowerRate).toBeGreaterThan(0);
+      expect(strategy.trueAfterTaxWealth.atTopRate).toBeGreaterThan(0);
+      expect(strategy.trueAfterTaxWealth.assumptions).toBeDefined();
+
+      // Lower rate should give higher or equal after-tax wealth than top rate
+      // (equal when RRSP contributions are 0, e.g., dividends-only strategy)
+      expect(strategy.trueAfterTaxWealth.atLowerRate).toBeGreaterThanOrEqual(
+        strategy.trueAfterTaxWealth.atTopRate
+      );
+    });
+  });
+});
+
+describe('year-by-year data for charts', () => {
+  it('includes yearlyData for all strategies', () => {
+    const inputs = makeInputs();
+    const result = runStrategyComparison(inputs);
+
+    expect(result.yearlyData).toBeDefined();
+    expect(result.yearlyData).toHaveLength(3);
+
+    result.yearlyData.forEach(strategyYearly => {
+      expect(strategyYearly.strategyId).toBeDefined();
+      expect(strategyYearly.years).toBeDefined();
+      expect(strategyYearly.years.length).toBe(inputs.planningHorizon);
+    });
+  });
+
+  it('yearlyData strategyIds match strategy ids', () => {
+    const result = runStrategyComparison(makeInputs());
+    const strategyIds = result.strategies.map(s => s.id);
+    const yearlyIds = result.yearlyData.map(y => y.strategyId);
+    expect(yearlyIds).toEqual(strategyIds);
+  });
+});
+
 describe('comparison data for report/email', () => {
   it('each strategy summary has all fields needed for report table', () => {
     const result = runStrategyComparison(makeInputs());

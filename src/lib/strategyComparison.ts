@@ -11,8 +11,22 @@
  */
 
 import type { UserInputs, ProjectionSummary } from './types';
+import type { ProvinceCode } from './tax/provinces';
 import { calculateProjection } from './calculator';
 import { getTaxYearData } from './tax/indexation';
+import { getTopProvincialRate } from './tax/provinces';
+
+export interface AfterTaxWealthScenarios {
+  atCurrentRate: number;      // Using average marginal rate from projection
+  atLowerRate: number;        // Marginal - 10%, min 20%
+  atTopRate: number;          // Top provincial rate
+  assumptions: {
+    currentRRSPWithdrawalRate: number;
+    lowerRRSPWithdrawalRate: number;
+    topRRSPWithdrawalRate: number;
+    corpLiquidationRate: number;  // Fixed at 40% (non-eligible dividends)
+  };
+}
 
 export interface StrategyResult {
   id: string;
@@ -24,6 +38,7 @@ export interface StrategyResult {
     balanceDifference: number;  // vs best-overall
     rrspRoomDifference: number; // vs best-overall
   };
+  trueAfterTaxWealth: AfterTaxWealthScenarios;
 }
 
 export interface ComparisonResult {
@@ -32,6 +47,53 @@ export interface ComparisonResult {
     lowestTax: string;
     highestBalance: string;
     bestOverall: string;
+  };
+  yearlyData: {
+    strategyId: string;
+    years: import('./types').YearlyResult[];
+  }[];
+}
+
+/**
+ * Calculate true after-tax wealth if all assets were liquidated at end of planning horizon.
+ * Shows 3 scenarios based on RRSP withdrawal tax rates.
+ *
+ * Note: Pre-existing RRSP/TFSA balances are intentionally excluded because they are
+ * identical across all strategies and cancel out in comparison. Only contributions
+ * made during the planning horizon are included, as those differ by strategy.
+ */
+export function calculateAfterTaxWealth(
+  summary: ProjectionSummary,
+  province: ProvinceCode,
+  averageMarginalRate: number
+): AfterTaxWealthScenarios {
+  const topRate = getTopProvincialRate(province);
+  const lowerRate = Math.max(averageMarginalRate - 0.10, 0.20);
+  const corpLiquidationRate = 0.40; // Conservative estimate (non-eligible dividends)
+
+  // Base wealth = already taxed income + tax-free TFSA
+  const totalAfterTaxIncome = summary.totalCompensation - summary.totalTax;
+  const baseWealth = totalAfterTaxIncome + summary.totalTFSAContributions;
+
+  return {
+    atCurrentRate: baseWealth +
+      (summary.totalRRSPContributions * (1 - averageMarginalRate)) +
+      (summary.finalCorporateBalance * (1 - corpLiquidationRate)),
+
+    atLowerRate: baseWealth +
+      (summary.totalRRSPContributions * (1 - lowerRate)) +
+      (summary.finalCorporateBalance * (1 - corpLiquidationRate)),
+
+    atTopRate: baseWealth +
+      (summary.totalRRSPContributions * (1 - topRate)) +
+      (summary.finalCorporateBalance * (1 - corpLiquidationRate)),
+
+    assumptions: {
+      currentRRSPWithdrawalRate: averageMarginalRate,
+      lowerRRSPWithdrawalRate: lowerRate,
+      topRRSPWithdrawalRate: topRate,
+      corpLiquidationRate,
+    },
   };
 }
 
@@ -107,18 +169,25 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
     return score > bestScore ? s : best;
   });
 
-  // Compute diffs relative to best-overall
-  const results: StrategyResult[] = strategies.map(s => ({
-    id: s.id,
-    label: s.label,
-    description: s.description,
-    summary: s.summary,
-    diff: {
-      taxSavings: bestOverallStrategy.summary.totalTax - s.summary.totalTax,
-      balanceDifference: s.summary.finalCorporateBalance - bestOverallStrategy.summary.finalCorporateBalance,
-      rrspRoomDifference: s.summary.totalRRSPRoomGenerated - bestOverallStrategy.summary.totalRRSPRoomGenerated,
-    },
-  }));
+  // Compute diffs and after-tax wealth relative to best-overall
+  const results: StrategyResult[] = strategies.map(s => {
+    // Calculate average marginal rate for after-tax wealth scenarios
+    const totalIncome = s.summary.totalCompensation;
+    const averageMarginalRate = totalIncome > 0 ? s.summary.totalTax / totalIncome : 0.35;
+
+    return {
+      id: s.id,
+      label: s.label,
+      description: s.description,
+      summary: s.summary,
+      diff: {
+        taxSavings: bestOverallStrategy.summary.totalTax - s.summary.totalTax,
+        balanceDifference: s.summary.finalCorporateBalance - bestOverallStrategy.summary.finalCorporateBalance,
+        rrspRoomDifference: s.summary.totalRRSPRoomGenerated - bestOverallStrategy.summary.totalRRSPRoomGenerated,
+      },
+      trueAfterTaxWealth: calculateAfterTaxWealth(s.summary, inputs.province as ProvinceCode, averageMarginalRate),
+    };
+  });
 
   return {
     strategies: results,
@@ -127,5 +196,9 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
       highestBalance: highestBalanceStrategy.id,
       bestOverall: bestOverallStrategy.id,
     },
+    yearlyData: strategies.map(s => ({
+      strategyId: s.id,
+      years: s.summary.yearlyResults,
+    })),
   };
 }
