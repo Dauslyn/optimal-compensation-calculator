@@ -130,3 +130,42 @@ describe('Dashboard Layout Persistence', () => {
     expect(loadDashboardLayout()).toBeNull();
   });
 });
+
+describe('Widget Renderer data extraction', () => {
+  it('getStrategyData returns correct strategy from comparison', async () => {
+    const { getStrategyData } = await import('../../components/dashboard/WidgetRenderer');
+    const mockComparison = {
+      strategies: [
+        { id: 'salary-at-ympe', summary: { totalTax: 100 } },
+        { id: 'dividends-only', summary: { totalTax: 200 } },
+        { id: 'dynamic', summary: { totalTax: 150 } },
+      ],
+      yearlyData: [
+        { strategyId: 'salary-at-ympe', years: [] },
+        { strategyId: 'dividends-only', years: [] },
+        { strategyId: 'dynamic', years: [] },
+      ],
+      winner: { lowestTax: 'salary-at-ympe', highestBalance: 'dynamic', bestOverall: 'dynamic' },
+    };
+
+    const result = getStrategyData(mockComparison as any, 'dividends-only');
+    expect(result.strategy.id).toBe('dividends-only');
+    expect(result.strategy.summary.totalTax).toBe(200);
+  });
+
+  it('getStrategyData falls back to first strategy for unknown ID', async () => {
+    const { getStrategyData } = await import('../../components/dashboard/WidgetRenderer');
+    const mockComparison = {
+      strategies: [
+        { id: 'salary-at-ympe', summary: { totalTax: 100 } },
+      ],
+      yearlyData: [
+        { strategyId: 'salary-at-ympe', years: [] },
+      ],
+      winner: { lowestTax: 'salary-at-ympe', highestBalance: 'salary-at-ympe', bestOverall: 'salary-at-ympe' },
+    };
+
+    const result = getStrategyData(mockComparison as any, 'nonexistent');
+    expect(result.strategy.id).toBe('salary-at-ympe');
+  });
+});
