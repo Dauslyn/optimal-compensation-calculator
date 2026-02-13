@@ -48,6 +48,10 @@ export interface ComparisonResult {
     highestBalance: string;
     bestOverall: string;
   };
+  yearlyData: {
+    strategyId: string;
+    years: import('./types').YearlyResult[];
+  }[];
 }
 
 /**
@@ -188,5 +192,9 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
       highestBalance: highestBalanceStrategy.id,
       bestOverall: bestOverallStrategy.id,
     },
+    yearlyData: strategies.map(s => ({
+      strategyId: s.id,
+      years: s.summary.yearlyResults,
+    })),
   };
 }
