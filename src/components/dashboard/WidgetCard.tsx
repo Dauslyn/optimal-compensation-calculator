@@ -45,7 +45,7 @@ export const WidgetCard = memo(function WidgetCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : 'auto' as any,
+    zIndex: isDragging ? 50 : ('auto' as const),
   };
 
   const widget = WIDGET_REGISTRY[widgetType];

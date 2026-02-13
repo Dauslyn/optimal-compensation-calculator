@@ -32,6 +32,10 @@ export function loadDashboardLayout(): DashboardLayout | null {
     const stored = localStorage.getItem(DASHBOARD_STORAGE_KEY);
     if (!stored) return null;
     const data: StoredDashboard = JSON.parse(stored);
+    if (data.version !== STORAGE_VERSION) {
+      console.warn(`Dashboard layout version mismatch: expected ${STORAGE_VERSION}, got ${data.version}`);
+      return null;
+    }
     if (!data.layout || !Array.isArray(data.layout.widgets)) {
       console.warn('Invalid dashboard layout structure');
       return null;

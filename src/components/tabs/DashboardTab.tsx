@@ -19,6 +19,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -58,6 +59,8 @@ export const DashboardTab = memo(function DashboardTab({
     return saved?.widgets ?? [];
   });
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const { setNodeRef: setDropzoneRef } = useDroppable({ id: 'dashboard-dropzone' });
 
   const ippEnabled = inputs.considerIPP || inputs.spouseConsiderIPP;
   const availableWidgets = getAvailableWidgets({ ippEnabled });
@@ -159,8 +162,9 @@ export const DashboardTab = memo(function DashboardTab({
 
         {/* Drop Zone / Grid */}
         {widgets.length === 0 ? (
-          /* Empty state */
+          /* Empty state — useDroppable provides a valid drop target for dnd-kit */
           <div
+            ref={setDropzoneRef}
             className="border-2 border-dashed rounded-xl p-12 text-center"
             style={{ borderColor: 'var(--border-subtle)' }}
           >
