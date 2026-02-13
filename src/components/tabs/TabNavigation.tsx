@@ -1,6 +1,6 @@
 import { memo } from 'react';
 
-export type TabId = 'recommended' | 'compare' | 'details' | 'export';
+export type TabId = 'recommended' | 'compare' | 'details' | 'dashboard' | 'export';
 
 interface Tab {
   id: TabId;
@@ -18,6 +18,7 @@ const TABS: Tab[] = [
   { id: 'recommended', label: 'Recommended', icon: '✓' },
   { id: 'compare', label: 'Compare All' },
   { id: 'details', label: 'Details' },
+  { id: 'dashboard', label: 'Dashboard', icon: '⚡' },
   { id: 'export', label: 'Export' },
 ];
 
