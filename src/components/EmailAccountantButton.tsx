@@ -6,6 +6,7 @@
  */
 
 import type { UserInputs, ProjectionSummary } from '../lib/types';
+import type { ComparisonResult } from '../lib/strategyComparison';
 import { PROVINCES } from '../lib/tax/provinces';
 import { generateShareUrl } from '../lib/shareLink';
 import { formatCurrency, formatPercentage } from '../lib/utils';
@@ -13,10 +14,11 @@ import { formatCurrency, formatPercentage } from '../lib/utils';
 interface EmailAccountantButtonProps {
   inputs: UserInputs | null;
   summary: ProjectionSummary | null;
+  comparison?: ComparisonResult | null;
   disabled?: boolean;
 }
 
-function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary): string {
+function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary, comparison?: ComparisonResult | null): string {
   const provinceName = PROVINCES[inputs.province].name;
   const year = inputs.startingYear;
   const shareUrl = generateShareUrl(inputs);
@@ -57,6 +59,17 @@ function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary): string 
     `Required After-Tax Income: ${formatCurrency(inputs.requiredIncome)}/yr`,
     `Corporate Investment Balance: ${formatCurrency(inputs.corporateInvestmentBalance)}`,
     `Expected Return: ${formatPercentage(inputs.investmentReturnRate)} | Inflation: ${formatPercentage(inputs.expectedInflationRate)}`,
+    ...(comparison ? [
+      '',
+      'STRATEGY COMPARISON',
+      '---',
+      ...comparison.strategies.map(s => {
+        const tag = s.id === comparison.winner.bestOverall ? ' <-- RECOMMENDED' : '';
+        return `${s.label}: Tax ${formatCurrency(s.summary.totalTax)} | Rate ${formatPercentage(s.summary.effectiveTaxRate)} | Balance ${formatCurrency(s.summary.finalCorporateBalance)}${tag}`;
+      }),
+      '',
+      `Recommendation: ${comparison.strategies.find(s => s.id === comparison.winner.bestOverall)?.label || 'Dynamic Optimizer'} strategy`,
+    ] : []),
     '',
     `VIEW FULL INTERACTIVE RESULTS:`,
     shareUrl,
@@ -91,12 +104,12 @@ function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary): string 
   return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-export function EmailAccountantButton({ inputs, summary, disabled = false }: EmailAccountantButtonProps) {
+export function EmailAccountantButton({ inputs, summary, comparison, disabled = false }: EmailAccountantButtonProps) {
   const isDisabled = disabled || !inputs || !summary;
 
   const handleClick = () => {
     if (!inputs || !summary) return;
-    const mailtoUrl = buildMailtoUrl(inputs, summary);
+    const mailtoUrl = buildMailtoUrl(inputs, summary, comparison);
     window.location.href = mailtoUrl;
   };
 

@@ -159,7 +159,6 @@ function App() {
               </button>
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
               <ShareButton inputs={currentInputs} disabled={!results} />
-              {/* @ts-expect-error -- comparison prop added in Task 5 */}
               <EmailAccountantButton inputs={currentInputs} summary={results} comparison={comparisonResult} disabled={!results} />
               <ExportButton disabled={!results} />
             </div>
