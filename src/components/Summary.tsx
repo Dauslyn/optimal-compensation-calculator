@@ -2,6 +2,7 @@ import { useRef, useMemo, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
+import { formatCurrency, formatPercent } from '../lib/formatters';
 import { ReportTemplate } from './ReportTemplate';
 import { IPPAnalysis } from './IPPAnalysis';
 import { EmailCapture } from './EmailCapture';
@@ -26,7 +27,10 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
   const [clientName, setClientName] = useState('');
   const [activeTab, setActiveTab] = useState<TabId>('recommended');
 
-  // Auto-run strategy comparison on mount
+  // Auto-run strategy comparison on mount.
+  // Guard clause (!comparison) prevents re-execution after the first run.
+  // inputs reference may change between renders, but that's safe since
+  // onCompare sets comparison to non-null, stopping further calls.
   useEffect(() => {
     if (!comparison) {
       const result = runStrategyComparison(inputs);
@@ -38,19 +42,6 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
     contentRef: componentRef,
     documentTitle: `Optimal_Compensation_Report_${new Date().toISOString().split('T')[0]}`,
   });
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatPercent = (decimal: number): string => {
-    return `${(decimal * 100).toFixed(1)}%`;
-  };
 
   const combinedSmallBusinessRate = useMemo(() => {
     const provincialData = getProvincialTaxData(inputs.province, inputs.startingYear);

@@ -57,6 +57,10 @@ export interface ComparisonResult {
 /**
  * Calculate true after-tax wealth if all assets were liquidated at end of planning horizon.
  * Shows 3 scenarios based on RRSP withdrawal tax rates.
+ *
+ * Note: Pre-existing RRSP/TFSA balances are intentionally excluded because they are
+ * identical across all strategies and cancel out in comparison. Only contributions
+ * made during the planning horizon are included, as those differ by strategy.
  */
 export function calculateAfterTaxWealth(
   summary: ProjectionSummary,

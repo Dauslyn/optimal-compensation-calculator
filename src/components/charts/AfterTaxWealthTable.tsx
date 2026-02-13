@@ -21,7 +21,9 @@ export const AfterTaxWealthTable = memo(function AfterTaxWealthTable({
     s.trueAfterTaxWealth.atTopRate > best.trueAfterTaxWealth.atTopRate ? s : best
   );
 
-  const assumptions = strategies[0].trueAfterTaxWealth.assumptions;
+  // Use the recommended strategy's rates for scenario labels
+  const recommended = strategies.find(s => s.id === comparison.winner.bestOverall) || strategies[0];
+  const assumptions = recommended.trueAfterTaxWealth.assumptions;
 
   const scenarios = [
     {
@@ -102,7 +104,7 @@ export const AfterTaxWealthTable = memo(function AfterTaxWealthTable({
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         <strong>Best = highest after-tax wealth in this scenario.</strong>{' '}
         Lower retirement rates are more realistic if you reduce income in retirement.
-        Assumes RRSP withdrawals at shown rates and{' '}
+        Assumes RRSP withdrawals at shown rates (based on recommended strategy's tax profile) and{' '}
         {Math.round(assumptions.corpLiquidationRate * 100)}% tax on corporate liquidation.
       </p>
     </div>

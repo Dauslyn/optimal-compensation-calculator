@@ -19,6 +19,7 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
   if (!winner) return null;
 
   const others = comparison.strategies.filter(s => s.id !== winner.id);
+  const lowestTaxStrategy = comparison.strategies.find(s => s.id === comparison.winner.lowestTax);
   const color = STRATEGY_COLORS[winner.id] || '#6b7280';
 
   return (
@@ -59,15 +60,26 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
         </h4>
         <ul className="space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <li>
-            Lowest total tax: {formatCurrency(winner.summary.totalTax)}
-            {' '}(vs{' '}
-            {others.map((s, idx) => (
-              <span key={s.id}>
-                {formatCurrency(s.summary.totalTax)}
-                {idx < others.length - 1 ? ' & ' : ''}
-              </span>
-            ))}
-            )
+            {winner.id === comparison.winner.lowestTax ? (
+              <>
+                Lowest total tax: {formatCurrency(winner.summary.totalTax)}
+                {' '}(vs{' '}
+                {others.map((s, idx) => (
+                  <span key={s.id}>
+                    {formatCurrency(s.summary.totalTax)}
+                    {idx < others.length - 1 ? ' & ' : ''}
+                  </span>
+                ))}
+                )
+              </>
+            ) : (
+              <>
+                Total tax: {formatCurrency(winner.summary.totalTax)}
+                {lowestTaxStrategy && (
+                  <> ({formatCurrency(winner.summary.totalTax - lowestTaxStrategy.summary.totalTax)} more than {lowestTaxStrategy.label})</>
+                )}
+              </>
+            )}
           </li>
           <li>
             Best wealth accumulation: {formatCurrency(winner.summary.finalCorporateBalance + (winner.summary.totalRRSPContributions || 0))}
