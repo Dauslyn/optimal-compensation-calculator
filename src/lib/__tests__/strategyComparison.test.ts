@@ -143,3 +143,48 @@ describe('runStrategyComparison', () => {
     expect(uniqueTaxes.size).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('comparison data for report/email', () => {
+  it('each strategy summary has all fields needed for report table', () => {
+    const result = runStrategyComparison(makeInputs());
+    for (const strategy of result.strategies) {
+      const s = strategy.summary;
+      expect(typeof s.totalTax).toBe('number');
+      expect(typeof s.effectiveTaxRate).toBe('number');
+      expect(typeof s.averageAnnualIncome).toBe('number');
+      expect(typeof s.finalCorporateBalance).toBe('number');
+      expect(typeof s.totalRRSPRoomGenerated).toBe('number');
+      expect(typeof s.totalSalary).toBe('number');
+      expect(typeof s.totalDividends).toBe('number');
+      expect(typeof s.totalRdtohRefund).toBe('number');
+    }
+  });
+
+  it('winner IDs reference valid strategies', () => {
+    const result = runStrategyComparison(makeInputs());
+    const ids = result.strategies.map(s => s.id);
+    expect(ids).toContain(result.winner.lowestTax);
+    expect(ids).toContain(result.winner.highestBalance);
+    expect(ids).toContain(result.winner.bestOverall);
+  });
+
+  it('diff.taxSavings is 0 for best-overall strategy', () => {
+    const result = runStrategyComparison(makeInputs());
+    const best = result.strategies.find(s => s.id === result.winner.bestOverall)!;
+    expect(best.diff.taxSavings).toBe(0);
+    expect(best.diff.balanceDifference).toBe(0);
+  });
+
+  it('strategy descriptions are non-empty strings', () => {
+    const result = runStrategyComparison(makeInputs());
+    for (const strategy of result.strategies) {
+      expect(strategy.description.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('salary-at-ympe description includes the YMPE dollar amount', () => {
+    const result = runStrategyComparison(makeInputs());
+    const ympeStrat = result.strategies.find(s => s.id === 'salary-at-ympe')!;
+    expect(ympeStrat.description).toMatch(/\$[\d,]+/);
+  });
+});
