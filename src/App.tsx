@@ -15,6 +15,7 @@ import { ScenarioBuilder } from './components/ScenarioBuilder';
 import { YearEndAlert } from './components/YearEndAlert';
 import { HowItWorks } from './components/HowItWorks';
 import type { ProjectionSummary, UserInputs } from './lib/types';
+import type { ComparisonResult } from './lib/strategyComparison';
 import { calculateProjection } from './lib/calculator';
 import { getInputsFromUrl, generateShareUrl } from './lib/shareLink';
 import { clearStoredInputs, getDefaultInputs } from './lib/localStorage';
@@ -34,6 +35,7 @@ function App() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('calculator');
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const { theme, toggleTheme } = useTheme();
   const formRef = useRef<{ submit: () => void; reset: () => void } | null>(null);
 
@@ -97,6 +99,7 @@ function App() {
   const handleCalculate = async (inputs: UserInputs) => {
     setIsCalculating(true);
     setResults(null); // Clear previous results to show loading state
+    setComparisonResult(null);
 
     const projection = calculateProjection(inputs);
     setResults(projection);
@@ -156,7 +159,8 @@ function App() {
               </button>
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
               <ShareButton inputs={currentInputs} disabled={!results} />
-              <EmailAccountantButton inputs={currentInputs} summary={results} disabled={!results} />
+              {/* @ts-expect-error -- comparison prop added in Task 5 */}
+              <EmailAccountantButton inputs={currentInputs} summary={results} comparison={comparisonResult} disabled={!results} />
               <ExportButton disabled={!results} />
             </div>
           </div>
@@ -274,7 +278,7 @@ function App() {
               {!isCalculating && results && currentInputs && (
                 <div className="space-y-6">
                   <div className="animate-slide-up">
-                    <Summary summary={results} inputs={currentInputs} />
+                    <Summary summary={results} inputs={currentInputs} comparison={comparisonResult} onCompare={setComparisonResult} />
                   </div>
                   <div className="animate-slide-up animate-delay-100">
                     <Chart results={results.yearlyResults} />

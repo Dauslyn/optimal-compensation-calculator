@@ -3,19 +3,33 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer } from 'lucide-react';
 import type { ProjectionSummary, UserInputs } from '../lib/types';
 import { ReportTemplate } from './ReportTemplate';
+import { StrategyComparison } from './StrategyComparison';
 import { IPPAnalysis } from './IPPAnalysis';
 import { EmailCapture } from './EmailCapture';
 import { RRSP_ANNUAL_LIMIT } from '../lib/tax';
 import { getProvincialTaxData } from '../lib/tax/provincialRates';
+import { runStrategyComparison, type ComparisonResult } from '../lib/strategyComparison';
 
 interface SummaryProps {
   summary: ProjectionSummary;
   inputs: UserInputs;
+  comparison: ComparisonResult | null;
+  onCompare: (result: ComparisonResult) => void;
 }
 
-export function Summary({ summary, inputs }: SummaryProps) {
+export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps) {
   const componentRef = useRef<HTMLDivElement>(null);
   const [clientName, setClientName] = useState('');
+  const [isComparing, setIsComparing] = useState(false);
+
+  const handleCompare = async () => {
+    setIsComparing(true);
+    // Small delay for UI feedback
+    await new Promise(resolve => setTimeout(resolve, 50));
+    const result = runStrategyComparison(inputs);
+    onCompare(result);
+    setIsComparing(false);
+  };
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -79,7 +93,8 @@ export function Summary({ summary, inputs }: SummaryProps) {
 
       {/* Hidden Report Template (only renders for print) */}
       <div style={{ display: 'none' }}>
-        <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} clientName={clientName || undefined} />
+        {/* @ts-expect-error -- comparison prop added in Task 4 */}
+        <ReportTemplate ref={componentRef} summary={summary} inputs={inputs} clientName={clientName || undefined} comparison={comparison} />
       </div>
 
       {/* Main Stats */}
@@ -379,6 +394,43 @@ export function Summary({ summary, inputs }: SummaryProps) {
           year={inputs.startingYear}
         />
       )}
+
+      {/* Strategy Comparison */}
+      <div className="pt-2">
+        {!comparison ? (
+          <button
+            onClick={handleCompare}
+            disabled={isComparing}
+            className="w-full py-4 rounded-xl text-sm font-semibold transition-all hover:shadow-lg"
+            style={{
+              background: 'var(--accent-gradient, linear-gradient(135deg, #3b82f6, #8b5cf6))',
+              color: 'white',
+              opacity: isComparing ? 0.7 : 1,
+            }}
+          >
+            {isComparing ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Comparing strategies...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Compare All 3 Strategies
+              </span>
+            )}
+          </button>
+        ) : (
+          <div className="animate-slide-up">
+            <StrategyComparison comparison={comparison} />
+          </div>
+        )}
+      </div>
 
       {/* Email Capture */}
       <EmailCapture source="calculator-results" />
