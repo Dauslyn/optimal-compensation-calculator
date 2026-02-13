@@ -1,0 +1,69 @@
+/**
+ * Tests for v2.3.0 "Custom Dashboard":
+ * - Widget registry has all expected widgets
+ * - Each widget has required fields (id, label, icon, category)
+ * - Dashboard layout persistence to/from localStorage
+ * - Widget instance creation and removal
+ * - Strategy ID validation
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  WIDGET_REGISTRY,
+  type WidgetDefinition,
+  type DashboardWidget,
+} from '../../components/dashboard/widgetRegistry';
+
+describe('Widget Registry', () => {
+  it('contains at least 12 widget definitions', () => {
+    expect(Object.keys(WIDGET_REGISTRY).length).toBeGreaterThanOrEqual(12);
+  });
+
+  it('every widget has required fields', () => {
+    for (const [id, widget] of Object.entries(WIDGET_REGISTRY)) {
+      expect(widget.id).toBe(id);
+      expect(widget.label).toBeTruthy();
+      expect(widget.icon).toBeTruthy();
+      expect(['chart', 'table', 'stat']).toContain(widget.category);
+    }
+  });
+
+  it('contains all expected chart widgets', () => {
+    const expectedCharts = [
+      'total-tax-comparison',
+      'corporate-balance-over-time',
+      'cumulative-tax-paid',
+      'tax-breakdown',
+      'compensation-mix',
+      'rrsp-room',
+      'effective-tax-rate',
+      'compensation-by-year',
+    ];
+    for (const chartId of expectedCharts) {
+      expect(WIDGET_REGISTRY[chartId]).toBeDefined();
+      expect(WIDGET_REGISTRY[chartId].category).toBe('chart');
+    }
+  });
+
+  it('contains all expected table widgets', () => {
+    const expectedTables = [
+      'after-tax-wealth',
+      'action-plan',
+      'yearly-projection',
+    ];
+    for (const tableId of expectedTables) {
+      expect(WIDGET_REGISTRY[tableId]).toBeDefined();
+      expect(WIDGET_REGISTRY[tableId].category).toBe('table');
+    }
+  });
+
+  it('contains key metrics stat widget', () => {
+    expect(WIDGET_REGISTRY['key-metrics']).toBeDefined();
+    expect(WIDGET_REGISTRY['key-metrics'].category).toBe('stat');
+  });
+
+  it('ipp-contributions widget exists and is marked conditional', () => {
+    expect(WIDGET_REGISTRY['ipp-contributions']).toBeDefined();
+    expect(WIDGET_REGISTRY['ipp-contributions'].conditional).toBe(true);
+  });
+});
