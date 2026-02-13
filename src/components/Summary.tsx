@@ -14,6 +14,7 @@ import { RecommendedTab } from './tabs/RecommendedTab';
 import { CompareAllTab } from './tabs/CompareAllTab';
 import { DetailsTab } from './tabs/DetailsTab';
 import { ExportTab } from './tabs/ExportTab';
+import { DashboardTab } from './tabs/DashboardTab';
 
 interface SummaryProps {
   summary: ProjectionSummary;
@@ -323,6 +324,9 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
             )}
             {activeTab === 'details' && (
               <DetailsTab comparison={comparison} inputs={inputs} />
+            )}
+            {activeTab === 'dashboard' && (
+              <DashboardTab comparison={comparison} inputs={inputs} />
             )}
             {activeTab === 'export' && (
               <ExportTab
