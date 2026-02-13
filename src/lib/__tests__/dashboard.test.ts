@@ -7,12 +7,19 @@
  * - Strategy ID validation
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   WIDGET_REGISTRY,
   type WidgetDefinition,
   type DashboardWidget,
+  createWidgetInstance,
 } from '../../components/dashboard/widgetRegistry';
+import {
+  saveDashboardLayout,
+  loadDashboardLayout,
+  clearDashboardLayout,
+  DASHBOARD_STORAGE_KEY,
+} from '../../components/dashboard/dashboardStorage';
 
 describe('Widget Registry', () => {
   it('contains at least 12 widget definitions', () => {
@@ -65,5 +72,61 @@ describe('Widget Registry', () => {
   it('ipp-contributions widget exists and is marked conditional', () => {
     expect(WIDGET_REGISTRY['ipp-contributions']).toBeDefined();
     expect(WIDGET_REGISTRY['ipp-contributions'].conditional).toBe(true);
+  });
+});
+
+// Provide a minimal localStorage mock for the Node test environment
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+    get length() { return Object.keys(store).length; },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+  };
+})();
+vi.stubGlobal('localStorage', localStorageMock);
+
+describe('Dashboard Layout Persistence', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('saves and loads a layout', () => {
+    const widgets = [
+      createWidgetInstance('total-tax-comparison', 'dynamic'),
+      createWidgetInstance('action-plan', 'salary-at-ympe'),
+    ];
+    saveDashboardLayout({ widgets });
+
+    const loaded = loadDashboardLayout();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.widgets).toHaveLength(2);
+    expect(loaded!.widgets[0].widgetType).toBe('total-tax-comparison');
+    expect(loaded!.widgets[1].strategyId).toBe('salary-at-ympe');
+  });
+
+  it('returns null when no layout saved', () => {
+    const loaded = loadDashboardLayout();
+    expect(loaded).toBeNull();
+  });
+
+  it('clearDashboardLayout removes saved data', () => {
+    saveDashboardLayout({ widgets: [createWidgetInstance('tax-breakdown', 'dynamic')] });
+    expect(loadDashboardLayout()).not.toBeNull();
+    clearDashboardLayout();
+    expect(loadDashboardLayout()).toBeNull();
+  });
+
+  it('returns null for corrupted data', () => {
+    localStorage.setItem(DASHBOARD_STORAGE_KEY, 'not-json');
+    expect(loadDashboardLayout()).toBeNull();
+  });
+
+  it('returns null for data missing widgets array', () => {
+    localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify({ version: 1 }));
+    expect(loadDashboardLayout()).toBeNull();
   });
 });
