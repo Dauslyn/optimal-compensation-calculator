@@ -122,6 +122,31 @@ export function depleteAccountsWithRates(
         totalRdtohRefund += refund;
     }
 
+    // 3b. Non-Eligible Dividends with eRDTOH cascade refund
+    // Per ITA s.129(1), when non-eligible dividends are paid and nRDTOH is depleted,
+    // the refund cascades to eRDTOH. This is cheaper than GRIP without refund
+    // (~$1.16 vs ~$1.64 per after-tax dollar), so it comes before step 4.
+    if (remaining > 0 && updatedAccounts.eRDTOH > 0 && availableCash > 0) {
+        const grossDividendNeeded = remaining / (1 - nonEligibleEffectiveRate);
+        const maxGrossDividend = updatedAccounts.eRDTOH / rdtohRefundRate;
+        const maxByRefund = Math.min(grossDividendNeeded, maxGrossDividend);
+        const netCostPerDollar = 1 - rdtohRefundRate;
+        const maxByCash = netCostPerDollar > 0 ? availableCash / netCostPerDollar : maxByRefund;
+
+        const actualDividend = Math.min(maxByRefund, maxByCash);
+        const refund = actualDividend * rdtohRefundRate;
+        const afterTax = actualDividend * (1 - nonEligibleEffectiveRate);
+        const netCorpCost = actualDividend - refund;
+
+        funding.nonEligibleDividends += actualDividend;
+        funding.afterTaxIncome += afterTax;
+        remaining -= afterTax;
+        updatedAccounts.eRDTOH -= refund;
+        updatedAccounts.corporateInvestments -= netCorpCost;
+        availableCash -= netCorpCost;
+        totalRdtohRefund += refund;
+    }
+
     // 4. Regular Eligible Dividends from GRIP (no refund)
     if (remaining > 0 && updatedAccounts.GRIP > 0 && availableCash > 0) {
         const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);

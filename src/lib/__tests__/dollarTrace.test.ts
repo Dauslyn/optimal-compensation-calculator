@@ -520,7 +520,7 @@ describe('Dollar Trace Tests', () => {
       }
     });
 
-    it('should not refund more than starting eRDTOH balance plus increases', () => {
+    it('should not refund more than total RDTOH balance plus increases', () => {
       const initialERDTOH = 50000;
       const result = calculateProjection(
         createInputs({
@@ -532,7 +532,10 @@ describe('Dollar Trace Tests', () => {
         })
       );
       const year1 = result.yearlyResults[0];
-      const maxRefund = initialERDTOH + year1.investmentReturns.eRDTOHIncrease;
+      // Total refund can come from eRDTOH + nRDTOH (including cascade per ITA s.129)
+      const maxRefund = initialERDTOH +
+        year1.investmentReturns.eRDTOHIncrease +
+        year1.investmentReturns.nRDTOHIncrease;
 
       expect(year1.rdtohRefundReceived).toBeLessThanOrEqual(maxRefund + 1);
     });
