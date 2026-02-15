@@ -547,7 +547,7 @@ function calculateYear(
     // Process salary payment - employer pays matching contributions
     accounts = processSalaryPayment(accounts, salary, payroll.employerCost - payroll.cpp - payroll.cpp2, payroll.cpp + payroll.cpp2);
 
-    // Fund remaining with dividends
+    // Fund remaining with dividends (use retained earnings if notional accounts exhausted)
     const remainingNeeded = Math.max(0, requiredIncome - salaryAfterTax);
     if (remainingNeeded > 0) {
       const result = depleteAccountsWithRates(
@@ -555,20 +555,22 @@ function calculateYear(
         accounts,
         taxData.rdtoh.refundRate,
         eligibleEffectiveRate,
-        nonEligibleEffectiveRate
+        nonEligibleEffectiveRate,
+        true
       );
       dividendFunding = result.funding;
       accounts = result.updatedAccounts;
       rdtohRefundReceived = result.rdtohRefund;
     }
   } else if (inputs.salaryStrategy === 'dividends-only') {
-    // Dividends only - no salary
+    // Dividends only - no salary, use retained earnings when notional accounts exhausted
     const result = depleteAccountsWithRates(
       requiredIncome,
       accounts,
       taxData.rdtoh.refundRate,
       eligibleEffectiveRate,
-      nonEligibleEffectiveRate
+      nonEligibleEffectiveRate,
+      true
     );
     dividendFunding = result.funding;
     accounts = result.updatedAccounts;
@@ -643,7 +645,7 @@ function calculateYear(
       if (spRemaining > 0) {
         const spResult = depleteAccountsWithRates(
           spRemaining, accounts, taxData.rdtoh.refundRate,
-          spouseEligibleRate, spouseNonEligibleRate
+          spouseEligibleRate, spouseNonEligibleRate, true
         );
         spouseDividendFunding = spResult.funding;
         accounts = spResult.updatedAccounts;
@@ -652,7 +654,7 @@ function calculateYear(
     } else if (spouseStrategy === 'dividends-only') {
       const spResult = depleteAccountsWithRates(
         spouseRequired, accounts, taxData.rdtoh.refundRate,
-        spouseEligibleRate, spouseNonEligibleRate
+        spouseEligibleRate, spouseNonEligibleRate, true
       );
       spouseDividendFunding = spResult.funding;
       accounts = spResult.updatedAccounts;
@@ -903,8 +905,14 @@ function calculateYear(
     : 0;
   const yearCompensation = salary + totalGrossDividends + spouseSalary + spouseGrossDivTotal;
   const yearPersonalTax = personalTax + (spouseResult ? spouseResult.personalTax : 0);
+  // Only attribute the proportion of corporate tax that corresponds to dividends paid out,
+  // not tax on retained earnings. Dividends come from after-tax business income.
+  const totalGrossDivAll = totalGrossDividends + spouseGrossDivTotal;
+  const corpTaxPortion = afterTaxBusinessIncome > 0
+    ? corpTaxOnActiveIncome * Math.min(1, totalGrossDivAll / afterTaxBusinessIncome)
+    : 0;
   const effectiveIntegratedRate = yearCompensation > 0
-    ? (yearPersonalTax + corpTaxOnActiveIncome) / yearCompensation
+    ? (yearPersonalTax + corpTaxPortion) / yearCompensation
     : 0;
 
   // Total tax includes both primary and spouse personal taxes + payroll
