@@ -903,8 +903,14 @@ function calculateYear(
     : 0;
   const yearCompensation = salary + totalGrossDividends + spouseSalary + spouseGrossDivTotal;
   const yearPersonalTax = personalTax + (spouseResult ? spouseResult.personalTax : 0);
+  // Only attribute the proportion of corporate tax that corresponds to dividends paid out,
+  // not tax on retained earnings. Dividends come from after-tax business income.
+  const totalGrossDivAll = totalGrossDividends + spouseGrossDivTotal;
+  const corpTaxPortion = afterTaxBusinessIncome > 0
+    ? corpTaxOnActiveIncome * Math.min(1, totalGrossDivAll / afterTaxBusinessIncome)
+    : 0;
   const effectiveIntegratedRate = yearCompensation > 0
-    ? (yearPersonalTax + corpTaxOnActiveIncome) / yearCompensation
+    ? (yearPersonalTax + corpTaxPortion) / yearCompensation
     : 0;
 
   // Total tax includes both primary and spouse personal taxes + payroll
