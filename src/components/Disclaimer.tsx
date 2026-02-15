@@ -15,7 +15,7 @@ interface DisclaimerProps {
 }
 
 export function Disclaimer({ variant = 'full', className = '', province = DEFAULT_PROVINCE }: DisclaimerProps) {
-  const lastUpdated = 'January 2025';
+  const lastUpdated = 'February 2026';
   const taxYearsSupported = '2025-2026';
 
   if (variant === 'compact') {

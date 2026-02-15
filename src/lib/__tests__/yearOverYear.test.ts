@@ -23,7 +23,7 @@ function createInputs(overrides: Partial<UserInputs> = {}): UserInputs {
     province: 'ON',
     requiredIncome: 100000,
     planningHorizon: 5,
-    startingYear: 2025,
+    startingYear: 2026,
     expectedInflationRate: 0.02,
     inflateSpendingNeeds: true,
     corporateInvestmentBalance: 500000,
@@ -80,8 +80,8 @@ describe('Year-Over-Year Behavior', () => {
         planningHorizon: 5,
       }));
 
-      // Beyond the known-year transition (2025->2026), tax should decrease
-      // as brackets widen but salary stays fixed
+      // Beyond the last known year (2026), projected brackets widen with inflation
+      // while salary stays fixed, so tax should decrease
       for (let i = 2; i < result.yearlyResults.length; i++) {
         const prevTax = result.yearlyResults[i - 1].personalTax;
         const currTax = result.yearlyResults[i].personalTax;
@@ -194,8 +194,8 @@ describe('Year-Over-Year Behavior', () => {
   // =========================================================================
   describe('Fixed salary + zero inflation = identical tax each year', () => {
     it('with zero inflation and fixed salary, personal tax should be identical each year', () => {
-      // NOTE: Known year 2025->2026 may have different rates, so start from 2027
-      // where both years use projection from 2026 base with 0% inflation.
+      // NOTE: Start from 2027 so all years use projection from 2026 base
+      // with 0% inflation (avoiding known-year rate differences).
       // Use a salary high enough to cover requiredIncome so no dividends are needed
       // (dividends vary with corporate balance, which changes each year).
       const result = calculateProjection(createInputs({
@@ -515,18 +515,18 @@ describe('Year-Over-Year Behavior', () => {
       expect(data2025.cpp.maxContribution).not.toBe(data2026.cpp.maxContribution);
     });
 
-    it('transition from 2025 to 2026 should not cause a tax spike for fixed salary', () => {
+    it('transition from 2026 to 2027 should not cause a tax spike for fixed salary', () => {
       const result = calculateProjection(createInputs({
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 80000,
         inflateSpendingNeeds: false,
         expectedInflationRate: 0.02,
-        startingYear: 2025,
+        startingYear: 2026,
         planningHorizon: 3,
       }));
 
-      // Year 2 (2026) should not have dramatically higher personal tax than year 1 (2025)
-      // The 2026 lowest bracket rate is lower (14% vs 14.5%), so tax should decrease
+      // Year 2 (2027, projected) should not have dramatically higher personal tax than year 1 (2026)
+      // Brackets are indexed for inflation, so tax should be similar or slightly lower
       const year1Tax = result.yearlyResults[0].personalTax;
       const year2Tax = result.yearlyResults[1].personalTax;
       expect(year2Tax).toBeLessThanOrEqual(year1Tax + 100); // small tolerance
@@ -776,7 +776,7 @@ describe('Year-Over-Year Behavior', () => {
       }));
 
       // RRSP room = min(salary * 0.18, annual limit)
-      // For $100K salary: $100,000 * 0.18 = $18,000 (below 2025 limit of $32,490)
+      // For $100K salary: $100,000 * 0.18 = $18,000 (below 2026 limit of $33,810)
       for (const yr of result.yearlyResults) {
         expect(yr.rrspRoomGenerated).toBeGreaterThan(0);
         expect(yr.rrspRoomGenerated).toBeLessThanOrEqual(35000); // Allow for inflated limit
@@ -844,19 +844,19 @@ describe('Year-Over-Year Behavior', () => {
   // 10. Health premium consistency across years
   // =========================================================================
   describe('Health premium consistency across years', () => {
-    it('Ontario health premium should be the same every year for fixed salary (known years)', () => {
-      // Test within known years only (2025-2026 both have same health premium brackets)
+    it('Ontario health premium should be the same every year for fixed salary (known and projected years)', () => {
+      // Ontario Health Premium thresholds are NOT indexed, so premium should stay constant
       const result = calculateProjection(createInputs({
         province: 'ON',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 80000,
         inflateSpendingNeeds: false,
-        startingYear: 2025,
+        startingYear: 2026,
         planningHorizon: 3,
       }));
 
       // Health premium at $80K income should be $750 (based on Ontario brackets)
-      // The key assertion: it should not change between known years
+      // The key assertion: it should not change between years
       const year1HP = result.yearlyResults[0].healthPremium;
       const year2HP = result.yearlyResults[1].healthPremium;
       expect(year1HP).toBe(year2HP);
@@ -1113,7 +1113,7 @@ describe('Year-Over-Year Behavior', () => {
         fixedSalaryAmount: 200000,
         requiredIncome: 80000,
         inflateSpendingNeeds: false,
-        planningHorizon: 3,
+        planningHorizon: 3 as const,
         cdaBalance: 0,
         eRDTOHBalance: 0,
         nRDTOHBalance: 0,

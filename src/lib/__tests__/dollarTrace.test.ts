@@ -17,7 +17,7 @@ function createInputs(overrides: Partial<UserInputs> = {}): UserInputs {
     province: 'ON',
     requiredIncome: 100000,
     planningHorizon: 3,
-    startingYear: 2025,
+    startingYear: 2026,
     expectedInflationRate: 0.02,
     inflateSpendingNeeds: false, // No inflation for clean dollar tracing
     corporateInvestmentBalance: 500000,
@@ -333,7 +333,7 @@ describe('Dollar Trace Tests', () => {
         expect(year1.qpip).toBe(0);
       });
 
-      it('should cap CPP at maximum (approximately $4034 for 2025)', () => {
+      it('should cap CPP at maximum (approximately $4230 for 2026)', () => {
         const result = calculateProjection(
           createInputs({
             province: 'ON',
@@ -343,8 +343,8 @@ describe('Dollar Trace Tests', () => {
         );
         const year1 = result.yearlyResults[0];
 
-        // CPP employee max contribution ~$4034.10 for 2025
-        expect(year1.cpp).toBeLessThanOrEqual(4100);
+        // CPP employee max contribution ~$4230.45 for 2026
+        expect(year1.cpp).toBeLessThanOrEqual(4300);
         expect(year1.cpp).toBeGreaterThan(3500);
       });
 

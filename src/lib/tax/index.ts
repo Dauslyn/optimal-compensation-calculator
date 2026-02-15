@@ -85,3 +85,7 @@ export {
     estimateIPPAdminCosts,
     calculateNetIPPBenefit,
 } from './ipp';
+
+export {
+    calculateEmployerHealthTax,
+} from './employerHealthTax';
