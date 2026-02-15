@@ -17,8 +17,6 @@ import type { UserInputs } from '../types';
 import { getDefaultInputs } from '../localStorage';
 import {
   runStrategyComparison,
-  type StrategyResult,
-  type ComparisonResult,
 } from '../strategyComparison';
 
 const defaults = getDefaultInputs();

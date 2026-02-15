@@ -1113,7 +1113,7 @@ describe('Year-Over-Year Behavior', () => {
         fixedSalaryAmount: 200000,
         requiredIncome: 80000,
         inflateSpendingNeeds: false,
-        planningHorizon: 3,
+        planningHorizon: 3 as const,
         cdaBalance: 0,
         eRDTOHBalance: 0,
         nRDTOHBalance: 0,

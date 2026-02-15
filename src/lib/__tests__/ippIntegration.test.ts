@@ -59,7 +59,7 @@ describe('IPP Integration - Backward Compatibility', () => {
       planningHorizon: 5,
     };
     // Ensure considerIPP is not set
-    delete (inputs as Record<string, unknown>).considerIPP;
+    delete (inputs as unknown as Record<string, unknown>).considerIPP;
     const summary = calculateProjection(inputs);
 
     expect(summary.ipp).toBeUndefined();
@@ -157,10 +157,8 @@ describe('IPP Integration - Corporate Tax Reduction', () => {
 describe('IPP Integration - Pension Adjustment & RRSP Room', () => {
   it('should reduce RRSP room via Pension Adjustment', () => {
     const withIPP = makeIPPInputs({ contributeToRRSP: true });
-    const withoutIPP = makeIPPInputs({ considerIPP: false, contributeToRRSP: true });
 
     const summaryIPP = calculateProjection(withIPP);
-    const summaryNoIPP = calculateProjection(withoutIPP);
 
     // IPP's PA reduces RRSP room, so total RRSP contributions should be lower
     // (or at minimum, RRSP room generated net of PA is lower)

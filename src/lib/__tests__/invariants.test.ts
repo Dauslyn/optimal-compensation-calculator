@@ -11,8 +11,6 @@ import { calculateProjection } from '../calculator';
 import type { UserInputs } from '../types';
 
 const ALL_PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
-const STRATEGIES = ['dynamic', 'fixed', 'dividends-only'] as const;
-const INCOME_LEVELS = [30000, 75000, 150000] as const;
 
 function createInputs(overrides: Partial<UserInputs> = {}): UserInputs {
   return {
