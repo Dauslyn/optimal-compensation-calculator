@@ -45,7 +45,8 @@ export function depleteAccountsWithRates(
     accounts: NotionalAccounts,
     rdtohRefundRate: number,
     eligibleEffectiveRate: number,
-    nonEligibleEffectiveRate: number
+    nonEligibleEffectiveRate: number,
+    useRetainedEarnings: boolean = false
 ): { funding: DividendFunding; updatedAccounts: NotionalAccounts; rdtohRefund: number } {
     const updatedAccounts = { ...accounts };
     let remaining = requiredIncome;
@@ -131,6 +132,21 @@ export function depleteAccountsWithRates(
         funding.afterTaxIncome += afterTax;
         remaining -= afterTax;
         updatedAccounts.GRIP -= actualDividend;
+        updatedAccounts.corporateInvestments -= actualDividend;
+        availableCash -= actualDividend;
+    }
+
+    // 5. Non-Eligible Dividends from retained earnings (no notional account, no refund)
+    // When all notional accounts are exhausted, the corp can still pay non-eligible
+    // dividends from its accumulated retained earnings.
+    if (useRetainedEarnings && remaining > 0 && availableCash > 0) {
+        const grossDividendNeeded = remaining / (1 - nonEligibleEffectiveRate);
+        const actualDividend = Math.min(grossDividendNeeded, availableCash);
+        const afterTax = actualDividend * (1 - nonEligibleEffectiveRate);
+
+        funding.nonEligibleDividends += actualDividend;
+        funding.afterTaxIncome += afterTax;
+        remaining -= afterTax;
         updatedAccounts.corporateInvestments -= actualDividend;
         availableCash -= actualDividend;
     }
