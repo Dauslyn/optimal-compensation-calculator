@@ -19,7 +19,7 @@ function createInputs(overrides: Partial<UserInputs> = {}): UserInputs {
     province: 'ON',
     requiredIncome: 100000,
     planningHorizon: 5,
-    startingYear: 2025,
+    startingYear: 2026,
     expectedInflationRate: 0.02,
     inflateSpendingNeeds: true,
     corporateInvestmentBalance: 500000,
@@ -395,8 +395,8 @@ describe('Mathematical Invariants', () => {
       const result = calculateProjection(inputs);
       const year1 = result.yearlyResults[0];
 
-      // 2025 CPP max employee contribution is ~$4,034.10; use generous bound of $4,500
-      expect(year1.cpp).toBeLessThanOrEqual(4500);
+      // 2026 CPP max employee contribution is ~$4,230.45; use generous bound of $4,700
+      expect(year1.cpp).toBeLessThanOrEqual(4700);
       expect(year1.cpp).toBeGreaterThan(0);
     });
 
@@ -452,8 +452,8 @@ describe('Mathematical Invariants', () => {
       const result = calculateProjection(inputs);
       const year1 = result.yearlyResults[0];
 
-      // QPP max is similar to CPP; use generous bound of $4,500
-      expect(year1.cpp).toBeLessThanOrEqual(4500);
+      // QPP max is similar to CPP; use generous bound of $4,700
+      expect(year1.cpp).toBeLessThanOrEqual(4700);
       expect(year1.cpp).toBeGreaterThan(0);
     });
 

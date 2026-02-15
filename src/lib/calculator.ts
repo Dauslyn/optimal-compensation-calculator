@@ -16,6 +16,7 @@ import {
   calculateQPIPEmployee,
   calculateQuebecEI,
   calculatePassiveIncomeGrind,
+  calculateEmployerHealthTax,
 } from './tax';
 import type { TaxYearData } from './tax';
 import {
@@ -836,9 +837,13 @@ function calculateYear(
   const ei = payroll.ei;
   const qpip = payroll.qpip;
 
+  // Provincial employer health tax (BC EHT, MB HE Levy) based on total payroll
+  const totalPayroll = salary + spouseSalary;
+  const employerHealthTax = calculateEmployerHealthTax(province as any, totalPayroll, calendarYear);
+
   // Corporate tax calculation with passive income grind (SBD clawback)
   // Include BOTH primary and spouse salary costs + IPP contributions as deductible corporate expenses
-  const totalSalaryCost = salary + payroll.employerCost + spouseSalary + spouseEmployerCost;
+  const totalSalaryCost = salary + payroll.employerCost + spouseSalary + spouseEmployerCost + employerHealthTax;
   const totalDeductibleExpenses = totalSalaryCost + ippTotalDeductible;
 
   // Calculate passive income for SBD grind

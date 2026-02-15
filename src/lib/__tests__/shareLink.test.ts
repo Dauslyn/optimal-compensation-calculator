@@ -7,7 +7,7 @@ describe('Share Link', () => {
     province: 'ON',
     requiredIncome: 150000,
     planningHorizon: 5,
-    startingYear: 2025,
+    startingYear: 2026,
     expectedInflationRate: 0.02,
     inflateSpendingNeeds: true,
     corporateInvestmentBalance: 500000,
