@@ -1,12 +1,14 @@
 /**
  * Provincial Employer Health Taxes
  *
- * BC Employer Health Tax (EHT) and Manitoba Health & Post-Secondary Education Tax Levy.
+ * BC Employer Health Tax (EHT), Manitoba Health & Post-Secondary Education Tax Levy,
+ * and Quebec Health Services Fund (FSS).
  * These are employer-side payroll taxes based on total remuneration.
  *
  * Sources:
  * - BC: https://www2.gov.bc.ca/gov/content/taxes/employer-health-tax/employer-health-tax-overview
  * - MB: https://www.gov.mb.ca/finance/taxation/taxes/payroll.html
+ * - QC: https://www.revenuquebec.ca/en/businesses/source-deductions-and-employer-contributions/calculating-source-deductions-and-employer-contributions/employer-contributions-to-the-health-services-fund/
  */
 
 import type { ProvinceCode } from './provinces';
@@ -66,10 +68,48 @@ export function calculateEmployerHealthTax(
     return MB_HE_FULL_RATE * totalPayroll;
   }
 
-  // ON also has an EHT, but it follows the same structure as BC.
-  // ON EHT is already implicitly captured in Ontario's higher corporate costs
-  // and the calculator already models Ontario's employer costs separately.
-  // For now, only BC and MB are implemented as they were the identified gaps.
+  if (province === 'QC') {
+    return calculateQuebecHSF(totalPayroll);
+  }
 
   return 0;
+}
+
+/**
+ * Quebec Health Services Fund (FSS - Fonds des services de santé)
+ *
+ * Employer-paid contribution on total employee remuneration (no cap).
+ * Rate depends on total worldwide payroll. For "Other Employers" (services sector,
+ * which covers most CCPCs):
+ *
+ * - Payroll ≤ $1M: 1.65%
+ * - $1M < Payroll < $7.8M: graduated rate = 1.2662 + 0.3838 × (payroll / $1M)
+ * - Payroll ≥ $7.8M: 4.26%
+ *
+ * Thresholds: $1M / $7.8M (effective 2025, unchanged for 2026). Not indexed.
+ * Uses "Other Employers" rates (services sector). Primary/manufacturing sector
+ * employers have a lower minimum rate of 1.25%.
+ */
+const QC_HSF = {
+  lowerThreshold: 1_000_000,
+  upperThreshold: 7_800_000,
+  minRate: 0.0165,      // 1.65% for other employers
+  maxRate: 0.0426,      // 4.26%
+  // Graduated formula coefficients: rate = (a + b × S) / 100, where S = payroll / $1M
+  formulaA: 1.2662,
+  formulaB: 0.3838,
+};
+
+function calculateQuebecHSF(totalPayroll: number): number {
+  if (totalPayroll <= QC_HSF.lowerThreshold) {
+    return totalPayroll * QC_HSF.minRate;
+  }
+  if (totalPayroll >= QC_HSF.upperThreshold) {
+    return totalPayroll * QC_HSF.maxRate;
+  }
+  // Graduated rate
+  const s = totalPayroll / 1_000_000;
+  const ratePercent = QC_HSF.formulaA + QC_HSF.formulaB * s;
+  const rate = ratePercent / 100;
+  return totalPayroll * rate;
 }

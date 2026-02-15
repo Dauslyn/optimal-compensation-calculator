@@ -78,8 +78,6 @@ A web-based calculator for Canadian-Controlled Private Corporation (CCPC) owners
 
 ### Future Considerations (not committed)
 
-- [ ] **Input field tooltips** — Add educational tooltips to all input fields explaining what each value means, how it's used in the calculation, and common gotchas (e.g., "Annual Corporate Net Income" is before owner compensation, not after; what notional accounts are; how inflation toggle affects brackets vs spending)
-- Quebec Health Services Fund
 - Email report to accountant
 
 ---
@@ -101,11 +99,9 @@ These features don't answer "salary vs dividends" and belong in separate tools:
 
 ## Known Limitations
 
-1. **Single shareholder** - Does not model multiple shareholders (spouse support planned for v1.8)
-2. **Simplified deductions** - Does not model all possible deductions
-3. **No capital gains deferral** - Assumes 50% of gains realized annually
-4. **Some provincial payroll taxes** - Quebec Health Services Fund not implemented
-5. **Monte Carlo simplification** - Uses geometric mean collapsing, losing sequence-of-returns risk
+1. **Simplified deductions** - Does not model all possible deductions
+2. **No capital gains deferral** - Assumes 50% of gains realized annually
+3. **Monte Carlo simplification** - Uses geometric mean collapsing, losing sequence-of-returns risk
 
 ---
 
