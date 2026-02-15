@@ -106,7 +106,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen py-10">
+    <div className="min-h-screen py-10" style={{ overflowX: 'hidden', maxWidth: '100vw' }}>
       <div className="container">
         {/* Print Header (only shown when printing) */}
         <div className="print-header">
@@ -116,10 +116,10 @@ function App() {
 
         {/* Header */}
         <header className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-3" style={{ overflow: 'hidden' }}>
+            <div className="flex items-center gap-4 min-w-0">
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
                 style={{
                   background: 'var(--accent-gradient)',
                   boxShadow: '0 0 30px var(--accent-primary-glow)'
@@ -129,7 +129,7 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight" style={{ letterSpacing: '-0.03em' }}>
                   Compensation Calculator
                 </h1>
@@ -138,7 +138,7 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="no-print flex items-center gap-2">
+            <div className="no-print flex items-center gap-2 flex-wrap">
               {/* Keyboard shortcuts help button */}
               <button
                 onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
