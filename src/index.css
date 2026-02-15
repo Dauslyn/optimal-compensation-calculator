@@ -129,6 +129,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--bg-app);
@@ -672,6 +676,17 @@ tr:last-child td {
     gap: 12px;
   }
 
+  /* Wrap header toolbar buttons on mobile */
+  header .flex.items-center.gap-2 {
+    flex-wrap: wrap;
+  }
+
+  /* Prevent header from overflowing */
+  header .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   /* Smaller header icon on mobile */
   header .w-12.h-12 {
     width: 40px;
@@ -709,6 +724,12 @@ tr:last-child td {
   #disclaimer .text-xs {
     font-size: 0.6875rem;
     line-height: 1.5;
+  }
+
+  /* Mode switcher: stack vertically on mobile */
+  header .flex.items-center.justify-between.gap-4 {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
