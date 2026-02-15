@@ -76,15 +76,16 @@ export function depleteAccountsWithRates(
     }
 
     // 2. Eligible Dividends from eRDTOH (generates refund)
-    if (remaining > 0 && updatedAccounts.eRDTOH > 0 && availableCash > 0) {
+    // Must also have GRIP to designate as eligible — cap at both eRDTOH capacity and GRIP
+    if (remaining > 0 && updatedAccounts.eRDTOH > 0 && updatedAccounts.GRIP > 0 && availableCash > 0) {
         const grossDividendNeeded = remaining / (1 - eligibleEffectiveRate);
-        const maxGrossDividend = updatedAccounts.eRDTOH / rdtohRefundRate;
+        const maxByERDTOH = updatedAccounts.eRDTOH / rdtohRefundRate;
+        const maxGrossDividend = Math.min(maxByERDTOH, updatedAccounts.GRIP);
         // Net corporate cost is dividend minus RDTOH refund — cap at available cash
-        const maxByRefund = Math.min(grossDividendNeeded, maxGrossDividend);
         const netCostPerDollar = 1 - rdtohRefundRate; // cost to corp per $1 gross dividend
-        const maxByCash = netCostPerDollar > 0 ? availableCash / netCostPerDollar : maxByRefund;
+        const maxByCash = netCostPerDollar > 0 ? availableCash / netCostPerDollar : maxGrossDividend;
 
-        const actualDividend = Math.min(maxByRefund, maxByCash);
+        const actualDividend = Math.min(grossDividendNeeded, maxGrossDividend, maxByCash);
         const refund = actualDividend * rdtohRefundRate;
         const afterTax = actualDividend * (1 - eligibleEffectiveRate);
         const netCorpCost = actualDividend - refund;
@@ -93,6 +94,7 @@ export function depleteAccountsWithRates(
         funding.afterTaxIncome += afterTax;
         remaining -= afterTax;
         updatedAccounts.eRDTOH -= refund;
+        updatedAccounts.GRIP -= actualDividend;
         updatedAccounts.corporateInvestments -= netCorpCost;
         availableCash -= netCorpCost;
         totalRdtohRefund += refund;
