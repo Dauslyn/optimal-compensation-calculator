@@ -4,6 +4,7 @@ import type {
   YearlyResult,
   ProjectionSummary,
   BalanceTracking,
+  RetirementIncome,
 } from './types';
 import {
   getTaxYearData,
@@ -32,6 +33,9 @@ import {
   estimateIPPAdminCosts,
   calculatePensionAdjustment,
 } from './tax/ipp';
+import { projectCPPBenefit, type CPPBenefitResult } from './tax/cpp';
+import { calculateOAS } from './tax/oas';
+import { calculateRRIFYear, mustConvertToRRIF } from './tax/rrif';
 
 /**
  * Calculate effective dividend tax rate at a given income level
@@ -379,8 +383,9 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
   let ippFundBalance = 0;
   const cppEarningsHistory: number[] = [];
 
-  // Calculate each year
-  for (let yearIndex = 0; yearIndex < inputs.planningHorizon; yearIndex++) {
+  // Calculate each accumulation year (up to retirement age or planningHorizon, whichever is less)
+  const accumYearsToRun = Math.min(accumulationYears, inputs.planningHorizon);
+  for (let yearIndex = 0; yearIndex < accumYearsToRun; yearIndex++) {
     const calendarYear = startingYear + yearIndex;
 
     // Get tax data for this specific year and province
@@ -417,7 +422,7 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
 
     // Annotate with lifetime model data
     const age = currentAge + yearIndex;
-    const phase = yearIndex < accumulationYears ? 'accumulation' as const : 'retirement' as const;
+    const phase = 'accumulation' as const; // All years in this loop are accumulation
 
     // Track running balances
     actualRRSPBalance += yearResult.rrspContribution;
@@ -473,6 +478,90 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
       }
 
       spouseTFSARoom += contributionLimits.tfsaLimit - yearResult.spouse.tfsaContribution;
+    }
+  }
+
+  // === RETIREMENT PHASE ===
+  // Only runs if planningHorizon extends beyond retirement age
+  const retirementYears = Math.max(0, inputs.planningHorizon - accumulationYears);
+
+  if (retirementYears > 0) {
+    // Project CPP benefit from accumulated earnings history
+    const birthYear = startingYear - currentAge;
+    const cppResult = projectCPPBenefit({
+      birthYear,
+      salaryStartAge: inputs.salaryStartAge ?? 22,
+      averageHistoricalSalary: inputs.averageHistoricalSalary ?? 60000,
+      projectedSalaries: cppEarningsHistory,
+      currentAge,
+      cppStartAge: inputs.cppStartAge ?? 65,
+      inflationRate,
+    });
+
+    // IPP pension estimate (simplified: use last projected pension if IPP was active)
+    const lastAccumYear = yearlyResults.length > 0 ? yearlyResults[yearlyResults.length - 1] : null;
+    const ippAnnualPension = lastAccumYear?.ipp?.projectedAnnualPension ?? 0;
+
+    let isRRIF = false;
+    let retRRSPBalance = actualRRSPBalance;
+    let retTFSABalance = actualTFSABalance;
+    let retIppFundBalance = ippFundBalance;
+    let retAccounts = { ...currentAccounts };
+
+    for (let retIdx = 0; retIdx < retirementYears; retIdx++) {
+      const yearIndex = accumulationYears + retIdx;
+      const age = currentAge + yearIndex;
+      const calendarYear = startingYear + yearIndex;
+
+      const taxData = getTaxYearData(calendarYear, inflationRate, inputs.province);
+
+      // Inflation-adjusted retirement spending
+      const retirementSpending = inflateAmount(
+        inputs.retirementSpending ?? inputs.requiredIncome * 0.7,
+        yearIndex,
+        inflationRate,
+      );
+
+      // CPP income (only if past start age, inflation-adjusted)
+      const cppStartAge = inputs.cppStartAge ?? 65;
+      const cppIncome = age >= cppStartAge
+        ? inflateAmount(cppResult.totalAnnualBenefit, age - cppStartAge, inflationRate)
+        : 0;
+
+      const retResult = calculateRetirementYear({
+        displayYear: yearIndex + 1,
+        calendarYear,
+        age,
+        province: inputs.province,
+        inflationRate,
+        investmentReturnRate: inputs.investmentReturnRate,
+        rrspBalance: retRRSPBalance,
+        tfsaBalance: retTFSABalance,
+        corporateAccounts: retAccounts,
+        ippFundBalance: retIppFundBalance,
+        cppBenefit: cppIncome,
+        oasEligible: inputs.oasEligible ?? true,
+        oasStartAge: inputs.oasStartAge ?? 65,
+        ippAnnualPension: ippAnnualPension,
+        retirementSpending,
+        isRRIF,
+      }, taxData);
+
+      // Push result as a full YearlyResult
+      yearlyResults.push(retResult.yearResult as YearlyResult);
+
+      // Update state for next year
+      retRRSPBalance = retResult.updatedBalances.rrspBalance;
+      retTFSABalance = retResult.updatedBalances.tfsaBalance;
+      retIppFundBalance = retResult.updatedBalances.ippFundBalance;
+      retAccounts = (retResult.yearResult as YearlyResult).notionalAccounts;
+      isRRIF = retResult.isRRIF;
+
+      // Update tracking variables for summary
+      actualRRSPBalance = retRRSPBalance;
+      actualTFSABalance = retTFSABalance;
+      ippFundBalance = retIppFundBalance;
+      currentAccounts = retAccounts;
     }
   }
 
@@ -987,6 +1076,279 @@ function calculateYear(
     passiveIncomeGrind,
     ipp: primaryIPP,
     spouse: spouseResult,
+  };
+}
+
+/**
+ * Inputs for the retirement year calculation
+ */
+interface RetirementYearInputs {
+  displayYear: number;
+  calendarYear: number;
+  age: number;
+  province: string;
+  inflationRate: number;
+  investmentReturnRate: number;
+
+  // Account balances at start of year
+  rrspBalance: number;   // Becomes RRIF after age 71
+  tfsaBalance: number;
+  corporateAccounts: NotionalAccounts;
+  ippFundBalance: number;
+
+  // Income sources
+  cppBenefit: number;    // Annual CPP (pre-calculated)
+  oasEligible: boolean;
+  oasStartAge: number;
+  ippAnnualPension: number;
+
+  // Target
+  retirementSpending: number;  // Inflation-adjusted target
+  isRRIF: boolean;             // Whether RRSP has converted to RRIF
+}
+
+/**
+ * Calculate a single retirement year with drawdown optimization.
+ *
+ * Sequential logic:
+ * 1. Apply investment returns to all accounts
+ * 2. Collect mandatory income (CPP, OAS, IPP, RRIF minimum)
+ * 3. Calculate gap between target spending and mandatory income
+ * 4. Fill gap using optimized drawdown priority
+ * 5. Calculate personal tax on all taxable income
+ * 6. Return updated balances
+ */
+function calculateRetirementYear(
+  inputs: RetirementYearInputs,
+  taxData: TaxYearData,
+): {
+  yearResult: Partial<YearlyResult>;
+  updatedBalances: BalanceTracking;
+  isRRIF: boolean;
+} {
+  const { age, calendarYear, province, inflationRate, investmentReturnRate } = inputs;
+
+  // 1. Investment returns on all accounts
+  let rrspBalance = inputs.rrspBalance * (1 + investmentReturnRate);
+  let tfsaBalance = inputs.tfsaBalance * (1 + investmentReturnRate);
+  let ippFundBalance = inputs.ippFundBalance * (1 + investmentReturnRate);
+  let accounts = { ...inputs.corporateAccounts };
+
+  // Corporate investment returns
+  const investmentReturns = calculateInvestmentReturns(
+    accounts.corporateInvestments, investmentReturnRate,
+    33.33, 33.33, 33.33, 0 // Default equity-heavy portfolio for retirement
+  );
+  accounts = updateAccountsFromReturns(accounts, investmentReturns);
+
+  // 2. RRSP → RRIF conversion check
+  let isRRIF = inputs.isRRIF;
+  if (!isRRIF && mustConvertToRRIF(age)) {
+    isRRIF = true;
+  }
+
+  // 3. Mandatory income
+  const cppIncome = inputs.cppBenefit;
+
+  // OAS with clawback (initial estimate — will be recalculated after drawdown)
+  const oasResult = calculateOAS({
+    calendarYear,
+    age,
+    oasStartAge: inputs.oasStartAge,
+    oasEligible: inputs.oasEligible,
+    baseIncomeBeforeOAS: cppIncome + (inputs.ippAnnualPension || 0),
+    inflationRate,
+  });
+
+  const ippPension = inputs.ippAnnualPension;
+  if (ippPension > 0 && ippFundBalance > 0) {
+    ippFundBalance = Math.max(0, ippFundBalance - ippPension);
+  }
+
+  // RRIF minimum withdrawal
+  let rrifWithdrawal = 0;
+  let rrifMinimum = 0;
+  if (isRRIF && rrspBalance > 0) {
+    const rrifResult = calculateRRIFYear(rrspBalance, age, 0); // No growth (already applied)
+    rrifMinimum = rrifResult.minimum;
+    rrifWithdrawal = rrifMinimum;
+    rrspBalance = Math.max(0, rrspBalance - rrifWithdrawal);
+  }
+
+  // 4. Calculate gap
+  const mandatoryAfterTaxEstimate = cppIncome + oasResult.netOAS + ippPension + rrifWithdrawal;
+  const spendingGap = Math.max(0, inputs.retirementSpending - mandatoryAfterTaxEstimate);
+
+  // 5. Fill gap using drawdown priority
+  let corporateDividends = 0;
+  let tfsaWithdrawal = 0;
+  let extraRRIFWithdrawal = 0;
+
+  if (spendingGap > 0) {
+    let remaining = spendingGap;
+
+    // Priority 1: Corporate dividends (CDA first, then RDTOH, then GRIP, then retained)
+    if (remaining > 0 && accounts.corporateInvestments > 0) {
+      const estimatedRate = calculateEffectiveDividendRate(taxData, 'eligible', 80000);
+      const nonEligRate = calculateEffectiveDividendRate(taxData, 'nonEligible', 80000);
+
+      const divResult = depleteAccountsWithRates(
+        remaining, accounts, taxData.rdtoh.refundRate,
+        estimatedRate, nonEligRate, true
+      );
+      corporateDividends = divResult.funding.capitalDividends +
+        divResult.funding.eligibleDividends +
+        divResult.funding.nonEligibleDividends;
+      accounts = divResult.updatedAccounts;
+      remaining = Math.max(0, remaining - divResult.funding.afterTaxIncome);
+    }
+
+    // Priority 2: Extra RRIF withdrawal (if beneficial)
+    if (remaining > 0 && isRRIF && rrspBalance > 0) {
+      extraRRIFWithdrawal = Math.min(remaining, rrspBalance);
+      rrifWithdrawal += extraRRIFWithdrawal;
+      rrspBalance = Math.max(0, rrspBalance - extraRRIFWithdrawal);
+      remaining = Math.max(0, remaining - extraRRIFWithdrawal);
+    }
+
+    // Priority 3: TFSA withdrawal (tax-free, preserve as long as possible)
+    if (remaining > 0 && tfsaBalance > 0) {
+      tfsaWithdrawal = Math.min(remaining, tfsaBalance);
+      tfsaBalance = Math.max(0, tfsaBalance - tfsaWithdrawal);
+      remaining = Math.max(0, remaining - tfsaWithdrawal);
+    }
+  }
+
+  // 6. Recalculate OAS clawback with final income
+  const totalTaxableBeforeOAS = cppIncome + ippPension + rrifWithdrawal + corporateDividends;
+  const finalOAS = calculateOAS({
+    calendarYear, age,
+    oasStartAge: inputs.oasStartAge,
+    oasEligible: inputs.oasEligible,
+    baseIncomeBeforeOAS: totalTaxableBeforeOAS,
+    inflationRate,
+  });
+
+  // 7. Personal tax on all taxable income
+  const totalTaxableIncome = cppIncome + finalOAS.netOAS + ippPension + rrifWithdrawal + corporateDividends;
+  // TFSA withdrawals are tax-free
+
+  // Split corporate dividends into eligible/non-eligible for tax calculation
+  // Simplified: assume all corporate dividends are non-eligible for conservative estimate
+  const taxResult = calculatePersonalTaxForYear(
+    0, // No salary in retirement
+    0, // eligible dividends (simplified)
+    corporateDividends, // non-eligible (conservative)
+    0, // No RRSP deduction in retirement
+    taxData,
+    province,
+  );
+
+  // Add CPP + RRIF + IPP income tax (taxed as regular income)
+  const otherIncomeTax = calculateTaxByBrackets(
+    Math.max(0, cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal - taxData.federal.basicPersonalAmount),
+    taxData.federal.brackets
+  ) + calculateTaxByBrackets(
+    Math.max(0, cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal - taxData.provincial.basicPersonalAmount),
+    taxData.provincial.brackets
+  );
+
+  // Total personal tax (simplified: sum of dividend tax + income tax, minus double-count)
+  // More accurate: unified calculation on all income
+  const allTaxableIncome = cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal;
+  const unifiedTax = calculatePersonalTaxForYear(
+    allTaxableIncome, // Treat as "salary" for bracket calculation
+    0,
+    corporateDividends,
+    0,
+    taxData,
+    province,
+  );
+  const personalTax = unifiedTax.totalTax;
+
+  const totalRetirementIncome = cppIncome + finalOAS.netOAS + ippPension +
+    rrifWithdrawal + corporateDividends + tfsaWithdrawal;
+
+  const retirement: RetirementIncome = {
+    cppIncome,
+    oasGross: finalOAS.grossOAS,
+    oasClawback: finalOAS.clawback,
+    oasNet: finalOAS.netOAS,
+    rrifWithdrawal,
+    rrifMinimum,
+    tfsaWithdrawal,
+    corporateDividends,
+    ippPension,
+    totalRetirementIncome,
+    totalTaxableIncome: allTaxableIncome + corporateDividends,
+  };
+
+  // Corporate tax on passive income
+  const taxableCapGain = investmentReturns.realizedCapitalGain * 0.5;
+  const taxableInvIncome = investmentReturns.foreignIncome + taxableCapGain;
+  const corpTaxOnInvestments = taxableInvIncome * 0.5017;
+
+  const afterTaxIncome = totalRetirementIncome - personalTax;
+
+  const yearResult: Partial<YearlyResult> = {
+    year: inputs.displayYear,
+    salary: 0,
+    dividends: {
+      capitalDividends: 0,
+      eligibleDividends: 0,
+      nonEligibleDividends: corporateDividends,
+      regularDividends: 0,
+      grossDividends: corporateDividends,
+      afterTaxIncome: corporateDividends > 0 ? corporateDividends * (1 - calculateEffectiveDividendRate(taxData, 'nonEligible', 80000)) : 0,
+    },
+    personalTax,
+    federalTax: unifiedTax.federalTax,
+    provincialTax: unifiedTax.provincialTax,
+    corporateTax: corpTaxOnInvestments,
+    corporateTaxOnActive: 0,
+    corporateTaxOnPassive: corpTaxOnInvestments,
+    rdtohRefundReceived: 0,
+    cpp: 0, cpp2: 0, ei: 0, qpip: 0,
+    provincialSurtax: unifiedTax.provincialSurtax,
+    healthPremium: unifiedTax.healthPremium,
+    totalTax: personalTax + corpTaxOnInvestments,
+    effectiveIntegratedRate: totalRetirementIncome > 0 ? personalTax / totalRetirementIncome : 0,
+    afterTaxIncome,
+    rrspRoomGenerated: 0,
+    rrspContribution: 0,
+    tfsaContribution: 0,
+    respContribution: 0,
+    debtPaydown: 0,
+    notionalAccounts: accounts,
+    investmentReturns,
+    passiveIncomeGrind: {
+      totalPassiveIncome: taxableInvIncome,
+      reducedSBDLimit: 0,
+      sbdReduction: 0,
+      additionalTaxFromGrind: 0,
+      isFullyGrounded: false,
+    },
+    phase: 'retirement',
+    calendarYear,
+    age,
+    retirement,
+    balances: {
+      rrspBalance,
+      tfsaBalance,
+      corporateBalance: accounts.corporateInvestments,
+      ippFundBalance,
+    },
+  };
+
+  return {
+    yearResult,
+    updatedBalances: {
+      rrspBalance,
+      tfsaBalance,
+      corporateBalance: accounts.corporateInvestments,
+      ippFundBalance,
+    },
+    isRRIF,
   };
 }
 
