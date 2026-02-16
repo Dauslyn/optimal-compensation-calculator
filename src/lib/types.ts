@@ -8,8 +8,8 @@ export interface UserInputs {
   // Required after-tax income per year (Year 1 baseline)
   requiredIncome: number;
 
-  // Planning horizon (3-10 years)
-  planningHorizon: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  // Planning horizon in years (computed from planningEndAge - currentAge in lifetime mode)
+  planningHorizon: number;
 
   // Starting year for projections (defaults to current year)
   startingYear: number;
@@ -67,6 +67,26 @@ export interface UserInputs {
   spouseIPPAge?: number;
   spouseIPPYearsOfService?: number;
 
+  // ─── Lifetime Model Fields ─────────────────────────────────────────
+  currentAge: number;                    // default: 45
+  retirementAge: number;                 // default: 65
+  planningEndAge: number;                // default: 90
+  retirementSpending: number;            // default: requiredIncome * 0.7
+  lifetimeObjective: 'maximize-spending' | 'maximize-estate' | 'balanced';
+
+  // CPP projection
+  cppStartAge: number;                   // default: 65
+  salaryStartAge: number;                // default: 22
+  averageHistoricalSalary: number;       // default: 60000
+
+  // OAS
+  oasEligible: boolean;                  // default: true
+  oasStartAge: number;                   // default: 65
+
+  // Actual account balances (rrspBalance/tfsaBalance are contribution room)
+  actualRRSPBalance: number;             // default: 0
+  actualTFSABalance: number;             // default: 0
+
   // Spouse / second shareholder - optional
   hasSpouse?: boolean;
   spouseRequiredIncome?: number;
@@ -76,6 +96,17 @@ export interface UserInputs {
   spouseTFSARoom?: number;
   spouseMaximizeTFSA?: boolean;
   spouseContributeToRRSP?: boolean;
+
+  // Spouse lifetime fields
+  spouseCurrentAge?: number;
+  spouseRetirementAge?: number;
+  spouseCPPStartAge?: number;
+  spouseSalaryStartAge?: number;
+  spouseAverageHistoricalSalary?: number;
+  spouseOASEligible?: boolean;
+  spouseOASStartAge?: number;
+  spouseActualRRSPBalance?: number;
+  spouseActualTFSABalance?: number;
 }
 
 // Notional account balances
@@ -131,6 +162,37 @@ export interface PassiveIncomeGrindInfo {
   isFullyGrounded: boolean;        // True if SBD = $0
 }
 
+// Retirement income breakdown for a single year
+export interface RetirementIncome {
+  cppIncome: number;
+  oasGross: number;
+  oasClawback: number;
+  oasNet: number;
+  rrifWithdrawal: number;
+  rrifMinimum: number;
+  tfsaWithdrawal: number;
+  corporateDividends: number;
+  ippPension: number;
+  totalRetirementIncome: number;
+  totalTaxableIncome: number;
+}
+
+// Running balance tracking across all phases
+export interface BalanceTracking {
+  rrspBalance: number;
+  tfsaBalance: number;
+  corporateBalance: number;
+  ippFundBalance: number;
+}
+
+// Estate liquidation breakdown (terminal year)
+export interface EstateBreakdown {
+  terminalRRIFTax: number;
+  corporateWindUpTax: number;
+  tfsaPassThrough: number;
+  netEstateValue: number;
+}
+
 // Yearly result
 export interface YearlyResult {
   year: number;
@@ -160,6 +222,15 @@ export interface YearlyResult {
   notionalAccounts: NotionalAccounts;
   investmentReturns: InvestmentReturns;
   passiveIncomeGrind: PassiveIncomeGrindInfo;  // SBD clawback details
+
+  // ─── Lifetime Model Fields (optional during accumulation phase) ─────
+  phase?: 'accumulation' | 'retirement' | 'estate';
+  calendarYear?: number;
+  age?: number;
+  spouseAge?: number;
+  retirement?: RetirementIncome;
+  balances?: BalanceTracking;
+  estate?: EstateBreakdown;
 
   // IPP data (only present when considerIPP = true and salary > 0)
   ipp?: {
@@ -245,6 +316,22 @@ export interface ProjectionSummary {
       totalAdminCosts: number;
       totalPensionAdjustments: number;
     };
+  };
+
+  // Lifetime summary (populated in v3.0 lifetime mode)
+  lifetime?: {
+    totalAccumulationYears: number;
+    totalRetirementYears: number;
+    totalLifetimeSpending: number;
+    totalLifetimeTax: number;
+    lifetimeEffectiveRate: number;
+    peakCorporateBalance: number;
+    peakYear: number;
+    estateValue: number;
+    cppTotalReceived: number;
+    oasTotalReceived: number;
+    rrifTotalWithdrawn: number;
+    tfsaTotalWithdrawn: number;
   };
 }
 

@@ -129,7 +129,7 @@ export function getDefaultInputs(): UserInputs {
   return {
     province: DEFAULT_PROVINCE,
     requiredIncome: 100000,
-    planningHorizon: 5,
+    planningHorizon: 45, // default: planningEndAge (90) - currentAge (45)
     startingYear: getStartingYear(),
     expectedInflationRate: getDefaultInflationRate(),
     inflateSpendingNeeds: true,
@@ -155,6 +155,20 @@ export function getDefaultInputs(): UserInputs {
     totalDebtAmount: 0,
     debtInterestRate: 0.05,
     considerIPP: false,
+
+    // Lifetime model defaults
+    currentAge: 45,
+    retirementAge: 65,
+    planningEndAge: 90,
+    retirementSpending: 70000, // ~70% of default requiredIncome
+    lifetimeObjective: 'balanced',
+    cppStartAge: 65,
+    salaryStartAge: 22,
+    averageHistoricalSalary: 60000,
+    oasEligible: true,
+    oasStartAge: 65,
+    actualRRSPBalance: 0,
+    actualTFSABalance: 0,
 
     // Spouse defaults
     hasSpouse: false,

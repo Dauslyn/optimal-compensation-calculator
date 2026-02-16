@@ -30,12 +30,60 @@ export function validateInputs(inputs: UserInputs): ValidationError[] {
     });
   }
 
-  // Planning horizon validation
-  if (![3, 4, 5, 6, 7, 8, 9, 10].includes(inputs.planningHorizon)) {
+  // Planning horizon validation (now computed from age range)
+  if (inputs.planningHorizon < 1 || inputs.planningHorizon > 80) {
     errors.push({
       field: 'planningHorizon',
-      message: 'Planning horizon must be between 3 and 10 years',
+      message: 'Planning horizon must be between 1 and 80 years',
     });
+  }
+
+  // Lifetime model validation
+  if (inputs.currentAge !== undefined) {
+    if (inputs.currentAge < 18 || inputs.currentAge > 80) {
+      errors.push({
+        field: 'currentAge',
+        message: 'Current age must be between 18 and 80',
+      });
+    }
+    if (inputs.retirementAge <= inputs.currentAge) {
+      errors.push({
+        field: 'retirementAge',
+        message: 'Retirement age must be greater than current age',
+      });
+    }
+    if (inputs.planningEndAge <= inputs.retirementAge) {
+      errors.push({
+        field: 'planningEndAge',
+        message: 'Planning end age must be greater than retirement age',
+      });
+    }
+    if (inputs.planningEndAge > 100) {
+      errors.push({
+        field: 'planningEndAge',
+        message: 'Planning end age cannot exceed 100',
+      });
+    }
+  }
+
+  // CPP start age validation
+  if (inputs.cppStartAge !== undefined) {
+    if (inputs.cppStartAge < 60 || inputs.cppStartAge > 70) {
+      errors.push({
+        field: 'cppStartAge',
+        message: 'CPP start age must be between 60 and 70',
+      });
+    }
+  }
+
+  // OAS start age validation
+  if (inputs.oasStartAge !== undefined) {
+    if (inputs.oasStartAge < 65 || inputs.oasStartAge > 70) {
+      errors.push({
+        field: 'oasStartAge',
+        message: 'OAS start age must be between 65 and 70',
+      });
+    }
   }
 
   // Starting year validation
