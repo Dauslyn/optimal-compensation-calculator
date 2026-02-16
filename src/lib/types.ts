@@ -137,6 +137,8 @@ export interface YearlyResult {
   salary: number;
   dividends: DividendFunding;
   personalTax: number;
+  federalTax: number;           // Federal personal tax (after dividend tax credits)
+  provincialTax: number;        // Provincial personal tax (after DTC, including surtax)
   corporateTax: number;
   corporateTaxOnActive: number;      // Tax on active business income
   corporateTaxOnPassive: number;     // Tax on passive investment income (gross, before RDTOH)
@@ -175,6 +177,8 @@ export interface YearlyResult {
     salary: number;
     dividends: DividendFunding;
     personalTax: number;
+    federalTax: number;
+    provincialTax: number;
     cpp: number;
     cpp2: number;
     ei: number;

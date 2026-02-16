@@ -17,6 +17,7 @@ import {
   calculateQuebecEI,
   calculatePassiveIncomeGrind,
   calculateEmployerHealthTax,
+  calculateTaxByBrackets,
 } from './tax';
 import type { TaxYearData } from './tax';
 import {
@@ -88,6 +89,13 @@ function getMarginalRateAtIncome(
 }
 
 /**
+ * Quebec federal tax abatement: 16.5% reduction on basic federal tax.
+ * Quebec residents file a separate provincial return, so the federal
+ * government reduces their federal tax by 16.5% (the "Quebec abatement").
+ */
+const QUEBEC_ABATEMENT_RATE = 0.165;
+
+/**
  * Calculate personal tax using year-specific rates
  */
 function calculatePersonalTaxForYear(
@@ -95,7 +103,8 @@ function calculatePersonalTaxForYear(
   eligibleDividends: number,
   nonEligibleDividends: number,
   rrspDeduction: number,
-  taxData: TaxYearData
+  taxData: TaxYearData,
+  province: string = 'ON'
 ): {
   federalTax: number;
   provincialTax: number;
@@ -143,7 +152,11 @@ function calculatePersonalTaxForYear(
   const dividendTaxCredits = totalFederalDTC + totalProvincialDTC;
 
   // Step 6: Calculate net federal and provincial tax (after credits)
-  const federalTax = Math.max(0, federalTaxBeforeCredits - totalFederalDTC);
+  // Quebec abatement: 16.5% reduction on basic federal tax (before DTC)
+  const federalTaxAfterAbatement = province === 'QC'
+    ? federalTaxBeforeCredits * (1 - QUEBEC_ABATEMENT_RATE)
+    : federalTaxBeforeCredits;
+  const federalTax = Math.max(0, federalTaxAfterAbatement - totalFederalDTC);
   const provincialTaxBeforeSurtax = Math.max(0, provincialTaxBeforeCredits - totalProvincialDTC);
 
   // Step 7: Provincial surtax on provincial tax payable (AFTER credits)
@@ -175,34 +188,6 @@ function calculatePersonalTaxForYear(
     dividendTaxCredits,
     totalTax,
   };
-}
-
-/**
- * Calculate tax by brackets
- */
-function calculateTaxByBrackets(
-  income: number,
-  brackets: Array<{ threshold: number; rate: number }>
-): number {
-  let tax = 0;
-
-  for (let i = 0; i < brackets.length; i++) {
-    const bracket = brackets[i];
-    const nextThreshold = i < brackets.length - 1 ? brackets[i + 1].threshold : Infinity;
-
-    if (income <= bracket.threshold) {
-      break;
-    }
-
-    const taxableInThisBracket = Math.min(income, nextThreshold) - bracket.threshold;
-    tax += taxableInThisBracket * bracket.rate;
-
-    if (income <= nextThreshold) {
-      break;
-    }
-  }
-
-  return tax;
 }
 
 /**
@@ -334,7 +319,7 @@ function calculateRequiredSalaryForYear(
   let estimatedSalary = targetAfterTax * 1.5;
 
   for (let i = 0; i < maxIterations; i++) {
-    const taxResult = calculatePersonalTaxForYear(estimatedSalary, 0, 0, 0, taxData);
+    const taxResult = calculatePersonalTaxForYear(estimatedSalary, 0, 0, 0, taxData, province);
     const payroll = calculatePayrollDeductions(estimatedSalary, taxData, province, calendarYear, inflationRate);
     const totalPayroll = payroll.cpp + payroll.cpp2 + payroll.ei + payroll.qpip;
     const afterTax = estimatedSalary - taxResult.totalTax - totalPayroll;
@@ -540,7 +525,7 @@ function calculateYear(
       : inputs.fixedSalaryAmount;
 
     salary = fixedSalary;
-    const salaryTaxResult = calculatePersonalTaxForYear(salary, 0, 0, 0, taxData);
+    const salaryTaxResult = calculatePersonalTaxForYear(salary, 0, 0, 0, taxData, province);
     const payroll = calculatePayrollDeductions(salary, taxData, province, calendarYear, inflationRate);
     const salaryAfterTax = salary - salaryTaxResult.totalTax - payroll.cpp - payroll.cpp2 - payroll.ei - payroll.qpip;
 
@@ -634,7 +619,7 @@ function calculateYear(
         : inputs.spouseFixedSalaryAmount;
 
       spouseSalary = fixedSpouseSalary;
-      const spSalaryTax = calculatePersonalTaxForYear(spouseSalary, 0, 0, 0, taxData);
+      const spSalaryTax = calculatePersonalTaxForYear(spouseSalary, 0, 0, 0, taxData, province);
       const spPayroll = calculatePayrollDeductions(spouseSalary, taxData, province, calendarYear, inflationRate);
       const spSalaryAfterTax = spouseSalary - spSalaryTax.totalTax - spPayroll.cpp - spPayroll.cpp2 - spPayroll.ei - spPayroll.qpip;
 
@@ -692,7 +677,8 @@ function calculateYear(
       spouseDividendFunding.eligibleDividends,
       spouseDividendFunding.nonEligibleDividends,
       spouseRrspContrib,
-      taxData
+      taxData,
+      province
     );
 
     // Spouse payroll
@@ -710,6 +696,8 @@ function calculateYear(
       salary: spouseSalary,
       dividends: spouseDividendFunding,
       personalTax: spouseTaxResult.totalTax,
+      federalTax: spouseTaxResult.federalTax,
+      provincialTax: spouseTaxResult.provincialTax,
       cpp: spousePayroll.cpp,
       cpp2: spousePayroll.cpp2,
       ei: spousePayroll.ei,
@@ -826,9 +814,12 @@ function calculateYear(
     dividendFunding.eligibleDividends,
     dividendFunding.nonEligibleDividends,
     rrspContribution,
-    taxData
+    taxData,
+    province
   );
   const personalTax = combinedTaxResult.totalTax;
+  const federalTax = combinedTaxResult.federalTax;
+  const provincialTaxBeforeSurtaxVal = combinedTaxResult.provincialTax; // includes surtax from calculatePersonalTaxForYear
   const provincialSurtax = combinedTaxResult.provincialSurtax;
   const healthPremium = combinedTaxResult.healthPremium;
 
@@ -925,6 +916,8 @@ function calculateYear(
     salary,
     dividends: dividendFunding,
     personalTax,
+    federalTax,
+    provincialTax: provincialTaxBeforeSurtaxVal,
     corporateTax,
     corporateTaxOnActive: corpTaxOnActiveIncome,
     corporateTaxOnPassive: corpTaxOnInvestments,
@@ -1007,7 +1000,12 @@ function calculateSummary(
     totalRRSPContributions += year.rrspContribution;
     totalTFSAContributions += year.tfsaContribution;
     totalCpp += year.cpp + year.cpp2 + year.ei + year.qpip;
-    totalPassiveIncome += year.investmentReturns.totalReturn;
+    // Use taxable passive income (foreignIncome + 50% of realized cap gains) to match
+    // the numerator (corpTaxOnInvestments), not gross totalReturn which includes untaxed
+    // components (Canadian dividends taxed via Part IV/refundable, unrealized gains, non-taxable 50%)
+    const taxablePassive = year.investmentReturns.foreignIncome +
+      (year.investmentReturns.realizedCapitalGain * 0.5);
+    totalPassiveIncome += taxablePassive;
 
     // Spouse: add to family-level totals AND track spouse-specific breakdown
     if (year.spouse) {
@@ -1048,6 +1046,9 @@ function calculateSummary(
 
   const totalCompensation = totalSalary + totalDividends;
   const totalTax = totalPersonalTax + totalCorporateTax;
+  // Overall effective rate: total tax (personal + ALL corporate) / total compensation.
+  // Includes corporate tax on passive investment income, so may appear inflated
+  // when corporate investments are large. For a compensation-only rate, see effectiveCompensationRate.
   const effectiveTaxRate = totalCompensation > 0 ? totalTax / totalCompensation : 0;
 
   // Effective INTEGRATED tax rate on compensation

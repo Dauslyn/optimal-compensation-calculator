@@ -71,9 +71,10 @@ export function calculateAfterTaxWealth(
   const lowerRate = Math.max(averageMarginalRate - 0.10, 0.20);
   const corpLiquidationRate = 0.40; // Conservative estimate (non-eligible dividends)
 
-  // Base wealth = already taxed income + tax-free TFSA
+  // Base wealth = already taxed income (includes money used for TFSA contributions,
+  // which are tax-free on withdrawal — no additional adjustment needed for TFSA).
   const totalAfterTaxIncome = summary.totalCompensation - summary.totalTax;
-  const baseWealth = totalAfterTaxIncome + summary.totalTFSAContributions;
+  const baseWealth = totalAfterTaxIncome;
 
   return {
     atCurrentRate: baseWealth +

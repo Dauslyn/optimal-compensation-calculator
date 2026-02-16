@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import type { UserInputs, ProjectionSummary } from '../lib/types';
 import type { ComparisonResult } from '../lib/strategyComparison';
-import { formatCurrency, formatPercentage } from '../lib/utils';
+import { formatCurrency, formatPercentage } from '../lib/formatters';
 import { PROVINCES } from '../lib/tax/provinces';
 import { INPUT_TOOLTIPS } from './Tooltip';
 
@@ -42,7 +42,7 @@ function generateExecutiveBullets(inputs: UserInputs, summary: ProjectionSummary
     }
 
     // Total tax efficiency
-    bullets.push(`Average combined effective tax rate of ${formatPercentage(summary.effectiveTaxRate)} across the ${inputs.planningHorizon}-year horizon, delivering ${formatCurrency(summary.averageAnnualIncome)}/year after-tax.`);
+    bullets.push(`Average integrated tax rate of ${formatPercentage(summary.effectiveCompensationRate)} (corporate + personal) across the ${inputs.planningHorizon}-year horizon, delivering ${formatCurrency(summary.averageAnnualIncome)}/year after-tax.`);
 
     // Corporate balance trajectory
     const balanceChange = summary.finalCorporateBalance - inputs.corporateInvestmentBalance;
@@ -142,8 +142,8 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                             <div className="metric-value">{formatCurrency(summary.averageAnnualIncome * inputs.planningHorizon)}</div>
                         </div>
                         <div className="metric-box">
-                            <div className="metric-label">Combined Effective Rate</div>
-                            <div className="metric-value">{formatPercentage(summary.effectiveTaxRate)}</div>
+                            <div className="metric-label">Integrated Tax Rate</div>
+                            <div className="metric-value">{formatPercentage(summary.effectiveCompensationRate)}</div>
                         </div>
                         <div className="metric-box">
                             <div className="metric-label">Final Corp Balance</div>
@@ -155,15 +155,15 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                         </div>
                     </div>
 
-                    {/* Effective Tax Rates */}
+                    {/* Tax Detail */}
                     <div className="grid-3" style={{ marginBottom: '16px' }}>
                         <div className="metric-box">
-                            <div className="metric-label">Integrated Rate (Comp)</div>
-                            <div className="metric-value">{formatPercentage(summary.effectiveCompensationRate)}</div>
+                            <div className="metric-label">Total Personal Tax</div>
+                            <div className="metric-value">{formatCurrency(summary.totalPersonalTax)}</div>
                         </div>
                         <div className="metric-box">
-                            <div className="metric-label">Investment Tax (Net)</div>
-                            <div className="metric-value">{formatPercentage(summary.effectivePassiveRate)}</div>
+                            <div className="metric-label">Total Corporate Tax</div>
+                            <div className="metric-value">{formatCurrency(summary.totalCorporateTax)}</div>
                         </div>
                         <div className="metric-box">
                             <div className="metric-label">RDTOH Refunds</div>
@@ -419,7 +419,7 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                                 <td>{formatCurrency(summary.totalPersonalTax)}</td>
                                 <td>{formatCurrency(summary.yearlyResults.reduce((s, y) => s + y.cpp + y.cpp2 + y.ei + y.qpip, 0))}</td>
                                 <td>{formatCurrency(summary.averageAnnualIncome * inputs.planningHorizon)}</td>
-                                <td>{formatPercentage(summary.effectiveTaxRate)}</td>
+                                <td>{formatPercentage(summary.effectiveCompensationRate)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -632,10 +632,10 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                                     ))}
                                 </tr>
                                 <tr>
-                                    <td><strong>Effective Tax Rate</strong></td>
+                                    <td><strong>Integrated Tax Rate</strong></td>
                                     {comparison.strategies.map(s => (
                                         <td key={s.id}>
-                                            {(s.summary.effectiveTaxRate * 100).toFixed(1)}%
+                                            {(s.summary.effectiveCompensationRate * 100).toFixed(1)}%
                                         </td>
                                     ))}
                                 </tr>
@@ -687,7 +687,7 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                             {(() => {
                                 const best = comparison.strategies.find(s => s.id === comparison.winner.bestOverall);
                                 if (!best) return '';
-                                return `Based on this analysis, the ${best.label} strategy is recommended. It results in ${formatCurrency(best.summary.totalTax)} total tax over the projection period with a ${(best.summary.effectiveTaxRate * 100).toFixed(1)}% effective rate, leaving ${formatCurrency(best.summary.finalCorporateBalance)} in corporate investments.`;
+                                return `Based on this analysis, the ${best.label} strategy is recommended. It results in ${formatCurrency(best.summary.totalTax)} total tax over the projection period with a ${(best.summary.effectiveCompensationRate * 100).toFixed(1)}% integrated rate, leaving ${formatCurrency(best.summary.finalCorporateBalance)} in corporate investments.`;
                             })()}
                         </div>
                     </div>

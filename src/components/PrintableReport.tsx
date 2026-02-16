@@ -58,7 +58,7 @@ export const PrintableReport = memo(function PrintableReport({
             page-break-before: always;
           }
           .print-header {
-            border-bottom: 2px solid #1a365d;
+            border-bottom: 2px solid #064e3b;
             padding-bottom: 12pt;
             margin-bottom: 18pt;
           }
@@ -111,7 +111,7 @@ export const PrintableReport = memo(function PrintableReport({
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
           }
           .print-header {
-            border-bottom: 2px solid #1a365d;
+            border-bottom: 2px solid #064e3b;
             padding-bottom: 12pt;
             margin-bottom: 18pt;
           }
@@ -150,7 +150,7 @@ export const PrintableReport = memo(function PrintableReport({
 
       {/* Report Header */}
       <div className="print-header print-no-break">
-        <h1 style={{ margin: 0, fontSize: '18pt', color: '#1a365d' }}>
+        <h1 style={{ margin: 0, fontSize: '18pt', color: '#064e3b' }}>
           CCPC Compensation Analysis
         </h1>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8pt' }}>
@@ -169,19 +169,19 @@ export const PrintableReport = memo(function PrintableReport({
 
       {/* Executive Summary */}
       <div className="print-section print-no-break">
-        <h2 style={{ fontSize: '14pt', color: '#1a365d', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
+        <h2 style={{ fontSize: '14pt', color: '#064e3b', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
           Executive Summary
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12pt' }}>
-          <div style={{ padding: '8pt', background: '#f7fafc', borderRadius: '4pt' }}>
+          <div style={{ padding: '8pt', background: '#f0fdf4', borderRadius: '4pt' }}>
             <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase' }}>Total Tax Paid</div>
-            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#c53030' }}>{formatCurrency(results.totalTax)}</div>
+            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#b91c1c' }}>{formatCurrency(results.totalTax)}</div>
           </div>
-          <div style={{ padding: '8pt', background: '#f7fafc', borderRadius: '4pt' }}>
-            <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase' }}>Effective Tax Rate</div>
-            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#1a365d' }}>{formatPercent(results.effectiveTaxRate, 1)}</div>
+          <div style={{ padding: '8pt', background: '#f0fdf4', borderRadius: '4pt' }}>
+            <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase' }}>Integrated Tax Rate</div>
+            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#064e3b' }}>{formatPercent(results.effectiveCompensationRate, 1)}</div>
           </div>
-          <div style={{ padding: '8pt', background: '#f7fafc', borderRadius: '4pt' }}>
+          <div style={{ padding: '8pt', background: '#f0fdf4', borderRadius: '4pt' }}>
             <div style={{ fontSize: '8pt', color: '#666', textTransform: 'uppercase' }}>Final Corp Balance</div>
             <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#2f855a' }}>{formatCurrency(results.finalCorporateBalance)}</div>
           </div>
@@ -209,7 +209,7 @@ export const PrintableReport = memo(function PrintableReport({
 
       {/* Input Assumptions */}
       <div className="print-section print-no-break">
-        <h2 style={{ fontSize: '14pt', color: '#1a365d', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
+        <h2 style={{ fontSize: '14pt', color: '#064e3b', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
           Input Assumptions
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16pt', fontSize: '9pt' }}>
@@ -217,29 +217,29 @@ export const PrintableReport = memo(function PrintableReport({
             <table className="print-table" style={{ width: '100%' }}>
               <tbody>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Province</td>
+                  <td style={{ background: '#f0fdf4' }}>Province</td>
                   <td>{provinceName}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Required After-Tax Income</td>
+                  <td style={{ background: '#f0fdf4' }}>Required After-Tax Income</td>
                   <td>{formatCurrency(inputs.requiredIncome)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Salary Strategy</td>
+                  <td style={{ background: '#f0fdf4' }}>Salary Strategy</td>
                   <td style={{ textTransform: 'capitalize' }}>{inputs.salaryStrategy.replace('-', ' ')}</td>
                 </tr>
                 {inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount && (
                   <tr>
-                    <td style={{ background: '#f7fafc' }}>Fixed Salary Amount</td>
+                    <td style={{ background: '#f0fdf4' }}>Fixed Salary Amount</td>
                     <td>{formatCurrency(inputs.fixedSalaryAmount)}</td>
                   </tr>
                 )}
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Investment Return Rate</td>
+                  <td style={{ background: '#f0fdf4' }}>Investment Return Rate</td>
                   <td>{formatPercent(inputs.investmentReturnRate, 1)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Expected Inflation</td>
+                  <td style={{ background: '#f0fdf4' }}>Expected Inflation</td>
                   <td>{formatPercent(inputs.expectedInflationRate, 1)}</td>
                 </tr>
               </tbody>
@@ -249,27 +249,27 @@ export const PrintableReport = memo(function PrintableReport({
             <table className="print-table" style={{ width: '100%' }}>
               <tbody>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Starting Corp Balance</td>
+                  <td style={{ background: '#f0fdf4' }}>Starting Corp Balance</td>
                   <td>{formatCurrency(inputs.corporateInvestmentBalance)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>CDA Balance</td>
+                  <td style={{ background: '#f0fdf4' }}>CDA Balance</td>
                   <td>{formatCurrency(inputs.cdaBalance)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>GRIP Balance</td>
+                  <td style={{ background: '#f0fdf4' }}>GRIP Balance</td>
                   <td>{formatCurrency(inputs.gripBalance)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>eRDTOH Balance</td>
+                  <td style={{ background: '#f0fdf4' }}>eRDTOH Balance</td>
                   <td>{formatCurrency(inputs.eRDTOHBalance)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>nRDTOH Balance</td>
+                  <td style={{ background: '#f0fdf4' }}>nRDTOH Balance</td>
                   <td>{formatCurrency(inputs.nRDTOHBalance)}</td>
                 </tr>
                 <tr>
-                  <td style={{ background: '#f7fafc' }}>Options</td>
+                  <td style={{ background: '#f0fdf4' }}>Options</td>
                   <td>
                     {[
                       inputs.maximizeTFSA && 'Max TFSA',
@@ -287,7 +287,7 @@ export const PrintableReport = memo(function PrintableReport({
 
       {/* Year-by-Year Projection */}
       <div className="print-section">
-        <h2 style={{ fontSize: '14pt', color: '#1a365d', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
+        <h2 style={{ fontSize: '14pt', color: '#064e3b', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
           Year-by-Year Projection
         </h2>
         <table className="print-table">
@@ -318,7 +318,7 @@ export const PrintableReport = memo(function PrintableReport({
                 <td>{formatCurrency(year.notionalAccounts.corporateInvestments)}</td>
               </tr>
             ))}
-            <tr style={{ fontWeight: 'bold', background: '#f7fafc' }}>
+            <tr style={{ fontWeight: 'bold', background: '#f0fdf4' }}>
               <td>TOTAL</td>
               <td>{formatCurrency(results.totalSalary)}</td>
               <td>{formatCurrency(results.totalDividends)}</td>
@@ -335,7 +335,7 @@ export const PrintableReport = memo(function PrintableReport({
 
       {/* Notional Accounts */}
       <div className="print-section print-no-break">
-        <h2 style={{ fontSize: '14pt', color: '#1a365d', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
+        <h2 style={{ fontSize: '14pt', color: '#064e3b', marginBottom: '8pt', borderBottom: '1px solid #ddd', paddingBottom: '4pt' }}>
           Notional Account Activity
         </h2>
         <table className="print-table">

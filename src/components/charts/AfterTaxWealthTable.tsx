@@ -89,7 +89,7 @@ export const AfterTaxWealthTable = memo(function AfterTaxWealthTable({
                   >
                     {formatCurrency(strategy.trueAfterTaxWealth[scenario.key])}
                     {strategy.id === scenario.bestId && (
-                      <span className="ml-2 text-xs" style={{ color: 'var(--accent-success, #10b981)' }}>
+                      <span className="ml-2 text-xs" style={{ color: 'var(--accent-success, #6ee7b7)' }}>
                         Best
                       </span>
                     )}

@@ -19,69 +19,6 @@ import {
 } from '../tax/indexation';
 
 describe('KNOWN_TAX_YEARS', () => {
-  describe('2025 values', () => {
-    const data2025 = KNOWN_TAX_YEARS[2025];
-
-    it('should have correct CPP YMPE for 2025', () => {
-      expect(data2025.cpp.ympe).toBe(71300);
-    });
-
-    it('should have correct CPP2 YAMPE for 2025', () => {
-      expect(data2025.cpp2.secondCeiling).toBe(81200);
-    });
-
-    it('should have correct CPP rate', () => {
-      expect(data2025.cpp.rate).toBe(0.0595);
-    });
-
-    it('should have correct CPP max contribution for 2025', () => {
-      // (71300 - 3500) * 0.0595 = 4034.10
-      expect(data2025.cpp.maxContribution).toBe(4034.10);
-    });
-
-    it('should have correct CPP2 max contribution for 2025', () => {
-      // (81200 - 71300) * 0.04 = 396.00
-      expect(data2025.cpp2.maxContribution).toBe(396.00);
-    });
-
-    it('should have correct EI rate for 2025', () => {
-      expect(data2025.ei.rate).toBe(0.0164);
-    });
-
-    it('should have correct EI max insurable earnings for 2025', () => {
-      expect(data2025.ei.maxInsurableEarnings).toBe(65700);
-    });
-
-    it('should have correct EI max contribution for 2025', () => {
-      expect(data2025.ei.maxContribution).toBe(1077.48);
-    });
-
-    it('should have correct federal basic personal amount for 2025', () => {
-      expect(data2025.federal.basicPersonalAmount).toBe(16129); // CRA 2025 enhanced BPA
-    });
-
-    it('should have correct federal tax brackets for 2025', () => {
-      expect(data2025.federal.brackets[0].rate).toBe(0.145); // Blended rate
-      expect(data2025.federal.brackets[1].threshold).toBe(57375);
-      expect(data2025.federal.brackets[2].threshold).toBe(114750);
-      expect(data2025.federal.brackets[3].threshold).toBe(177882);
-      expect(data2025.federal.brackets[4].threshold).toBe(253414);
-    });
-
-    it('should have correct Ontario surtax thresholds for 2025', () => {
-      expect(data2025.provincial.surtax.firstThreshold).toBe(5710);
-      expect(data2025.provincial.surtax.secondThreshold).toBe(7307);
-    });
-
-    it('should have correct TFSA limit for 2025', () => {
-      expect(data2025.tfsa.annualLimit).toBe(7000);
-    });
-
-    it('should have correct RRSP limit for 2025', () => {
-      expect(data2025.rrsp.dollarLimit).toBe(32490);
-    });
-  });
-
   describe('2026 values', () => {
     const data2026 = KNOWN_TAX_YEARS[2026];
 
@@ -132,23 +69,6 @@ describe('KNOWN_TAX_YEARS', () => {
 });
 
 describe('getTaxYearData', () => {
-  it('should return correct federal data for 2025 (Ontario default)', () => {
-    const data = getTaxYearData(2025);
-    const knownFederal = KNOWN_TAX_YEARS[2025].federal;
-
-    // Federal data should match
-    expect(data.federal.basicPersonalAmount).toBe(knownFederal.basicPersonalAmount);
-    expect(data.federal.brackets).toEqual(knownFederal.brackets);
-
-    // CPP/EI data should match
-    expect(data.cpp.ympe).toBe(KNOWN_TAX_YEARS[2025].cpp.ympe);
-    expect(data.ei.maxInsurableEarnings).toBe(KNOWN_TAX_YEARS[2025].ei.maxInsurableEarnings);
-
-    // Provincial data should be for Ontario
-    expect(data.provincial.basicPersonalAmount).toBe(12399);
-    expect(data.provincial.surtax.firstThreshold).toBe(5710);
-  });
-
   it('should return correct federal data for 2026 (Ontario default)', () => {
     const data = getTaxYearData(2026);
     const knownFederal = KNOWN_TAX_YEARS[2026].federal;
@@ -161,15 +81,15 @@ describe('getTaxYearData', () => {
     expect(data.cpp.ympe).toBe(KNOWN_TAX_YEARS[2026].cpp.ympe);
     expect(data.ei.maxInsurableEarnings).toBe(KNOWN_TAX_YEARS[2026].ei.maxInsurableEarnings);
 
-    // Provincial data should be for Ontario
-    expect(data.provincial.basicPersonalAmount).toBe(12647);
-    expect(data.provincial.surtax.firstThreshold).toBe(5824);
+    // Provincial data should be for Ontario (CRA T4032-ON 2026, indexed at 1.9%)
+    expect(data.provincial.basicPersonalAmount).toBe(12989);
+    expect(data.provincial.surtax.firstThreshold).toBe(5818);
   });
 
   it('should return different provincial data for different provinces', () => {
-    const ontarioData = getTaxYearData(2025, 0.02, 'ON');
-    const albertaData = getTaxYearData(2025, 0.02, 'AB');
-    const bcData = getTaxYearData(2025, 0.02, 'BC');
+    const ontarioData = getTaxYearData(2026, 0.02, 'ON');
+    const albertaData = getTaxYearData(2026, 0.02, 'AB');
+    const bcData = getTaxYearData(2026, 0.02, 'BC');
 
     // Federal data should be the same
     expect(ontarioData.federal).toEqual(albertaData.federal);
@@ -183,12 +103,12 @@ describe('getTaxYearData', () => {
     expect(bcData.provincial.surtax.firstThreshold).toBe(Infinity);
 
     // Ontario has surtax
-    expect(ontarioData.provincial.surtax.firstThreshold).toBe(5710);
+    expect(ontarioData.provincial.surtax.firstThreshold).toBe(5818);
   });
 
-  it('should return correct Quebec tax rates for 2025', () => {
-    const quebecData = getTaxYearData(2025, 0.02, 'QC');
-    const ontarioData = getTaxYearData(2025, 0.02, 'ON');
+  it('should return correct Quebec tax rates for 2026', () => {
+    const quebecData = getTaxYearData(2026, 0.02, 'QC');
+    const ontarioData = getTaxYearData(2026, 0.02, 'ON');
 
     // Federal data should be the same
     expect(quebecData.federal).toEqual(ontarioData.federal);
@@ -199,13 +119,13 @@ describe('getTaxYearData', () => {
     expect(quebecData.provincial.brackets[2].rate).toBe(0.24);
     expect(quebecData.provincial.brackets[3].rate).toBe(0.2575);
 
-    // Quebec bracket thresholds (2025)
-    expect(quebecData.provincial.brackets[1].threshold).toBe(51780);
-    expect(quebecData.provincial.brackets[2].threshold).toBe(103545);
-    expect(quebecData.provincial.brackets[3].threshold).toBe(126000);
+    // Quebec bracket thresholds (2026, CRA-confirmed, indexed at 2.05%)
+    expect(quebecData.provincial.brackets[1].threshold).toBe(54345);
+    expect(quebecData.provincial.brackets[2].threshold).toBe(108680);
+    expect(quebecData.provincial.brackets[3].threshold).toBe(132245);
 
-    // Quebec basic personal amount (2025)
-    expect(quebecData.provincial.basicPersonalAmount).toBe(18056);
+    // Quebec basic personal amount (2026, CRA-confirmed, indexed at 2.05%)
+    expect(quebecData.provincial.basicPersonalAmount).toBe(18952);
 
     // Quebec has no Ontario-style surtax
     expect(quebecData.provincial.surtax.firstThreshold).toBe(Infinity);
@@ -231,7 +151,7 @@ describe('getTaxYearData', () => {
     const nonEligibleCredits: number[] = [];
 
     for (const province of provinces) {
-      const data = getTaxYearData(2025, 0.02, province);
+      const data = getTaxYearData(2026, 0.02, province);
       eligibleCredits.push(data.dividend.eligible.provincialCredit);
       nonEligibleCredits.push(data.dividend.nonEligible.provincialCredit);
 
@@ -254,7 +174,7 @@ describe('getTaxYearData', () => {
     const allProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
 
     for (const province of allProvinces) {
-      const data = getTaxYearData(2025, 0.02, province);
+      const data = getTaxYearData(2026, 0.02, province);
 
       // Each province should have valid federal data (same for all)
       expect(data.federal.brackets.length).toBeGreaterThan(0);
@@ -309,6 +229,109 @@ describe('getTaxYearData', () => {
     const expectedYmpe = Math.round(data2026.cpp.ympe * 1.05);
     expect(data2027_high.cpp.ympe).toBe(expectedYmpe);
   });
+
+  // =========================================================================
+  // Province-specific indexation tests
+  // =========================================================================
+
+  it('should use province-specific indexation for 2027 provincial brackets (not user inflation)', () => {
+    // Request 2027 for Ontario with 5% user inflation
+    // Federal should use 5%, but provincial should use ON's 1.9%
+    const data2027 = getTaxYearData(2027, 0.05, 'ON');
+
+    // Federal BPA should use the user's 5% inflation
+    expect(data2027.federal.basicPersonalAmount).toBe(
+      Math.round(KNOWN_TAX_YEARS[2026].federal.basicPersonalAmount * 1.05)
+    );
+
+    // Ontario provincial BPA should use ON's 1.9% factor, NOT 5%
+    // ON_2026 BPA is $12,989 → $12,989 × 1.019 = $13,236
+    expect(data2027.provincial.basicPersonalAmount).toBe(
+      Math.round(12989 * 1.019) // $13,236
+    );
+  });
+
+  it('Manitoba 2027+ brackets should be frozen (identical to 2026)', () => {
+    // Manitoba froze brackets at 2024 levels (Budget 2025)
+    // With 0% provincial indexation, 2027/2028/2030 should all equal 2026
+    const mb2027 = getTaxYearData(2027, 0.02, 'MB');
+    const mb2030 = getTaxYearData(2030, 0.02, 'MB');
+
+    // BPA should stay at $15,780 regardless of how many years forward
+    expect(mb2027.provincial.basicPersonalAmount).toBe(15780);
+    expect(mb2030.provincial.basicPersonalAmount).toBe(15780);
+
+    // Bracket thresholds should stay frozen too
+    expect(mb2027.provincial.brackets[1].threshold).toBe(47000);
+    expect(mb2030.provincial.brackets[1].threshold).toBe(47000);
+  });
+
+  it('Ontario $150K and $220K thresholds should NOT be indexed for 2027+', () => {
+    const on2027 = getTaxYearData(2027, 0.02, 'ON');
+    const on2030 = getTaxYearData(2030, 0.02, 'ON');
+
+    // $150K and $220K are legislatively fixed — must not change
+    expect(on2027.provincial.brackets[3].threshold).toBe(150000);
+    expect(on2027.provincial.brackets[4].threshold).toBe(220000);
+    expect(on2030.provincial.brackets[3].threshold).toBe(150000);
+    expect(on2030.provincial.brackets[4].threshold).toBe(220000);
+
+    // But the lower brackets SHOULD be indexed (at ON's 1.9%)
+    const on2026Bracket1 = 53891; // ON_2026 second bracket
+    expect(on2027.provincial.brackets[1].threshold).toBe(
+      Math.round(on2026Bracket1 * 1.019)
+    );
+  });
+
+  it('Yukon $500K threshold should NOT be indexed for 2027+', () => {
+    const yt2027 = getTaxYearData(2027, 0.02, 'YT');
+    const yt2030 = getTaxYearData(2030, 0.02, 'YT');
+
+    // $500K is fixed (matches SBD limit)
+    expect(yt2027.provincial.brackets[4].threshold).toBe(500000);
+    expect(yt2030.provincial.brackets[4].threshold).toBe(500000);
+
+    // But lower brackets should be indexed (YT mirrors federal at 2.0%)
+    const yt2026Bracket1 = 58523; // YT_2026 second bracket
+    expect(yt2027.provincial.brackets[1].threshold).toBe(
+      Math.round(yt2026Bracket1 * 1.02)
+    );
+  });
+
+  it('Quebec should use 2.05% indexation for 2027+', () => {
+    const qc2027 = getTaxYearData(2027, 0.02, 'QC');
+
+    // QC_2026 second bracket is $54,345 → indexed at 2.05%
+    expect(qc2027.provincial.brackets[1].threshold).toBe(
+      Math.round(54345 * 1.0205)
+    );
+
+    // QC_2026 BPA is $18,952 → indexed at 2.05%
+    expect(qc2027.provincial.basicPersonalAmount).toBe(
+      Math.round(18952 * 1.0205)
+    );
+  });
+
+  it('Saskatchewan BPA should include $500/year Affordability Act add-on through 2028', () => {
+    const sk2027 = getTaxYearData(2027, 0.02, 'SK');
+    const sk2028 = getTaxYearData(2028, 0.02, 'SK');
+    const sk2029 = getTaxYearData(2029, 0.02, 'SK');
+
+    // SK_2026 BPA is $20,381 (already includes the 2026 $500 add-on)
+    // 2027: indexed at 2% = $20,381 * 1.02 + $500 = $21,289
+    // 2028: indexed at 2%^2 = $20,381 * 1.0404 + $1,000 = $22,204
+    // 2029: indexed at 2%^3 = $20,381 * 1.061208... (no more $500, Act expires after 2028)
+    expect(sk2027.provincial.basicPersonalAmount).toBe(
+      Math.round(20381 * 1.02) + 500
+    );
+    expect(sk2028.provincial.basicPersonalAmount).toBe(
+      Math.round(20381 * Math.pow(1.02, 2)) + 1000
+    );
+    // 2029: no more $500 add-on (Affordability Act only through 2028)
+    expect(sk2029.provincial.basicPersonalAmount).toBe(
+      Math.round(20381 * Math.pow(1.02, 3))
+    );
+  });
 });
 
 describe('utility functions', () => {
@@ -324,7 +347,7 @@ describe('utility functions', () => {
 
   it('getStartingYear should return a valid year', () => {
     const year = getStartingYear();
-    expect(year).toBeGreaterThanOrEqual(2025);
+    expect(year).toBeGreaterThanOrEqual(2026);
     expect(year).toBeLessThanOrEqual(2030); // Reasonable future bound
   });
 

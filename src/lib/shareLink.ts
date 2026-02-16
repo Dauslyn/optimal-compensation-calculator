@@ -203,7 +203,7 @@ function expandInputs(compact: CompactInputs): UserInputs {
     province: validateProvinceCode(compact.pv || DEFAULT_PROVINCE),
     requiredIncome: clamp(compact.ri, 0, 10_000_000),
     planningHorizon: clamp(compact.ph, 3, 10) as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
-    startingYear: clamp(compact.sy, 2025, 2050),
+    startingYear: clamp(compact.sy, 2026, 2050),
     expectedInflationRate: clamp(compact.ei, 0, 0.2),
     inflateSpendingNeeds: Boolean(compact.is),
     corporateInvestmentBalance: clamp(compact.cib, 0, 100_000_000),

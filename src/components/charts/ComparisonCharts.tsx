@@ -19,9 +19,9 @@ interface ComparisonChartsProps {
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
-  'salary-at-ympe': '#3b82f6',
-  'dividends-only': '#10b981',
-  'dynamic': '#f59e0b',
+  'salary-at-ympe': '#10b981',
+  'dividends-only': '#d4a017',
+  'dynamic': '#6ee7b7',
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -30,12 +30,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div
       style={{
-        background: 'rgba(22, 22, 30, 0.95)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '12px',
+        background: 'rgba(10, 17, 13, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(110, 231, 183, 0.1)',
+        borderRadius: '14px',
         padding: '12px 16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       <p style={{ fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.9)' }}>

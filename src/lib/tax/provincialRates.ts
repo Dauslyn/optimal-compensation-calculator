@@ -4,11 +4,52 @@
  * Tax brackets, dividend credits, corporate rates, and special taxes by province.
  * Data sourced from Canada Revenue Agency and provincial finance ministries.
  *
- * Note: 2025 values are official CRA indexed amounts.
+ * Note: 2025 and 2026 values are CRA-verified (T4032 payroll deduction tables).
+ * Future years (2027+) are projected using province-specific indexation factors.
  */
 
 import type { TaxBracket } from '../types';
 import type { ProvinceCode } from './provinces';
+
+/**
+ * Province-specific indexation factors for projecting brackets beyond known years.
+ *
+ * Each province indexes their tax brackets using their own provincial CPI factor,
+ * which differs from the federal indexation factor. These are the most recent
+ * known factors (used for 2026 indexation) and serve as the best estimate
+ * for future years.
+ *
+ * Special cases:
+ * - Manitoba: FROZEN at 2024 levels (Budget 2025, Bulletin 125) — 0% indexation
+ * - Ontario: $150K/$220K bracket thresholds are legislatively fixed (not indexed)
+ * - Yukon: $500K bracket is fixed (matches SBD limit, not indexed)
+ *
+ * Sources: CRA T4032 payroll deduction tables, provincial finance ministry announcements.
+ */
+export const PROVINCIAL_INDEXATION_FACTORS: Record<ProvinceCode, number> = {
+  AB: 0.020,  // 2.0% (Alberta Escalator)
+  BC: 0.022,  // 2.2% (BC provincial CPI)
+  MB: 0.000,  // FROZEN — Manitoba Budget 2025 froze brackets at 2024 levels
+  NB: 0.020,  // 2.0% (NB provincial CPI)
+  NL: 0.011,  // 1.1% (NL provincial CPI)
+  NS: 0.016,  // 1.6% (NS provincial CPI)
+  NT: 0.020,  // 2.0% (NT territorial CPI)
+  NU: 0.020,  // 2.0% (NU territorial CPI)
+  ON: 0.019,  // 1.9% (ON provincial CPI; $150K/$220K NOT indexed)
+  PE: 0.018,  // 1.8% (PEI provincial CPI)
+  QC: 0.0205, // 2.05% (QC provincial CPI)
+  SK: 0.020,  // 2.0% (SK provincial CPI; BPA gets extra $500/year through 2028)
+  YT: 0.020,  // 2.0% (mirrors federal; $500K bracket NOT indexed)
+};
+
+/**
+ * Bracket thresholds that are legislatively fixed and should NOT be indexed.
+ * Key: province code, Value: set of threshold values that stay constant.
+ */
+const NON_INDEXED_THRESHOLDS: Partial<Record<ProvinceCode, Set<number>>> = {
+  ON: new Set([150000, 220000]),
+  YT: new Set([500000]),
+};
 
 /**
  * Provincial tax data structure
@@ -57,13 +98,14 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // ===========================================
   AB_2025: {
     brackets: [
-      { threshold: 0, rate: 0.10 },
-      { threshold: 148269, rate: 0.12 },
-      { threshold: 177922, rate: 0.13 },
-      { threshold: 237230, rate: 0.14 },
-      { threshold: 355845, rate: 0.15 },
+      { threshold: 0, rate: 0.08 }, // New 8% bracket (Budget 2025, Bill 39)
+      { threshold: 60000, rate: 0.10 },
+      { threshold: 151234, rate: 0.12 },
+      { threshold: 181481, rate: 0.13 },
+      { threshold: 241974, rate: 0.14 },
+      { threshold: 362961, rate: 0.15 },
     ],
-    basicPersonalAmount: 21003,
+    basicPersonalAmount: 22323,
     dividendTaxCredits: {
       eligible: 0.0812, // 8.12% of grossed-up
       nonEligible: 0.0218, // 2.18% of grossed-up
@@ -73,13 +115,14 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   },
   AB_2026: {
     brackets: [
-      { threshold: 0, rate: 0.10 },
-      { threshold: 151234, rate: 0.12 },
-      { threshold: 181480, rate: 0.13 },
-      { threshold: 241975, rate: 0.14 },
-      { threshold: 362962, rate: 0.15 },
+      { threshold: 0, rate: 0.08 }, // 8% bracket indexed (2% Alberta Escalator)
+      { threshold: 61200, rate: 0.10 },
+      { threshold: 154259, rate: 0.12 },
+      { threshold: 185111, rate: 0.13 },
+      { threshold: 246813, rate: 0.14 },
+      { threshold: 370220, rate: 0.15 },
     ],
-    basicPersonalAmount: 21423,
+    basicPersonalAmount: 22769,
     dividendTaxCredits: {
       eligible: 0.0812,
       nonEligible: 0.0218,
@@ -94,12 +137,12 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   BC_2025: {
     brackets: [
       { threshold: 0, rate: 0.0506 },
-      { threshold: 47937, rate: 0.077 },
-      { threshold: 95875, rate: 0.105 },
-      { threshold: 110076, rate: 0.1229 },
-      { threshold: 133664, rate: 0.147 },
-      { threshold: 181232, rate: 0.168 },
-      { threshold: 252752, rate: 0.205 },
+      { threshold: 49279, rate: 0.077 },
+      { threshold: 98560, rate: 0.105 },
+      { threshold: 113158, rate: 0.1229 },
+      { threshold: 137407, rate: 0.147 },
+      { threshold: 186306, rate: 0.168 },
+      { threshold: 259829, rate: 0.205 },
     ],
     basicPersonalAmount: 12932,
     dividendTaxCredits: {
@@ -112,14 +155,14 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   BC_2026: {
     brackets: [
       { threshold: 0, rate: 0.0506 },
-      { threshold: 48896, rate: 0.077 },
-      { threshold: 97792, rate: 0.105 },
-      { threshold: 112278, rate: 0.1229 },
-      { threshold: 136337, rate: 0.147 },
-      { threshold: 184857, rate: 0.168 },
-      { threshold: 257807, rate: 0.205 },
+      { threshold: 50363, rate: 0.077 },
+      { threshold: 100728, rate: 0.105 },
+      { threshold: 115648, rate: 0.1229 },
+      { threshold: 140430, rate: 0.147 },
+      { threshold: 190405, rate: 0.168 },
+      { threshold: 265545, rate: 0.205 },
     ],
-    basicPersonalAmount: 13191,
+    basicPersonalAmount: 13216,
     dividendTaxCredits: {
       eligible: 0.12,
       nonEligible: 0.0196,
@@ -146,12 +189,13 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     corporateGeneralRate: 0.12, // 12%
   },
   MB_2026: {
+    // Manitoba FROZE brackets and BPA at 2024 levels (Budget 2025, Bulletin 125)
     brackets: [
       { threshold: 0, rate: 0.108 },
-      { threshold: 47940, rate: 0.1275 },
-      { threshold: 102000, rate: 0.174 },
+      { threshold: 47000, rate: 0.1275 },
+      { threshold: 100000, rate: 0.174 },
     ],
-    basicPersonalAmount: 16096,
+    basicPersonalAmount: 15780,
     dividendTaxCredits: {
       eligible: 0.08,
       nonEligible: 0.007835,
@@ -166,9 +210,9 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NB_2025: {
     brackets: [
       { threshold: 0, rate: 0.094 },
-      { threshold: 49958, rate: 0.14 },
-      { threshold: 99916, rate: 0.16 },
-      { threshold: 185064, rate: 0.195 },
+      { threshold: 51306, rate: 0.14 },
+      { threshold: 102614, rate: 0.16 },
+      { threshold: 190060, rate: 0.195 },
     ],
     basicPersonalAmount: 13396,
     dividendTaxCredits: {
@@ -181,9 +225,9 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NB_2026: {
     brackets: [
       { threshold: 0, rate: 0.094 },
-      { threshold: 50957, rate: 0.14 },
-      { threshold: 101914, rate: 0.16 },
-      { threshold: 188765, rate: 0.195 },
+      { threshold: 52333, rate: 0.14 },
+      { threshold: 104666, rate: 0.16 },
+      { threshold: 193861, rate: 0.195 },
     ],
     basicPersonalAmount: 13664,
     dividendTaxCredits: {
@@ -200,15 +244,15 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NL_2025: {
     brackets: [
       { threshold: 0, rate: 0.087 },
-      { threshold: 43198, rate: 0.145 },
-      { threshold: 86395, rate: 0.158 },
-      { threshold: 154244, rate: 0.178 },
-      { threshold: 215943, rate: 0.198 },
-      { threshold: 275870, rate: 0.208 },
-      { threshold: 551739, rate: 0.213 },
-      { threshold: 1103478, rate: 0.218 },
+      { threshold: 44192, rate: 0.145 },
+      { threshold: 88382, rate: 0.158 },
+      { threshold: 157792, rate: 0.178 },
+      { threshold: 220910, rate: 0.198 },
+      { threshold: 282214, rate: 0.208 },
+      { threshold: 564429, rate: 0.213 },
+      { threshold: 1128858, rate: 0.218 },
     ],
-    basicPersonalAmount: 10818,
+    basicPersonalAmount: 11067,
     dividendTaxCredits: {
       eligible: 0.063, // 6.3% of grossed-up
       nonEligible: 0.032, // 3.2% of grossed-up
@@ -217,17 +261,18 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     corporateGeneralRate: 0.15, // 15%
   },
   NL_2026: {
+    // Indexed at 1.1% (NL provincial CPI)
     brackets: [
       { threshold: 0, rate: 0.087 },
-      { threshold: 44062, rate: 0.145 },
-      { threshold: 88123, rate: 0.158 },
-      { threshold: 157329, rate: 0.178 },
-      { threshold: 220262, rate: 0.198 },
-      { threshold: 281387, rate: 0.208 },
-      { threshold: 562774, rate: 0.213 },
-      { threshold: 1125547, rate: 0.218 },
+      { threshold: 44678, rate: 0.145 },
+      { threshold: 89354, rate: 0.158 },
+      { threshold: 159528, rate: 0.178 },
+      { threshold: 223340, rate: 0.198 },
+      { threshold: 285319, rate: 0.208 },
+      { threshold: 570638, rate: 0.213 },
+      { threshold: 1141275, rate: 0.218 },
     ],
-    basicPersonalAmount: 11034,
+    basicPersonalAmount: 11188,
     dividendTaxCredits: {
       eligible: 0.063,
       nonEligible: 0.032,
@@ -240,14 +285,16 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // NOVA SCOTIA
   // ===========================================
   NS_2025: {
+    // NS reformed BPA in 2025: flat $11,744 for all (no more clawback)
+    // Bracket indexation started 2025 at 3.1%
     brackets: [
       { threshold: 0, rate: 0.0879 },
-      { threshold: 29590, rate: 0.1495 },
-      { threshold: 59180, rate: 0.1667 },
-      { threshold: 93000, rate: 0.175 },
-      { threshold: 150000, rate: 0.21 },
+      { threshold: 30507, rate: 0.1495 },
+      { threshold: 61015, rate: 0.1667 },
+      { threshold: 95883, rate: 0.175 },
+      { threshold: 154650, rate: 0.21 },
     ],
-    basicPersonalAmount: 8481,
+    basicPersonalAmount: 11744,
     dividendTaxCredits: {
       eligible: 0.0885, // 8.85% of grossed-up
       nonEligible: 0.0299, // 2.99% of grossed-up
@@ -256,14 +303,15 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     corporateGeneralRate: 0.14, // 14%
   },
   NS_2026: {
+    // Indexed at 1.6% (NS provincial CPI)
     brackets: [
       { threshold: 0, rate: 0.0879 },
-      { threshold: 30182, rate: 0.1495 },
-      { threshold: 60364, rate: 0.1667 },
-      { threshold: 94860, rate: 0.175 },
-      { threshold: 153000, rate: 0.21 },
+      { threshold: 30995, rate: 0.1495 },
+      { threshold: 61991, rate: 0.1667 },
+      { threshold: 97417, rate: 0.175 },
+      { threshold: 157124, rate: 0.21 },
     ],
-    basicPersonalAmount: 8651,
+    basicPersonalAmount: 11932,
     dividendTaxCredits: {
       eligible: 0.0885,
       nonEligible: 0.0299,
@@ -278,11 +326,11 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NT_2025: {
     brackets: [
       { threshold: 0, rate: 0.059 },
-      { threshold: 50597, rate: 0.086 },
-      { threshold: 101198, rate: 0.122 },
-      { threshold: 164525, rate: 0.1405 },
+      { threshold: 51964, rate: 0.086 },
+      { threshold: 103930, rate: 0.122 },
+      { threshold: 168967, rate: 0.1405 },
     ],
-    basicPersonalAmount: 17373,
+    basicPersonalAmount: 17842,
     dividendTaxCredits: {
       eligible: 0.115, // 11.5% of grossed-up
       nonEligible: 0.06, // 6% of grossed-up
@@ -293,11 +341,11 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NT_2026: {
     brackets: [
       { threshold: 0, rate: 0.059 },
-      { threshold: 51609, rate: 0.086 },
-      { threshold: 103222, rate: 0.122 },
-      { threshold: 167816, rate: 0.1405 },
+      { threshold: 53003, rate: 0.086 },
+      { threshold: 106009, rate: 0.122 },
+      { threshold: 172346, rate: 0.1405 },
     ],
-    basicPersonalAmount: 17720,
+    basicPersonalAmount: 18198,
     dividendTaxCredits: {
       eligible: 0.115,
       nonEligible: 0.06,
@@ -312,11 +360,11 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NU_2025: {
     brackets: [
       { threshold: 0, rate: 0.04 },
-      { threshold: 53268, rate: 0.07 },
-      { threshold: 106537, rate: 0.09 },
-      { threshold: 173205, rate: 0.115 },
+      { threshold: 54707, rate: 0.07 },
+      { threshold: 109413, rate: 0.09 },
+      { threshold: 177881, rate: 0.115 },
     ],
-    basicPersonalAmount: 18767,
+    basicPersonalAmount: 19274,
     dividendTaxCredits: {
       eligible: 0.0551, // 5.51% of grossed-up
       nonEligible: 0.0261, // 2.61% of grossed-up
@@ -327,11 +375,11 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   NU_2026: {
     brackets: [
       { threshold: 0, rate: 0.04 },
-      { threshold: 54333, rate: 0.07 },
-      { threshold: 108668, rate: 0.09 },
-      { threshold: 176669, rate: 0.115 },
+      { threshold: 55801, rate: 0.07 },
+      { threshold: 111602, rate: 0.09 },
+      { threshold: 181439, rate: 0.115 },
     ],
-    basicPersonalAmount: 19142,
+    basicPersonalAmount: 19659,
     dividendTaxCredits: {
       eligible: 0.0551,
       nonEligible: 0.0261,
@@ -344,14 +392,15 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // ONTARIO
   // ===========================================
   ON_2025: {
+    // Indexed at 2.8% for 2025; $150K and $220K brackets NOT indexed
     brackets: [
       { threshold: 0, rate: 0.0505 },
-      { threshold: 51446, rate: 0.0915 },
-      { threshold: 102894, rate: 0.1116 },
+      { threshold: 52886, rate: 0.0915 },
+      { threshold: 105775, rate: 0.1116 },
       { threshold: 150000, rate: 0.1216 },
       { threshold: 220000, rate: 0.1316 },
     ],
-    basicPersonalAmount: 12399,
+    basicPersonalAmount: 12747,
     dividendTaxCredits: {
       eligible: 0.10, // 10% of grossed-up
       nonEligible: 0.029863, // 2.9863% of grossed-up
@@ -377,14 +426,15 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     },
   },
   ON_2026: {
+    // Indexed at 1.9% for 2026; $150K and $220K brackets NOT indexed (legislatively fixed)
     brackets: [
       { threshold: 0, rate: 0.0505 },
-      { threshold: 52475, rate: 0.0915 },
-      { threshold: 104952, rate: 0.1116 },
-      { threshold: 153000, rate: 0.1216 },
-      { threshold: 224400, rate: 0.1316 },
+      { threshold: 53891, rate: 0.0915 },
+      { threshold: 107785, rate: 0.1116 },
+      { threshold: 150000, rate: 0.1216 },
+      { threshold: 220000, rate: 0.1316 },
     ],
-    basicPersonalAmount: 12647,
+    basicPersonalAmount: 12989,
     dividendTaxCredits: {
       eligible: 0.10,
       nonEligible: 0.029863,
@@ -392,12 +442,13 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     corporateSmallBusinessRate: 0.032,
     corporateGeneralRate: 0.115,
     surtax: {
-      firstThreshold: 5824,
+      firstThreshold: 5818,
       firstRate: 0.20,
-      secondThreshold: 7453,
+      secondThreshold: 7446,
       secondRate: 0.36,
     },
     healthPremium: {
+      // Ontario Health Premium thresholds are NOT indexed
       brackets: [
         { threshold: 20000, base: 0, rate: 0.06, maxPremium: 300 },
         { threshold: 25000, base: 300, rate: 0.06, maxPremium: 450 },
@@ -414,40 +465,39 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // PRINCE EDWARD ISLAND
   // ===========================================
   PE_2025: {
+    // PEI reformed 2024: 5 brackets, no surtax, new rates
     brackets: [
-      { threshold: 0, rate: 0.0965 },
-      { threshold: 32656, rate: 0.1363 },
-      { threshold: 64313, rate: 0.1665 },
+      { threshold: 0, rate: 0.095 },
+      { threshold: 33328, rate: 0.1347 },
+      { threshold: 64656, rate: 0.166 },
+      { threshold: 105000, rate: 0.1762 },
+      { threshold: 140000, rate: 0.19 },
     ],
-    basicPersonalAmount: 13500,
+    basicPersonalAmount: 14250,
     dividendTaxCredits: {
       eligible: 0.105, // 10.5% of grossed-up
       nonEligible: 0.0128, // 1.28% of grossed-up
     },
     corporateSmallBusinessRate: 0.01, // 1%
     corporateGeneralRate: 0.16, // 16%
-    peiSurtax: {
-      threshold: 12500,
-      rate: 0.10, // 10% of provincial tax over $12,500
-    },
+    // No surtax (eliminated starting 2024)
   },
   PE_2026: {
     brackets: [
-      { threshold: 0, rate: 0.0965 },
-      { threshold: 33309, rate: 0.1363 },
-      { threshold: 65599, rate: 0.1665 },
+      { threshold: 0, rate: 0.095 },
+      { threshold: 33928, rate: 0.1347 },
+      { threshold: 65820, rate: 0.166 },
+      { threshold: 106890, rate: 0.1762 },
+      { threshold: 142250, rate: 0.19 },
     ],
-    basicPersonalAmount: 13770,
+    basicPersonalAmount: 15000,
     dividendTaxCredits: {
       eligible: 0.105,
       nonEligible: 0.0128,
     },
     corporateSmallBusinessRate: 0.01,
     corporateGeneralRate: 0.16,
-    peiSurtax: {
-      threshold: 12750,
-      rate: 0.10,
-    },
+    // No surtax (eliminated starting 2024)
   },
 
   // ===========================================
@@ -457,11 +507,11 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   QC_2025: {
     brackets: [
       { threshold: 0, rate: 0.14 },
-      { threshold: 51780, rate: 0.19 },
-      { threshold: 103545, rate: 0.24 },
-      { threshold: 126000, rate: 0.2575 },
+      { threshold: 53255, rate: 0.19 },
+      { threshold: 106495, rate: 0.24 },
+      { threshold: 129590, rate: 0.2575 },
     ],
-    basicPersonalAmount: 18056,
+    basicPersonalAmount: 18571,
     dividendTaxCredits: {
       eligible: 0.117, // 11.7% of grossed-up
       nonEligible: 0.0342, // 3.42% of grossed-up
@@ -472,13 +522,14 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     // (no separate premium structure as of 2019)
   },
   QC_2026: {
+    // Indexed at 2.05% (Quebec provincial CPI)
     brackets: [
       { threshold: 0, rate: 0.14 },
-      { threshold: 52816, rate: 0.19 },
-      { threshold: 105616, rate: 0.24 },
-      { threshold: 128520, rate: 0.2575 },
+      { threshold: 54345, rate: 0.19 },
+      { threshold: 108680, rate: 0.24 },
+      { threshold: 132245, rate: 0.2575 },
     ],
-    basicPersonalAmount: 18417,
+    basicPersonalAmount: 18952,
     dividendTaxCredits: {
       eligible: 0.117,
       nonEligible: 0.0342,
@@ -491,12 +542,13 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // SASKATCHEWAN
   // ===========================================
   SK_2025: {
+    // BPA includes $500/year Affordability Act increase (through 2028)
     brackets: [
       { threshold: 0, rate: 0.105 },
-      { threshold: 52057, rate: 0.125 },
-      { threshold: 148734, rate: 0.145 },
+      { threshold: 53463, rate: 0.125 },
+      { threshold: 152750, rate: 0.145 },
     ],
-    basicPersonalAmount: 18491,
+    basicPersonalAmount: 19491,
     dividendTaxCredits: {
       eligible: 0.11, // 11% of grossed-up
       nonEligible: 0.02105, // 2.105% of grossed-up
@@ -505,12 +557,13 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
     corporateGeneralRate: 0.12, // 12%
   },
   SK_2026: {
+    // BPA: indexed 2% + $500 Affordability Act = $20,381
     brackets: [
       { threshold: 0, rate: 0.105 },
-      { threshold: 53098, rate: 0.125 },
-      { threshold: 151709, rate: 0.145 },
+      { threshold: 54532, rate: 0.125 },
+      { threshold: 155805, rate: 0.145 },
     ],
-    basicPersonalAmount: 18861,
+    basicPersonalAmount: 20381,
     dividendTaxCredits: {
       eligible: 0.11,
       nonEligible: 0.02105,
@@ -523,14 +576,15 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   // YUKON
   // ===========================================
   YT_2025: {
+    // Yukon mirrors federal bracket thresholds + BPA
     brackets: [
       { threshold: 0, rate: 0.064 },
-      { threshold: 55867, rate: 0.09 },
-      { threshold: 111733, rate: 0.109 },
-      { threshold: 173205, rate: 0.128 },
-      { threshold: 500000, rate: 0.15 },
+      { threshold: 57375, rate: 0.09 },
+      { threshold: 114750, rate: 0.109 },
+      { threshold: 177882, rate: 0.128 },
+      { threshold: 500000, rate: 0.15 }, // Fixed at $500K (SBD limit), NOT indexed
     ],
-    basicPersonalAmount: 15705,
+    basicPersonalAmount: 16129,
     dividendTaxCredits: {
       eligible: 0.1212, // 12.12% of grossed-up (federal mirror)
       nonEligible: 0.0218, // 2.18% of grossed-up
@@ -541,12 +595,12 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
   YT_2026: {
     brackets: [
       { threshold: 0, rate: 0.064 },
-      { threshold: 56984, rate: 0.09 },
-      { threshold: 113968, rate: 0.109 },
-      { threshold: 176669, rate: 0.128 },
-      { threshold: 510000, rate: 0.15 },
+      { threshold: 58523, rate: 0.09 },
+      { threshold: 117045, rate: 0.109 },
+      { threshold: 181440, rate: 0.128 },
+      { threshold: 500000, rate: 0.15 }, // Fixed at $500K, NOT indexed
     ],
-    basicPersonalAmount: 16019,
+    basicPersonalAmount: 16452,
     dividendTaxCredits: {
       eligible: 0.1212,
       nonEligible: 0.0218,
@@ -558,12 +612,16 @@ export const PROVINCIAL_TAX_RATES: Record<string, ProvincialTaxData> = {
 
 /**
  * Get provincial tax data for a specific province and year
- * Falls back to projecting from most recent known year if needed
+ * Falls back to projecting from most recent known year if needed.
+ *
+ * Uses province-specific indexation factors for projections (2027+),
+ * NOT the user's generic inflation rate. This ensures bracket thresholds
+ * track each province's actual CPI-based indexation.
  */
 export function getProvincialTaxData(
   province: ProvinceCode,
   year: number,
-  inflationRate: number = 0.02
+  _inflationRate: number = 0.02 // kept for backward compat; ignored for provincial projection
 ): ProvincialTaxData {
   const key = `${province}_${year}`;
 
@@ -592,23 +650,36 @@ export function getProvincialTaxData(
     return PROVINCIAL_TAX_RATES[`${province}_${earliestYear}`];
   }
 
-  // Project brackets forward using inflation
-  return projectProvincialData(baseData, yearsToProject, inflationRate);
+  // Use province-specific indexation factor (not the user's inflation rate)
+  const provincialFactor = PROVINCIAL_INDEXATION_FACTORS[province];
+
+  // Project brackets forward using province-specific indexation
+  return projectProvincialData(baseData, yearsToProject, provincialFactor, province);
 }
 
 /**
- * Project provincial tax data forward using inflation rate
+ * Project provincial tax data forward using province-specific indexation.
+ *
+ * Handles special cases:
+ * - Non-indexed thresholds (ON $150K/$220K, YT $500K) stay fixed
+ * - Manitoba frozen brackets (factor = 0, so no change)
+ * - Saskatchewan BPA gets $500/year Affordability Act add-on (through 2028)
  */
 function projectProvincialData(
   base: ProvincialTaxData,
   years: number,
-  inflationRate: number
+  inflationRate: number,
+  province?: ProvinceCode
 ): ProvincialTaxData {
   const factor = Math.pow(1 + inflationRate, years);
+  const fixedThresholds = province ? NON_INDEXED_THRESHOLDS[province] : undefined;
 
   const projected: ProvincialTaxData = {
     brackets: base.brackets.map((b) => ({
-      threshold: b.threshold === 0 ? 0 : Math.round(b.threshold * factor),
+      // Keep threshold at 0 for first bracket, keep fixed thresholds unchanged
+      threshold: b.threshold === 0 ? 0
+        : (fixedThresholds?.has(b.threshold) ? b.threshold
+        : Math.round(b.threshold * factor)),
       rate: b.rate,
     })),
     basicPersonalAmount: Math.round(base.basicPersonalAmount * factor),
@@ -616,6 +687,17 @@ function projectProvincialData(
     corporateSmallBusinessRate: base.corporateSmallBusinessRate,
     corporateGeneralRate: base.corporateGeneralRate,
   };
+
+  // Saskatchewan Affordability Act: extra $500/year added to BPA through 2028.
+  // Base year is 2026, which already includes the $500 add-on.
+  // For 2027 (years=1) and 2028 (years=2), add $500/year on top of indexed amount.
+  // Act expires after 2028, so no add-on for years >= 3 (i.e., 2029+).
+  const SK_AFFORDABILITY_ACT_LAST_YEAR = 2028;
+  const SK_BASE_YEAR = 2026;
+  const maxAffordabilityYears = SK_AFFORDABILITY_ACT_LAST_YEAR - SK_BASE_YEAR; // 2
+  if (province === 'SK' && years <= maxAffordabilityYears) {
+    projected.basicPersonalAmount += 500 * years;
+  }
 
   // Project surtax thresholds if applicable
   if (base.surtax) {

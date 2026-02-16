@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import type { UserInputs } from '../lib/types';
 import type { ProvinceCode } from '../lib/tax/provinces';
 import { PROVINCES } from '../lib/tax/provinces';
@@ -27,6 +27,16 @@ interface InputFieldProps {
   tooltip?: string;
 }
 
+// Format a number to a clean display string (avoids floating point artifacts)
+function formatDisplayValue(val: number | string): string {
+  if (val === '' || val === undefined || val === null) return '';
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (isNaN(num)) return '';
+  if (num === 0) return '';
+  // Use toPrecision to strip floating-point noise, then remove trailing zeros
+  return parseFloat(num.toPrecision(12)).toString();
+}
+
 const InputField = memo(function InputField({
   label,
   id,
@@ -39,6 +49,36 @@ const InputField = memo(function InputField({
   hint,
   tooltip,
 }: InputFieldProps) {
+  // Local string state so the user has full text-editing control (delete, select+type, etc.)
+  const [localValue, setLocalValue] = useState(() => formatDisplayValue(value));
+  const isFocused = useRef(false);
+
+  // Sync from parent when not focused (e.g., reset, share link load)
+  useEffect(() => {
+    if (!isFocused.current) {
+      setLocalValue(formatDisplayValue(value));
+    }
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    // Allow empty, digits, one decimal point, and leading minus
+    if (raw === '' || raw === '-' || raw === '.' || raw === '-.' || /^-?\d*\.?\d*$/.test(raw)) {
+      setLocalValue(raw);
+      onChange(raw);
+    }
+  }, [onChange]);
+
+  const handleFocus = useCallback(() => {
+    isFocused.current = true;
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    isFocused.current = false;
+    // Clean up display on blur (e.g., "7." → "7", "" → "")
+    setLocalValue(formatDisplayValue(localValue));
+  }, [localValue]);
+
   return (
     <div>
       {tooltip ? (
@@ -57,11 +97,13 @@ const InputField = memo(function InputField({
         )}
         <input
           id={id}
-          type="number"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          type="text"
+          inputMode="decimal"
+          value={localValue}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
-          step={step}
           style={prefix ? { paddingLeft: '28px' } : undefined}
         />
         {suffix && (
@@ -77,6 +119,64 @@ const InputField = memo(function InputField({
     </div>
   );
 });
+
+// Inline percentage input that stores as decimal (e.g., 0.07) but displays as percentage (7)
+// Manages its own local string state to avoid floating-point display artifacts
+interface PercentInputProps {
+  id: string;
+  decimalValue: number;
+  onDecimalChange: (decimal: number) => void;
+  placeholder?: string;
+  step?: string;
+  min?: string;
+  max?: string;
+}
+
+function PercentInput({ id, decimalValue, onDecimalChange, placeholder, step, min, max }: PercentInputProps) {
+  const [localValue, setLocalValue] = useState(() => {
+    if (!decimalValue) return '';
+    return formatDisplayValue(parseFloat((decimalValue * 100).toPrecision(12)));
+  });
+  const isFocused = useRef(false);
+
+  useEffect(() => {
+    if (!isFocused.current) {
+      if (!decimalValue) {
+        setLocalValue('');
+      } else {
+        setLocalValue(formatDisplayValue(parseFloat((decimalValue * 100).toPrecision(12))));
+      }
+    }
+  }, [decimalValue]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    if (raw === '' || raw === '.' || /^-?\d*\.?\d*$/.test(raw)) {
+      setLocalValue(raw);
+      if (raw === '' || raw === '.') {
+        onDecimalChange(0);
+      } else {
+        onDecimalChange(parseFloat(raw) / 100);
+      }
+    }
+  };
+
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      value={localValue}
+      onChange={handleChange}
+      onFocus={() => { isFocused.current = true; }}
+      onBlur={() => {
+        isFocused.current = false;
+        setLocalValue(formatDisplayValue(localValue));
+      }}
+      placeholder={placeholder}
+    />
+  );
+}
 
 // Initialize form data: shared link > localStorage > defaults
 const getInitialFormData = (initialInputs?: UserInputs | null): UserInputs => {
@@ -142,9 +242,10 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
   };
 
   const handleNumberChange = (field: keyof UserInputs, value: string) => {
+    const parsed = parseFloat(value);
     setFormData((prev) => ({
       ...prev,
-      [field]: value === '' ? 0 : parseFloat(value),
+      [field]: isNaN(parsed) ? 0 : parsed,
     }));
   };
 
@@ -292,20 +393,11 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               <div>
                 <InfoLabel label="Expected Total Return" tooltip={INPUT_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
                 <div className="relative">
-                  <input
+                  <PercentInput
                     id="returnRate"
-                    type="number"
-                    value={formData.investmentReturnRate * 100}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '') {
-                        setFormData({ ...formData, investmentReturnRate: 0 });
-                      } else {
-                        setFormData({ ...formData, investmentReturnRate: parseFloat(val) / 100 });
-                      }
-                    }}
+                    decimalValue={formData.investmentReturnRate}
+                    onDecimalChange={(v) => setFormData({ ...formData, investmentReturnRate: v })}
                     placeholder="4.31"
-                    step="0.01"
                   />
                   <span
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
@@ -316,6 +408,27 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 </div>
                 <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Annual portfolio return</p>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <InputField
+                label="Available RRSP Room"
+                id="rrsp"
+                value={formData.rrspBalance}
+                onChange={(v) => handleNumberChange('rrspBalance', v)}
+                prefix="$"
+                hint="From CRA My Account or NOA"
+                tooltip={INPUT_TOOLTIPS.rrspRoom}
+              />
+              <InputField
+                label="Available TFSA Room"
+                id="tfsa"
+                value={formData.tfsaBalance}
+                onChange={(v) => handleNumberChange('tfsaBalance', v)}
+                prefix="$"
+                hint="From CRA My Account"
+                tooltip={INPUT_TOOLTIPS.tfsaRoom}
+              />
             </div>
           </div>
         )}
@@ -348,22 +461,11 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               <div>
                 <InfoLabel label="Expected Inflation Rate" tooltip={INPUT_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
                 <div className="relative">
-                  <input
+                  <PercentInput
                     id="inflationRate"
-                    type="number"
-                    value={(formData.expectedInflationRate * 100).toFixed(1)}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '') {
-                        setFormData({ ...formData, expectedInflationRate: 0 });
-                      } else {
-                        setFormData({ ...formData, expectedInflationRate: parseFloat(val) / 100 });
-                      }
-                    }}
+                    decimalValue={formData.expectedInflationRate}
+                    onDecimalChange={(v) => setFormData({ ...formData, expectedInflationRate: v })}
                     placeholder="2.0"
-                    step="0.1"
-                    min="0"
-                    max="10"
                   />
                   <span
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
@@ -468,7 +570,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
         />
 
         {expandedSections.balances && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 mt-2 animate-fade-in" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 mt-2 animate-fade-in" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <InputField
               label="CDA Balance"
               id="cda"
@@ -504,24 +606,6 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               prefix="$"
               hint="From your T2 Schedule 3"
               tooltip={INPUT_TOOLTIPS.nrdtohBalance}
-            />
-            <InputField
-              label="Available RRSP Room"
-              id="rrsp"
-              value={formData.rrspBalance}
-              onChange={(v) => handleNumberChange('rrspBalance', v)}
-              prefix="$"
-              hint="From CRA My Account or NOA"
-              tooltip={INPUT_TOOLTIPS.rrspRoom}
-            />
-            <InputField
-              label="Available TFSA Room"
-              id="tfsa"
-              value={formData.tfsaBalance}
-              onChange={(v) => handleNumberChange('tfsaBalance', v)}
-              prefix="$"
-              hint="From CRA My Account"
-              tooltip={INPUT_TOOLTIPS.tfsaRoom}
             />
           </div>
         )}
@@ -641,15 +725,24 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                   hint="Amount to pay down per year"
                   tooltip={INPUT_TOOLTIPS.annualDebtPayment}
                 />
-                <InputField
-                  label="Interest Rate"
-                  id="debtRate"
-                  value={((formData.debtInterestRate || 0) * 100).toFixed(2)}
-                  onChange={(v) => handleNumberChange('debtInterestRate', (parseFloat(v) / 100).toString())}
-                  suffix="%"
-                  hint="Annual interest rate on debt"
-                  tooltip={INPUT_TOOLTIPS.debtInterestRate}
-                />
+                <div>
+                  <InfoLabel label="Interest Rate" tooltip={INPUT_TOOLTIPS.debtInterestRate} htmlFor="debtRate" />
+                  <div className="relative">
+                    <PercentInput
+                      id="debtRate"
+                      decimalValue={formData.debtInterestRate || 0}
+                      onDecimalChange={(v) => setFormData({ ...formData, debtInterestRate: v })}
+                      placeholder="5.0"
+                    />
+                    <span
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      %
+                    </span>
+                  </div>
+                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Annual interest rate on debt</p>
+                </div>
               </div>
             )}
           </div>
@@ -923,7 +1016,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
           <div className="flex items-start gap-3">
             <svg
               className="w-5 h-5 mt-0.5 flex-shrink-0"
-              style={{ color: '#ef4444' }}
+              style={{ color: '#f87171' }}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -936,7 +1029,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               />
             </svg>
             <div>
-              <p className="font-medium text-sm" style={{ color: '#ef4444' }}>
+              <p className="font-medium text-sm" style={{ color: '#f87171' }}>
                 Please fix the following errors:
               </p>
               <ul className="mt-2 text-sm space-y-1" style={{ color: 'var(--text-muted)' }}>

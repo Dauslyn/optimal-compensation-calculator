@@ -7,9 +7,9 @@ interface WinnerStrategyCardProps {
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
-  'salary-at-ympe': '#3b82f6',
-  'dividends-only': '#10b981',
-  'dynamic': '#f59e0b',
+  'salary-at-ympe': '#10b981',
+  'dividends-only': '#d4a017',
+  'dynamic': '#6ee7b7',
 };
 
 export const WinnerStrategyCard = memo(function WinnerStrategyCard({
@@ -27,8 +27,9 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
       className="rounded-xl p-6"
       style={{
         background: 'var(--bg-elevated)',
-        border: `2px solid ${color}`,
-        boxShadow: `0 0 20px ${color}33`,
+        border: `1px solid ${color}40`,
+        boxShadow: `0 0 30px ${color}15, inset 0 1px 0 rgba(255,255,255,0.04)`,
+        backdropFilter: 'blur(16px)',
       }}
     >
       {/* Badge */}
@@ -82,8 +83,12 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
             )}
           </li>
           <li>
-            Best wealth accumulation: {formatCurrency(winner.summary.finalCorporateBalance + (winner.summary.totalRRSPContributions || 0))}
-            {' '}total assets
+            Estimated after-tax wealth: {formatCurrency(
+              (winner.summary.totalCompensation - winner.summary.totalTax) +
+              ((winner.summary.totalRRSPContributions || 0) * 0.70) +
+              (winner.summary.finalCorporateBalance * 0.60)
+            )}
+            {' '}(income + RRSP at 30% tax + corp at 40% tax)
           </li>
           <li>
             Optimal balance of tax efficiency + flexibility

@@ -33,12 +33,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div
       style={{
-        background: 'rgba(22, 22, 30, 0.95)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '12px',
+        background: 'rgba(10, 17, 13, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(110, 231, 183, 0.1)',
+        borderRadius: '14px',
         padding: '12px 16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       <p style={{ fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.9)' }}>{label}</p>
@@ -72,9 +73,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             fontSize: '13px',
           }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#818cf8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#6ee7b7' }} />
           <span style={{ color: 'rgba(255,255,255,0.6)' }}>Effective Tax Rate:</span>
-          <span style={{ fontWeight: 600, color: '#818cf8' }}>
+          <span style={{ fontWeight: 600, color: '#6ee7b7' }}>
             {(effectiveRate * 100).toFixed(1)}%
           </span>
         </div>
@@ -107,10 +108,10 @@ export function Chart({ results }: ChartProps) {
   }));
 
   const COLORS = {
-    salary: '#6366f1',
-    capitalDiv: '#34d399',
-    eligibleDiv: '#a78bfa',
-    nonEligibleDiv: '#fbbf24',
+    salary: '#059669',
+    capitalDiv: '#a3e635',
+    eligibleDiv: '#6ee7b7',
+    nonEligibleDiv: '#d4a017',
     corp: '#38bdf8',
   };
 

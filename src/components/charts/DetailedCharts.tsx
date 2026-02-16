@@ -20,25 +20,25 @@ interface DetailedChartsProps {
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
-  'salary-at-ympe': '#3b82f6',
-  'dividends-only': '#10b981',
-  'dynamic': '#f59e0b',
+  'salary-at-ympe': '#10b981',
+  'dividends-only': '#d4a017',
+  'dynamic': '#6ee7b7',
 };
 
 const TAX_COLORS = {
-  personal: '#6366f1',
-  corporate: '#f59e0b',
-  cpp: '#ec4899',
-  ei: '#8b5cf6',
-  qpip: '#06b6d4',
-  health: '#10b981',
+  personal: '#059669',
+  corporate: '#d4a017',
+  cpp: '#f87171',
+  ei: '#a3e635',
+  qpip: '#2dd4bf',
+  health: '#6ee7b7',
 };
 
 const COMP_COLORS = {
-  salary: '#6366f1',
-  eligible: '#a78bfa',
-  nonEligible: '#fbbf24',
-  capital: '#34d399',
+  salary: '#059669',
+  eligible: '#6ee7b7',
+  nonEligible: '#d4a017',
+  capital: '#a3e635',
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -47,12 +47,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div
       style={{
-        background: 'rgba(22, 22, 30, 0.95)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '12px',
+        background: 'rgba(10, 17, 13, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(110, 231, 183, 0.1)',
+        borderRadius: '14px',
         padding: '12px 16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
       <p style={{ fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.9)' }}>

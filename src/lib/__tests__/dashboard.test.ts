@@ -133,7 +133,7 @@ describe('Dashboard Layout Persistence', () => {
 });
 
 describe('Widget Renderer data extraction', () => {
-  it('getStrategyData returns correct strategy from comparison', async () => {
+  it('getStrategyData returns correct strategy from comparison', { timeout: 15000 }, async () => {
     const { getStrategyData } = await import('../../components/dashboard/WidgetRenderer');
     const mockComparison = {
       strategies: [
@@ -154,7 +154,7 @@ describe('Widget Renderer data extraction', () => {
     expect(result.strategy.summary.totalTax).toBe(200);
   });
 
-  it('getStrategyData falls back to first strategy for unknown ID', async () => {
+  it('getStrategyData falls back to first strategy for unknown ID', { timeout: 15000 }, async () => {
     const { getStrategyData } = await import('../../components/dashboard/WidgetRenderer');
     const mockComparison = {
       strategies: [

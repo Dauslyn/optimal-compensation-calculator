@@ -196,12 +196,17 @@ describe('Year-Over-Year Behavior', () => {
   // 2. Fixed salary + zero inflation = identical tax each year
   // =========================================================================
   describe('Fixed salary + zero inflation = identical tax each year', () => {
+    // NOTE: Use Manitoba because MB froze brackets at 2024 levels (Budget 2025).
+    // Provincial brackets now use province-specific indexation factors regardless
+    // of the user's inflation rate. MB has 0% indexation, so with federal inflation
+    // also at 0%, ALL brackets stay frozen → truly identical tax each year.
     it('with zero inflation and fixed salary, personal tax should be identical each year', () => {
       // NOTE: Start from 2027 so all years use projection from 2026 base
       // with 0% inflation (avoiding known-year rate differences).
       // Use a salary high enough to cover requiredIncome so no dividends are needed
       // (dividends vary with corporate balance, which changes each year).
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 200000,
         requiredIncome: 80000, // Less than salary after-tax, so no dividends needed
@@ -219,6 +224,7 @@ describe('Year-Over-Year Behavior', () => {
 
     it('salary should be identical every year with zero inflation', () => {
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 80000,
         inflateSpendingNeeds: false,
@@ -234,6 +240,7 @@ describe('Year-Over-Year Behavior', () => {
 
     it('CPP should be identical every year with zero inflation and fixed salary', () => {
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 80000,
         inflateSpendingNeeds: false,
@@ -250,6 +257,7 @@ describe('Year-Over-Year Behavior', () => {
 
     it('EI should be identical every year with zero inflation and fixed salary', () => {
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 80000,
         inflateSpendingNeeds: false,
@@ -267,6 +275,7 @@ describe('Year-Over-Year Behavior', () => {
     it('afterTaxIncome should be identical every year with zero inflation (salary-only)', () => {
       // Use a high salary to minimize dividend component (which varies with corp balance)
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 150000,
         inflateSpendingNeeds: false,
@@ -285,6 +294,7 @@ describe('Year-Over-Year Behavior', () => {
 
     it('at $150K salary with zero inflation, personal tax should be identical', () => {
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 150000,
         inflateSpendingNeeds: false,
@@ -305,6 +315,7 @@ describe('Year-Over-Year Behavior', () => {
       // So we test that the salary component of personal tax stays constant
       // by using a high enough salary that no dividends are needed.
       const result = calculateProjection(createInputs({
+        province: 'MB',
         salaryStrategy: 'fixed',
         fixedSalaryAmount: 150000,
         requiredIncome: 50000, // Well below salary after-tax
@@ -388,16 +399,6 @@ describe('Year-Over-Year Behavior', () => {
   // 4. Bracket indexation verification
   // =========================================================================
   describe('Bracket indexation verification', () => {
-    it('2025 data should match KNOWN_TAX_YEARS[2025]', () => {
-      const taxData = getTaxYearData(2025, 0.02, 'ON');
-      const known = KNOWN_TAX_YEARS[2025];
-
-      // Federal brackets should match known values
-      expect(taxData.federal.brackets[0].rate).toBe(known.federal.brackets[0].rate);
-      expect(taxData.federal.brackets[1].threshold).toBe(known.federal.brackets[1].threshold);
-      expect(taxData.federal.basicPersonalAmount).toBe(known.federal.basicPersonalAmount);
-    });
-
     it('2026 data should match KNOWN_TAX_YEARS[2026]', () => {
       const taxData = getTaxYearData(2026, 0.02, 'ON');
       const known = KNOWN_TAX_YEARS[2026];
@@ -471,51 +472,12 @@ describe('Year-Over-Year Behavior', () => {
   });
 
   // =========================================================================
-  // 5. Known year 2025 to 2026 transition
+  // 5. Known year 2026 to 2027 transition
   // =========================================================================
-  describe('Known year 2025 to 2026 transition', () => {
-    it('2025 and 2026 should have DIFFERENT federal bracket thresholds', () => {
-      const data2025 = getTaxYearData(2025, 0.02, 'ON');
-      const data2026 = getTaxYearData(2026, 0.02, 'ON');
-
-      expect(data2025.federal.brackets[1].threshold)
-        .not.toBe(data2026.federal.brackets[1].threshold);
-    });
-
-    it('2025 and 2026 should have DIFFERENT federal lowest bracket rates', () => {
-      const data2025 = getTaxYearData(2025, 0.02, 'ON');
-      const data2026 = getTaxYearData(2026, 0.02, 'ON');
-
-      // 2025 has blended 14.5%, 2026 has full-year 14%
-      expect(data2025.federal.brackets[0].rate).toBe(0.145);
-      expect(data2026.federal.brackets[0].rate).toBe(0.14);
-    });
-
-    it('2025 federal BPA should be $16,129', () => {
-      const data2025 = getTaxYearData(2025, 0.02, 'ON');
-      expect(data2025.federal.basicPersonalAmount).toBe(16129);
-    });
-
-    it('2026 federal BPA should exist and differ from 2025', () => {
-      const data2025 = getTaxYearData(2025, 0.02, 'ON');
-      const data2026 = getTaxYearData(2026, 0.02, 'ON');
-
-      expect(data2026.federal.basicPersonalAmount).toBeGreaterThan(0);
-      expect(data2026.federal.basicPersonalAmount)
-        .not.toBe(data2025.federal.basicPersonalAmount);
-    });
-
+  describe('Known year 2026 to 2027 transition', () => {
     it('2026 federal BPA should be $16,452', () => {
       const data2026 = getTaxYearData(2026, 0.02, 'ON');
       expect(data2026.federal.basicPersonalAmount).toBe(16452);
-    });
-
-    it('2025 CPP values should differ from 2026', () => {
-      const data2025 = getTaxYearData(2025, 0.02, 'ON');
-      const data2026 = getTaxYearData(2026, 0.02, 'ON');
-
-      expect(data2025.cpp.ympe).not.toBe(data2026.cpp.ympe);
-      expect(data2025.cpp.maxContribution).not.toBe(data2026.cpp.maxContribution);
     });
 
     it('transition from 2026 to 2027 should not cause a tax spike for fixed salary', () => {

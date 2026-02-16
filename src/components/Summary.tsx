@@ -100,8 +100,9 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
           <div className="stat-value">{formatCurrency(summary.totalCompensation)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Avg Annual Income</div>
+          <div className="stat-label">Avg Annual Compensation</div>
           <div className="stat-value">{formatCurrency(summary.averageAnnualIncome)}</div>
+          <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>gross, before tax</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Final Corp Balance</div>
@@ -123,21 +124,11 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
         style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
       >
         <div className="text-sm font-semibold mb-4">Average Effective Tax Rates ({summary.yearlyResults.length}-Year)</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
-            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Avg Integrated Rate</div>
-            <div className="text-2xl font-bold" style={{ color: '#818cf8' }}>{formatPercent(summary.effectiveCompensationRate)}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Corp + personal tax</div>
-          </div>
-          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(251, 146, 60, 0.1)' }}>
-            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Avg Investment Tax</div>
-            <div className="text-2xl font-bold" style={{ color: '#fb923c' }}>{formatPercent(summary.effectivePassiveRate)}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Net after RDTOH refund</div>
-          </div>
-          <div className="text-center p-4 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
-            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Avg Combined Rate</div>
-            <div className="text-2xl font-bold" style={{ color: '#ef4444' }}>{formatPercent(summary.effectiveTaxRate)}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>All taxes / compensation</div>
+        <div className="flex items-center justify-center">
+          <div className="text-center p-5 rounded-lg" style={{ background: 'rgba(5, 150, 105, 0.08)', backdropFilter: 'blur(8px)', minWidth: '220px' }}>
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Avg Integrated Tax Rate</div>
+            <div className="text-3xl font-bold" style={{ color: '#6ee7b7' }}>{formatPercent(summary.effectiveCompensationRate)}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Corporate + personal tax on compensation</div>
           </div>
         </div>
       </div>
@@ -151,26 +142,26 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
           <span className="text-sm font-semibold">Compensation Mix</span>
           <div className="flex items-center gap-5 text-xs">
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ background: '#6366f1' }}></span>
+              <span className="w-3 h-3 rounded-full" style={{ background: '#10b981' }}></span>
               <span style={{ color: 'var(--text-secondary)' }}>Salary</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ background: '#34d399' }}></span>
+              <span className="w-3 h-3 rounded-full" style={{ background: '#d4a017' }}></span>
               <span style={{ color: 'var(--text-secondary)' }}>Dividends</span>
             </span>
           </div>
         </div>
-        <div className="h-3 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.1)' }}>
-          <div className="h-full transition-all duration-500" style={{ width: `${salaryPercent}%`, background: 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' }} />
-          <div className="h-full transition-all duration-500" style={{ width: `${dividendPercent}%`, background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)' }} />
+        <div className="h-3 overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '10px' }}>
+          <div className="h-full transition-all duration-500" style={{ width: `${salaryPercent}%`, background: 'linear-gradient(90deg, #059669 0%, #6ee7b7 100%)' }} />
+          <div className="h-full transition-all duration-500" style={{ width: `${dividendPercent}%`, background: 'linear-gradient(90deg, #b8860b 0%, #d4a017 100%)' }} />
         </div>
         <div className="flex justify-between mt-4">
           <div>
-            <div className="text-lg font-bold" style={{ color: '#818cf8' }}>{formatCurrency(summary.totalSalary)}</div>
+            <div className="text-lg font-bold" style={{ color: '#6ee7b7' }}>{formatCurrency(summary.totalSalary)}</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{salaryPercent.toFixed(0)}% Salary</div>
           </div>
           <div className="text-right">
-            <div className="text-lg font-bold" style={{ color: '#34d399' }}>{formatCurrency(summary.totalDividends)}</div>
+            <div className="text-lg font-bold" style={{ color: '#d4a017' }}>{formatCurrency(summary.totalDividends)}</div>
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{dividendPercent.toFixed(0)}% Dividends</div>
           </div>
         </div>

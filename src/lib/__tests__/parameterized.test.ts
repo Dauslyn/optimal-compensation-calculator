@@ -450,7 +450,6 @@ describe('Parameterized Input Sweep', () => {
 
   describe('Starting year variations', () => {
     const yearCases = [
-      { startingYear: 2025 },
       { startingYear: 2026 },
       { startingYear: 2027 },
       { startingYear: 2030 },

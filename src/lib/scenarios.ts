@@ -28,14 +28,14 @@ export interface Scenario {
  * Available scenario colors for visual distinction
  */
 export const SCENARIO_COLORS = [
-  '#3b82f6', // Blue
   '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#84cc16', // Lime
+  '#d4a017', // Gold
+  '#6ee7b7', // Bright Emerald
+  '#f87171', // Coral Red
+  '#a3e635', // Lime
+  '#2dd4bf', // Teal
+  '#059669', // Deep Emerald
+  '#86efac', // Mint
 ] as const;
 
 /**

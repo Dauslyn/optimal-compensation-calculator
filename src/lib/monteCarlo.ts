@@ -26,7 +26,7 @@ export interface SimulationResult {
   totalTax: number;
   finalCorporateBalance: number;
   totalAfterTaxIncome: number;
-  effectiveTaxRate: number;
+  integratedTaxRate: number;
 }
 
 /**
@@ -56,7 +56,7 @@ export interface MonteCarloResults {
   totalTax: PercentileData;
   finalCorporateBalance: PercentileData;
   totalAfterTaxIncome: PercentileData;
-  effectiveTaxRate: PercentileData;
+  integratedTaxRate: PercentileData;
 
   // Year-by-year distribution
   yearlyBalanceDistribution: Array<{
@@ -192,7 +192,7 @@ function runSimulation(
     totalTax: projection.totalTax,
     finalCorporateBalance: projection.finalCorporateBalance,
     totalAfterTaxIncome: projection.yearlyResults.reduce((sum, y) => sum + y.afterTaxIncome, 0),
-    effectiveTaxRate: projection.effectiveTaxRate,
+    integratedTaxRate: projection.effectiveCompensationRate,
   };
 }
 
@@ -241,7 +241,7 @@ export function runMonteCarloSimulation(
   const totalTaxes = simulations.map(s => s.totalTax);
   const finalBalances = simulations.map(s => s.finalCorporateBalance);
   const totalIncomes = simulations.map(s => s.totalAfterTaxIncome);
-  const effectiveRates = simulations.map(s => s.effectiveTaxRate);
+  const effectiveRates = simulations.map(s => s.integratedTaxRate);
 
   // Build year-by-year distribution
   const yearlyBalanceDistribution = yearlyBalances.map((balances, index) => {
@@ -270,7 +270,7 @@ export function runMonteCarloSimulation(
     totalTax: buildPercentileData(totalTaxes),
     finalCorporateBalance: buildPercentileData(finalBalances),
     totalAfterTaxIncome: buildPercentileData(totalIncomes),
-    effectiveTaxRate: buildPercentileData(effectiveRates),
+    integratedTaxRate: buildPercentileData(effectiveRates),
     yearlyBalanceDistribution,
     probabilityOfMeetingGoal: (simulationsAboveStart / fullConfig.numSimulations) * 100,
     probabilityOfLoss: (simulationsBelowStart / fullConfig.numSimulations) * 100,
