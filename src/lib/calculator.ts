@@ -3,6 +3,7 @@ import type {
   NotionalAccounts,
   YearlyResult,
   ProjectionSummary,
+  BalanceTracking,
 } from './types';
 import {
   getTaxYearData,
@@ -366,6 +367,18 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
   let spouseRRSPRoom = inputs.hasSpouse ? (inputs.spouseRRSPRoom || 0) : 0;
   let spouseTFSARoom = inputs.hasSpouse ? (inputs.spouseTFSARoom || 0) : 0;
 
+  // Lifetime model tracking
+  const currentAge = inputs.currentAge ?? 45;
+  const retirementAge = inputs.retirementAge ?? 65;
+  const planningEndAge = inputs.planningEndAge ?? (currentAge + inputs.planningHorizon);
+  const accumulationYears = Math.max(0, retirementAge - currentAge);
+
+  // Running balance tracking for lifetime model
+  let actualRRSPBalance = inputs.actualRRSPBalance ?? 0;
+  let actualTFSABalance = inputs.actualTFSABalance ?? 0;
+  let ippFundBalance = 0;
+  const cppEarningsHistory: number[] = [];
+
   // Calculate each year
   for (let yearIndex = 0; yearIndex < inputs.planningHorizon; yearIndex++) {
     const calendarYear = startingYear + yearIndex;
@@ -401,6 +414,38 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
       spouseTFSARoom,
       spouseInflatedIncome
     );
+
+    // Annotate with lifetime model data
+    const age = currentAge + yearIndex;
+    const phase = yearIndex < accumulationYears ? 'accumulation' as const : 'retirement' as const;
+
+    // Track running balances
+    actualRRSPBalance += yearResult.rrspContribution;
+    actualRRSPBalance *= (1 + inputs.investmentReturnRate); // Growth on RRSP
+    actualTFSABalance += yearResult.tfsaContribution;
+    actualTFSABalance *= (1 + inputs.investmentReturnRate); // Growth on TFSA
+
+    if (yearResult.ipp) {
+      ippFundBalance += yearResult.ipp.contribution;
+      ippFundBalance *= (1 + inputs.investmentReturnRate);
+    }
+
+    // Record salary for CPP earnings history
+    cppEarningsHistory.push(yearResult.salary);
+
+    // Add lifetime fields to result
+    yearResult.phase = phase;
+    yearResult.calendarYear = calendarYear;
+    yearResult.age = age;
+    if (inputs.hasSpouse && inputs.spouseCurrentAge) {
+      yearResult.spouseAge = inputs.spouseCurrentAge + yearIndex;
+    }
+    yearResult.balances = {
+      rrspBalance: actualRRSPBalance,
+      tfsaBalance: actualTFSABalance,
+      corporateBalance: yearResult.notionalAccounts.corporateInvestments,
+      ippFundBalance,
+    };
 
     yearlyResults.push(yearResult);
 
