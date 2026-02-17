@@ -65,22 +65,20 @@ describe('validateInputs', () => {
   });
 
   describe('planningHorizon', () => {
-    it('should reject invalid horizon', () => {
-      // Test horizon below minimum (2 years)
-      const inputs = createValidInputs({ planningHorizon: 2 as any });
+    it('should reject zero or negative horizon', () => {
+      const inputs = createValidInputs({ planningHorizon: 0 });
       const errors = validateInputs(inputs);
       expect(errors.some(e => e.field === 'planningHorizon')).toBe(true);
     });
 
-    it('should reject horizon above maximum', () => {
-      // Test horizon above maximum (11 years)
-      const inputs = createValidInputs({ planningHorizon: 11 as any });
+    it('should reject horizon above 80 years', () => {
+      const inputs = createValidInputs({ planningHorizon: 81 });
       const errors = validateInputs(inputs);
       expect(errors.some(e => e.field === 'planningHorizon')).toBe(true);
     });
 
     it('should accept valid horizons', () => {
-      for (const horizon of [3, 4, 5, 6, 7, 8, 9, 10] as const) {
+      for (const horizon of [1, 5, 10, 20, 45, 80]) {
         const inputs = createValidInputs({ planningHorizon: horizon });
         const errors = validateInputs(inputs);
         expect(errors.some(e => e.field === 'planningHorizon')).toBe(false);

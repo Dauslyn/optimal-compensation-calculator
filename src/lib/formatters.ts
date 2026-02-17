@@ -41,6 +41,13 @@ export function formatNumber(value: number, decimals = 0): string {
 }
 
 /**
+ * Format a decimal as a percentage (alias for formatPercent, used by some components)
+ */
+export function formatPercentage(decimal: number): string {
+  return formatPercent(decimal);
+}
+
+/**
  * Format a difference (positive/negative) with color indication
  */
 export function formatDifference(value: number, invert = false): {

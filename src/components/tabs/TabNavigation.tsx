@@ -51,7 +51,7 @@ export const TabNavigation = memo(function TabNavigation({
             onClick={() => !disabled && onTabChange(tab.id)}
             disabled={disabled}
             className={`
-              px-4 py-3 text-sm font-medium transition-colors
+              px-4 py-3 text-sm font-medium
               border-b-2 -mb-px
               ${activeTab === tab.id
                 ? 'border-current'
@@ -62,6 +62,8 @@ export const TabNavigation = memo(function TabNavigation({
               color: activeTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.5 : 1,
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: activeTab === tab.id ? '0 2px 8px rgba(16, 185, 129, 0.2)' : 'none',
             }}
           >
             {tab.icon && <span className="mr-1.5">{tab.icon}</span>}

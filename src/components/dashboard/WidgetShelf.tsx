@@ -32,9 +32,9 @@ function ShelfItem({ widget }: ShelfItemProps) {
   };
 
   const categoryColor = {
-    chart: '#3b82f6',
-    table: '#10b981',
-    stat: '#f59e0b',
+    chart: '#10b981',
+    table: '#d4a017',
+    stat: '#6ee7b7',
   }[widget.category];
 
   return (

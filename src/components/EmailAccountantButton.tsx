@@ -9,7 +9,7 @@ import type { UserInputs, ProjectionSummary } from '../lib/types';
 import type { ComparisonResult } from '../lib/strategyComparison';
 import { PROVINCES } from '../lib/tax/provinces';
 import { generateShareUrl } from '../lib/shareLink';
-import { formatCurrency, formatPercentage } from '../lib/utils';
+import { formatCurrency, formatPercentage } from '../lib/formatters';
 
 interface EmailAccountantButtonProps {
   inputs: UserInputs | null;
@@ -48,7 +48,7 @@ function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary, comparis
     `Strategy: ${strategyLabel}`,
     `Compensation Mix: ${salaryPct}% salary / ${divPct}% dividends`,
     `Avg Annual After-Tax Income: ${formatCurrency(summary.averageAnnualIncome)}`,
-    `Combined Effective Tax Rate: ${formatPercentage(summary.effectiveTaxRate)}`,
+    `Integrated Tax Rate: ${formatPercentage(summary.effectiveCompensationRate)}`,
     `Final Corporate Balance: ${formatCurrency(summary.finalCorporateBalance)}`,
     `RRSP Room Generated: ${formatCurrency(summary.totalRRSPRoomGenerated)}`,
     `Total RDTOH Refunds: ${formatCurrency(summary.totalRdtohRefund)}`,
@@ -65,7 +65,7 @@ function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary, comparis
       '---',
       ...comparison.strategies.map(s => {
         const tag = s.id === comparison.winner.bestOverall ? ' <-- RECOMMENDED' : '';
-        return `${s.label}: Tax ${formatCurrency(s.summary.totalTax)} | Rate ${formatPercentage(s.summary.effectiveTaxRate)} | Balance ${formatCurrency(s.summary.finalCorporateBalance)}${tag}`;
+        return `${s.label}: Tax ${formatCurrency(s.summary.totalTax)} | Rate ${formatPercentage(s.summary.effectiveCompensationRate)} | Balance ${formatCurrency(s.summary.finalCorporateBalance)}${tag}`;
       }),
       '',
       `Recommendation: ${comparison.strategies.find(s => s.id === comparison.winner.bestOverall)?.label || 'Dynamic Optimizer'} strategy`,

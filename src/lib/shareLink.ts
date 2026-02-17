@@ -10,7 +10,7 @@ import type { ProvinceCode } from './tax/provinces';
 import { DEFAULT_PROVINCE, PROVINCES } from './tax/provinces';
 
 // Version for backwards compatibility if we change the format
-const SHARE_FORMAT_VERSION = 2;
+const SHARE_FORMAT_VERSION = 3;
 
 interface ShareData {
   v: number; // version
@@ -51,6 +51,19 @@ interface CompactInputs {
   cip?: boolean; // considerIPP
   ima?: number;  // ippMemberAge
   iys?: number;  // ippYearsOfService
+  // Lifetime model (v3)
+  ca?: number;   // currentAge
+  ra?: number;   // retirementAge
+  pea?: number;  // planningEndAge
+  rs?: number;   // retirementSpending
+  lo?: string;   // lifetimeObjective
+  csa?: number;  // cppStartAge
+  ssa?: number;  // salaryStartAge
+  ahs?: number;  // averageHistoricalSalary
+  oe?: boolean;  // oasEligible
+  osa?: number;  // oasStartAge
+  arb?: number;  // actualRRSPBalance
+  atb?: number;  // actualTFSABalance
   // Spouse (v2)
   hs?: boolean;  // hasSpouse
   sri?: number;  // spouseRequiredIncome
@@ -63,6 +76,16 @@ interface CompactInputs {
   scip?: boolean; // spouseConsiderIPP
   sipa?: number;  // spouseIPPAge
   siys?: number;  // spouseIPPYearsOfService
+  // Spouse lifetime (v3)
+  sca?: number;   // spouseCurrentAge
+  sra2?: number;  // spouseRetirementAge
+  scsa?: number;  // spouseCPPStartAge
+  sssa2?: number; // spouseSalaryStartAge
+  sahs?: number;  // spouseAverageHistoricalSalary
+  soe?: boolean;  // spouseOASEligible
+  sosa?: number;  // spouseOASStartAge
+  sarb?: number;  // spouseActualRRSPBalance
+  satb?: number;  // spouseActualTFSABalance
 }
 
 /**
@@ -94,6 +117,19 @@ function compressInputs(inputs: UserInputs): CompactInputs {
     ce2: inputs.contributeToRESP,
     pd: inputs.payDownDebt,
     ss: inputs.salaryStrategy,
+    // Lifetime model fields (v3)
+    ca: inputs.currentAge,
+    ra: inputs.retirementAge,
+    pea: inputs.planningEndAge,
+    rs: inputs.retirementSpending,
+    lo: inputs.lifetimeObjective,
+    csa: inputs.cppStartAge,
+    ssa: inputs.salaryStartAge,
+    ahs: inputs.averageHistoricalSalary,
+    oe: inputs.oasEligible,
+    osa: inputs.oasStartAge,
+    arb: inputs.actualRRSPBalance,
+    atb: inputs.actualTFSABalance,
   };
 
   // Only include optional fields if they have values
@@ -154,6 +190,16 @@ function compressInputs(inputs: UserInputs): CompactInputs {
     if (inputs.spouseIPPYearsOfService !== undefined) {
       compact.siys = inputs.spouseIPPYearsOfService;
     }
+    // Spouse lifetime fields (v3)
+    if (inputs.spouseCurrentAge !== undefined) compact.sca = inputs.spouseCurrentAge;
+    if (inputs.spouseRetirementAge !== undefined) compact.sra2 = inputs.spouseRetirementAge;
+    if (inputs.spouseCPPStartAge !== undefined) compact.scsa = inputs.spouseCPPStartAge;
+    if (inputs.spouseSalaryStartAge !== undefined) compact.sssa2 = inputs.spouseSalaryStartAge;
+    if (inputs.spouseAverageHistoricalSalary !== undefined) compact.sahs = inputs.spouseAverageHistoricalSalary;
+    if (inputs.spouseOASEligible !== undefined) compact.soe = inputs.spouseOASEligible;
+    if (inputs.spouseOASStartAge !== undefined) compact.sosa = inputs.spouseOASStartAge;
+    if (inputs.spouseActualRRSPBalance !== undefined) compact.sarb = inputs.spouseActualRRSPBalance;
+    if (inputs.spouseActualTFSABalance !== undefined) compact.satb = inputs.spouseActualTFSABalance;
   }
 
   return compact;
@@ -190,6 +236,17 @@ function validateSalaryStrategy(strategy: string): 'dynamic' | 'fixed' | 'divide
 }
 
 /**
+ * Validate lifetime objective
+ */
+function validateLifetimeObjective(objective: string | undefined): 'maximize-spending' | 'maximize-estate' | 'balanced' {
+  const valid = ['maximize-spending', 'maximize-estate', 'balanced'];
+  if (objective && valid.includes(objective)) {
+    return objective as 'maximize-spending' | 'maximize-estate' | 'balanced';
+  }
+  return 'balanced';
+}
+
+/**
  * Expand compact format back to UserInputs with validation
  */
 function expandInputs(compact: CompactInputs): UserInputs {
@@ -202,8 +259,8 @@ function expandInputs(compact: CompactInputs): UserInputs {
   return {
     province: validateProvinceCode(compact.pv || DEFAULT_PROVINCE),
     requiredIncome: clamp(compact.ri, 0, 10_000_000),
-    planningHorizon: clamp(compact.ph, 3, 10) as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
-    startingYear: clamp(compact.sy, 2025, 2050),
+    planningHorizon: clamp(compact.ph, 1, 80),
+    startingYear: clamp(compact.sy, 2026, 2050),
     expectedInflationRate: clamp(compact.ei, 0, 0.2),
     inflateSpendingNeeds: Boolean(compact.is),
     corporateInvestmentBalance: clamp(compact.cib, 0, 100_000_000),
@@ -232,6 +289,19 @@ function expandInputs(compact: CompactInputs): UserInputs {
     considerIPP: compact.cip,
     ippMemberAge: compact.ima,
     ippYearsOfService: compact.iys,
+    // Lifetime model fields (v3) — use defaults for v1/v2 links
+    currentAge: compact.ca !== undefined ? clamp(compact.ca, 18, 80) : 45,
+    retirementAge: compact.ra !== undefined ? clamp(compact.ra, 30, 80) : 65,
+    planningEndAge: compact.pea !== undefined ? clamp(compact.pea, 50, 100) : 90,
+    retirementSpending: compact.rs !== undefined ? clamp(compact.rs, 0, 10_000_000) : 70000,
+    lifetimeObjective: validateLifetimeObjective(compact.lo),
+    cppStartAge: compact.csa !== undefined ? clamp(compact.csa, 60, 70) : 65,
+    salaryStartAge: compact.ssa !== undefined ? clamp(compact.ssa, 16, 65) : 22,
+    averageHistoricalSalary: compact.ahs !== undefined ? clamp(compact.ahs, 0, 1_000_000) : 60000,
+    oasEligible: compact.oe !== undefined ? Boolean(compact.oe) : true,
+    oasStartAge: compact.osa !== undefined ? clamp(compact.osa, 65, 70) : 65,
+    actualRRSPBalance: compact.arb !== undefined ? clamp(compact.arb, 0, 10_000_000) : 0,
+    actualTFSABalance: compact.atb !== undefined ? clamp(compact.atb, 0, 10_000_000) : 0,
     // Spouse fields (v2) — only include when present for backward compatibility
     ...(compact.hs ? {
       hasSpouse: true,
@@ -245,6 +315,16 @@ function expandInputs(compact: CompactInputs): UserInputs {
       spouseConsiderIPP: compact.scip,
       spouseIPPAge: compact.sipa,
       spouseIPPYearsOfService: compact.siys !== undefined ? Math.max(0, compact.siys) : undefined,
+      // Spouse lifetime fields (v3)
+      spouseCurrentAge: compact.sca !== undefined ? clamp(compact.sca, 18, 80) : undefined,
+      spouseRetirementAge: compact.sra2 !== undefined ? clamp(compact.sra2, 30, 80) : undefined,
+      spouseCPPStartAge: compact.scsa !== undefined ? clamp(compact.scsa, 60, 70) : undefined,
+      spouseSalaryStartAge: compact.sssa2 !== undefined ? clamp(compact.sssa2, 16, 65) : undefined,
+      spouseAverageHistoricalSalary: compact.sahs !== undefined ? clamp(compact.sahs, 0, 1_000_000) : undefined,
+      spouseOASEligible: compact.soe,
+      spouseOASStartAge: compact.sosa !== undefined ? clamp(compact.sosa, 65, 70) : undefined,
+      spouseActualRRSPBalance: compact.sarb !== undefined ? clamp(compact.sarb, 0, 10_000_000) : undefined,
+      spouseActualTFSABalance: compact.satb !== undefined ? clamp(compact.satb, 0, 10_000_000) : undefined,
     } : {}),
   };
 }
@@ -284,8 +364,8 @@ export function decodeShareLink(encoded: string): UserInputs | null {
     const json = atob(base64);
     const shareData: ShareData = JSON.parse(json);
 
-    // Version check - accept v1 (no spouse) and v2 (with spouse)
-    if (shareData.v !== SHARE_FORMAT_VERSION && shareData.v !== 1) {
+    // Version check - accept v1 (no spouse), v2 (with spouse), v3 (lifetime)
+    if (![1, 2, 3].includes(shareData.v)) {
       console.warn(`Unknown share link version: ${shareData.v}`);
     }
 

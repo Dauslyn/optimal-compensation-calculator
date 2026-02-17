@@ -27,9 +27,9 @@ const PercentileBar = memo(function PercentileBar({
   colorScheme?: 'blue' | 'green' | 'red';
 }) {
   const colors = {
-    blue: { light: '#3b82f620', dark: '#3b82f6', gradient: 'linear-gradient(90deg, #3b82f640, #3b82f6)' },
-    green: { light: '#10b98120', dark: '#10b981', gradient: 'linear-gradient(90deg, #10b98140, #10b981)' },
-    red: { light: '#ef444420', dark: '#ef4444', gradient: 'linear-gradient(90deg, #ef444440, #ef4444)' },
+    blue: { light: '#10b98120', dark: '#10b981', gradient: '#10b98160' },
+    green: { light: '#05966920', dark: '#059669', gradient: '#05966960' },
+    red: { light: '#f8717120', dark: '#f87171', gradient: '#f8717160' },
   };
   const color = colors[colorScheme];
 
@@ -113,8 +113,8 @@ const ProbabilityGauge = memo(function ProbabilityGauge({
   isPositive?: boolean;
 }) {
   const color = isPositive
-    ? probability >= 70 ? '#10b981' : probability >= 50 ? '#f59e0b' : '#ef4444'
-    : probability <= 30 ? '#10b981' : probability <= 50 ? '#f59e0b' : '#ef4444';
+    ? probability >= 70 ? '#059669' : probability >= 50 ? '#d4a017' : '#f87171'
+    : probability <= 30 ? '#059669' : probability <= 50 ? '#d4a017' : '#f87171';
 
   return (
     <div className="text-center">
@@ -167,7 +167,7 @@ const YearlyDistributionChart = memo(function YearlyDistributionChart({
               L ${data.map((_d, i) => `${((data.length - 1 - i) / (data.length - 1)) * 100},${getY(data[data.length - 1 - i].p10)}`).join(' L ')}
               Z
             `}
-            fill="#3b82f620"
+            fill="#10b98120"
           />
 
           {/* P25-P75 area */}
@@ -177,13 +177,13 @@ const YearlyDistributionChart = memo(function YearlyDistributionChart({
               L ${data.map((_d, i) => `${((data.length - 1 - i) / (data.length - 1)) * 100},${getY(data[data.length - 1 - i].p25)}`).join(' L ')}
               Z
             `}
-            fill="#3b82f640"
+            fill="#10b98140"
           />
 
           {/* Median line */}
           <path
             d={`M ${data.map((d, i) => `${(i / (data.length - 1)) * 100},${getY(d.p50)}`).join(' L ')}`}
-            stroke="#3b82f6"
+            stroke="#10b981"
             strokeWidth="2"
             fill="none"
           />
@@ -352,8 +352,8 @@ export const MonteCarloResultsComponent = memo(function MonteCarloResultsCompone
             colorScheme="green"
           />
           <PercentileBar
-            data={results.effectiveTaxRate}
-            label="Effective Tax Rate"
+            data={results.integratedTaxRate}
+            label="Integrated Tax Rate"
             format="percent"
             colorScheme="red"
           />
@@ -374,7 +374,8 @@ export const MonteCarloResultsComponent = memo(function MonteCarloResultsCompone
                 className="flex-1 rounded-t transition-all hover:opacity-80"
                 style={{
                   height: `${(bucket.count / maxBucketCount) * 100}%`,
-                  background: 'linear-gradient(to top, #3b82f6, #3b82f680)',
+                  background: '#10b981',
+                  border: '1px solid rgba(110, 231, 183, 0.2)',
                   minHeight: bucket.count > 0 ? '2px' : '0',
                 }}
                 title={`${formatCurrency(bucket.min)} - ${formatCurrency(bucket.max)}: ${bucket.count} simulations`}
@@ -411,7 +412,7 @@ export const MonteCarloResultsComponent = memo(function MonteCarloResultsCompone
               </p>
               <p>
                 <strong>Risk:</strong> There's a{' '}
-                <span style={{ color: results.probabilityOfLoss > 30 ? '#ef4444' : '#10b981' }}>
+                <span style={{ color: results.probabilityOfLoss > 30 ? '#f87171' : '#059669' }}>
                   {results.probabilityOfLoss.toFixed(1)}%
                 </span>{' '}
                 chance your balance falls below the starting value.

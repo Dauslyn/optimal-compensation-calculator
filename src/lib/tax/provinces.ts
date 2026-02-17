@@ -125,7 +125,7 @@ export const PROVINCES: Record<ProvinceCode, ProvinceConfig> = {
     code: 'PE',
     name: 'Prince Edward Island',
     shortName: 'P.E.I.',
-    hasSurtax: true, // PEI has a surtax as well
+    hasSurtax: false, // PEI surtax eliminated starting 2024
     hasHealthPremium: false,
     hasHealthTax: false,
     usesQPP: false,
@@ -197,7 +197,7 @@ const TOP_COMBINED_RATES: Record<ProvinceCode, number> = {
   NT: 0.4705,  // 33% + 14.05%
   NU: 0.4450,  // 33% + 11.5%
   ON: 0.5353,  // 33% + 20.53% (incl. surtax effect)
-  PE: 0.5165,  // 33% + 16.65% (incl. surtax effect)
+  PE: 0.5200,  // 33% + 19.00% (top bracket, no surtax since 2024)
   QC: 0.5331,  // 33% - 16.5% abatement + 25.75%
   SK: 0.4750,  // 33% + 14.5%
   YT: 0.4800,  // 33% + 15%

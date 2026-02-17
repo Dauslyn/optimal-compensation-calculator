@@ -38,13 +38,13 @@ describe('calculateAfterTaxWealth', () => {
   it('calculates after-tax wealth at current rate', () => {
     const result = calculateAfterTaxWealth(summary, 'ON', 0.35);
 
-    // baseWealth = totalAfterTax + TFSA
+    // baseWealth = totalAfterTax (TFSA contributions already came from after-tax income)
     // totalAfterTax = totalCompensation - totalTax = 500k - 100k = 400k
-    // baseWealth = 400k + 30k (TFSA) = 430k
+    // baseWealth = 400k
     // RRSP = 40k * (1 - 0.35) = 26k
     // Corp = 250k * (1 - 0.40) = 150k
-    // Total = 430k + 26k + 150k = 606k
-    expect(result.atCurrentRate).toBeCloseTo(606000, 0);
+    // Total = 400k + 26k + 150k = 576k
+    expect(result.atCurrentRate).toBeCloseTo(576000, 0);
   });
 
   it('calculates after-tax wealth at lower rate (marginal - 10%)', () => {
@@ -52,8 +52,8 @@ describe('calculateAfterTaxWealth', () => {
 
     // Lower rate = 0.35 - 0.10 = 0.25
     // RRSP = 40k * (1 - 0.25) = 30k
-    // Total = 430k + 30k + 150k = 610k
-    expect(result.atLowerRate).toBeCloseTo(610000, 0);
+    // Total = 400k + 30k + 150k = 580k
+    expect(result.atLowerRate).toBeCloseTo(580000, 0);
   });
 
   it('calculates after-tax wealth at top provincial rate', () => {
@@ -61,8 +61,8 @@ describe('calculateAfterTaxWealth', () => {
 
     // Top ON rate = 0.5353
     // RRSP = 40k * (1 - 0.5353) = 18,588
-    // Total = 430k + 18,588 + 150k = 598,588
-    expect(result.atTopRate).toBeCloseTo(598588, 0);
+    // Total = 400k + 18,588 + 150k = 568,588
+    expect(result.atTopRate).toBeCloseTo(568588, 0);
   });
 
   it('lower rate floors at 20% minimum', () => {

@@ -121,12 +121,14 @@ function App() {
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
                 style={{
-                  background: 'var(--accent-gradient)',
-                  boxShadow: '0 0 30px var(--accent-primary-glow)'
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  border: '1px solid rgba(110, 231, 183, 0.15)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
                 }}
               >
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: theme === 'dark' ? '#6ee7b7' : '#166534' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
               <div className="min-w-0">
@@ -162,16 +164,7 @@ function App() {
             </div>
           </div>
           {/* View Mode Toggle */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="badge badge-success">
-                {currentInputs ? PROVINCES[currentInputs.province].name : PROVINCES[DEFAULT_PROVINCE].name} {currentInputs?.startingYear ?? getStartingYear()}/{(currentInputs?.startingYear ?? getStartingYear()) + 1}
-              </span>
-              <span className="badge" style={{ background: 'var(--accent-primary-glow)', color: 'var(--accent-primary)' }}>
-                CPP2 + Provincial Taxes
-              </span>
-            </div>
-
+          <div className="flex items-center justify-end gap-4 flex-wrap">
             {/* Mode Switcher */}
             <div
               className="flex items-center p-1 rounded-lg"

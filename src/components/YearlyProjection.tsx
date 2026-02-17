@@ -71,12 +71,12 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
                   <td style={{ color: 'var(--text-primary)' }}>{formatCurrency(year.afterTaxIncome)}</td>
-                  <td style={{ color: '#34d399' }}>{year.tfsaContribution > 0 ? `+${formatCurrency(year.tfsaContribution)}` : '—'}</td>
-                  <td style={{ color: '#818cf8' }}>{year.rrspContribution > 0 ? `+${formatCurrency(year.rrspContribution)}` : '—'}</td>
-                  <td style={{ color: '#fbbf24' }}>{year.debtPaydown > 0 ? `+${formatCurrency(year.debtPaydown)}` : '—'}</td>
+                  <td style={{ color: '#a3e635' }}>{year.tfsaContribution > 0 ? `+${formatCurrency(year.tfsaContribution)}` : '—'}</td>
+                  <td style={{ color: '#6ee7b7' }}>{year.rrspContribution > 0 ? `+${formatCurrency(year.rrspContribution)}` : '—'}</td>
+                  <td style={{ color: '#d4a017' }}>{year.debtPaydown > 0 ? `+${formatCurrency(year.debtPaydown)}` : '—'}</td>
                   <td style={{ fontWeight: 600 }}>{formatCurrency(year.afterTaxIncome + year.tfsaContribution + year.rrspContribution + year.debtPaydown)}</td>
                   <td style={{ color: 'var(--text-primary)' }}>{formatCurrency(year.afterTaxIncome)}</td>
-                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.rrspRoomGenerated)}</td>
+                  <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.rrspRoomGenerated)}</td>
                 </tr>
               );
             })}
@@ -95,7 +95,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
               <th>Eligible Div</th>
               <th>Non-Elig Div</th>
               <th>Personal Tax</th>
-              <th>CPP + EI</th>
+              <th>Payroll</th>
               <th>After-Tax</th>
             </tr>
           </thead>
@@ -103,12 +103,12 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
             {results.map((year) => (
               <tr key={year.year}>
                 <td>Year {year.year}</td>
-                <td style={{ color: '#818cf8' }}>{formatCurrency(year.salary)}</td>
-                <td style={{ color: '#34d399' }}>{formatCurrency(year.dividends.capitalDividends)}</td>
-                <td style={{ color: '#a78bfa' }}>{formatCurrency(year.dividends.eligibleDividends)}</td>
-                <td style={{ color: '#fbbf24' }}>{formatCurrency(year.dividends.nonEligibleDividends)}</td>
+                <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.salary)}</td>
+                <td style={{ color: '#a3e635' }}>{formatCurrency(year.dividends.capitalDividends)}</td>
+                <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.dividends.eligibleDividends)}</td>
+                <td style={{ color: '#d4a017' }}>{formatCurrency(year.dividends.nonEligibleDividends)}</td>
                 <td style={{ color: '#fb7185' }}>{formatCurrency(year.personalTax)}</td>
-                <td style={{ color: '#fb7185' }}>{formatCurrency(year.cpp + year.cpp2 + year.ei)}</td>
+                <td style={{ color: '#fb7185' }}>{formatCurrency(year.cpp + year.cpp2 + year.ei + year.qpip)}</td>
                 <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(year.afterTaxIncome)}</td>
               </tr>
             ))}
@@ -131,7 +131,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
                 <th>Eligible Div</th>
                 <th>Non-Elig Div</th>
                 <th>Personal Tax</th>
-                <th>CPP + EI</th>
+                <th>Payroll</th>
                 <th>After-Tax</th>
               </tr>
             </thead>
@@ -139,10 +139,10 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
               {results.map((year) => year.spouse ? (
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
-                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.spouse.salary)}</td>
-                  <td style={{ color: '#34d399' }}>{formatCurrency(year.spouse.dividends.capitalDividends)}</td>
-                  <td style={{ color: '#a78bfa' }}>{formatCurrency(year.spouse.dividends.eligibleDividends)}</td>
-                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.spouse.dividends.nonEligibleDividends)}</td>
+                  <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.spouse.salary)}</td>
+                  <td style={{ color: '#a3e635' }}>{formatCurrency(year.spouse.dividends.capitalDividends)}</td>
+                  <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.spouse.dividends.eligibleDividends)}</td>
+                  <td style={{ color: '#d4a017' }}>{formatCurrency(year.spouse.dividends.nonEligibleDividends)}</td>
                   <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.personalTax)}</td>
                   <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.cpp + year.spouse.cpp2 + year.spouse.ei + year.spouse.qpip)}</td>
                   <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(year.spouse.afterTaxIncome)}</td>
@@ -177,12 +177,12 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
                   <td>{year.ipp.memberAge}</td>
-                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.ipp.contribution)}</td>
+                  <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.ipp.contribution)}</td>
                   <td>{formatCurrency(year.ipp.adminCosts)}</td>
                   <td style={{ fontWeight: 600 }}>{formatCurrency(year.ipp.totalDeductible)}</td>
                   <td style={{ color: '#fb7185' }}>{formatCurrency(year.ipp.pensionAdjustment)}</td>
-                  <td style={{ color: '#34d399' }}>{formatCurrency(year.ipp.corporateTaxSavings)}</td>
-                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.ipp.projectedAnnualPension)}</td>
+                  <td style={{ color: '#a3e635' }}>{formatCurrency(year.ipp.corporateTaxSavings)}</td>
+                  <td style={{ color: '#d4a017' }}>{formatCurrency(year.ipp.projectedAnnualPension)}</td>
                 </tr>
               ) : null)}
             </tbody>
@@ -214,12 +214,12 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
                   <td>{year.spouse.ipp.memberAge}</td>
-                  <td style={{ color: '#818cf8' }}>{formatCurrency(year.spouse.ipp.contribution)}</td>
+                  <td style={{ color: '#6ee7b7' }}>{formatCurrency(year.spouse.ipp.contribution)}</td>
                   <td>{formatCurrency(year.spouse.ipp.adminCosts)}</td>
                   <td style={{ fontWeight: 600 }}>{formatCurrency(year.spouse.ipp.totalDeductible)}</td>
                   <td style={{ color: '#fb7185' }}>{formatCurrency(year.spouse.ipp.pensionAdjustment)}</td>
-                  <td style={{ color: '#34d399' }}>{formatCurrency(year.spouse.ipp.corporateTaxSavings)}</td>
-                  <td style={{ color: '#fbbf24' }}>{formatCurrency(year.spouse.ipp.projectedAnnualPension)}</td>
+                  <td style={{ color: '#a3e635' }}>{formatCurrency(year.spouse.ipp.corporateTaxSavings)}</td>
+                  <td style={{ color: '#d4a017' }}>{formatCurrency(year.spouse.ipp.projectedAnnualPension)}</td>
                 </tr>
               ) : null)}
             </tbody>
@@ -248,10 +248,10 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
             {results.map((year) => (
               <tr key={year.year}>
                 <td>Year {year.year}</td>
-                <td style={{ color: '#34d399' }}>{formatAddition(year.investmentReturns.CDAIncrease)}</td>
+                <td style={{ color: '#a3e635' }}>{formatAddition(year.investmentReturns.CDAIncrease)}</td>
                 <td style={{ color: '#fb7185' }}>{year.dividends.capitalDividends > 0 ? `-${formatCurrency(year.dividends.capitalDividends)}` : '—'}</td>
                 <td style={{ fontWeight: 600 }}>{formatCurrency(year.notionalAccounts.CDA)}</td>
-                <td style={{ color: '#818cf8' }}>{formatAddition(year.investmentReturns.GRIPIncrease)}</td>
+                <td style={{ color: '#6ee7b7' }}>{formatAddition(year.investmentReturns.GRIPIncrease)}</td>
                 <td style={{ color: '#fb7185' }}>{year.dividends.eligibleDividends > 0 ? `-${formatCurrency(year.dividends.eligibleDividends)}` : '—'}</td>
                 <td style={{ fontWeight: 600 }}>{formatCurrency(year.notionalAccounts.GRIP)}</td>
               </tr>
@@ -280,9 +280,9 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
             {results.map((year) => (
               <tr key={year.year}>
                 <td>Year {year.year}</td>
-                <td style={{ color: '#a78bfa' }}>{formatAddition(year.investmentReturns.eRDTOHIncrease)}</td>
+                <td style={{ color: '#6ee7b7' }}>{formatAddition(year.investmentReturns.eRDTOHIncrease)}</td>
                 <td style={{ fontWeight: 500 }}>{formatCurrency(year.notionalAccounts.eRDTOH)}</td>
-                <td style={{ color: '#fbbf24' }}>{formatAddition(year.investmentReturns.nRDTOHIncrease)}</td>
+                <td style={{ color: '#d4a017' }}>{formatAddition(year.investmentReturns.nRDTOHIncrease)}</td>
                 <td style={{ fontWeight: 500 }}>{formatCurrency(year.notionalAccounts.nRDTOH)}</td>
                 <td style={{ fontWeight: 600 }}>{formatCurrency(year.notionalAccounts.eRDTOH + year.notionalAccounts.nRDTOH)}</td>
               </tr>
@@ -294,7 +294,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
       {/* Corporate Investment Balance */}
       <TableSection
         title="Corporate Investment Account"
-        description="Shows investment returns, withdrawals, and ending balance"
+        description="Shows investment returns, compensation paid (gross), and ending balance"
       >
         <table>
           <thead>
@@ -304,7 +304,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
               <th>CDN Dividends</th>
               <th>Foreign Income</th>
               <th>Capital Gains</th>
-              <th>Withdrawals</th>
+              <th>Compensation Paid</th>
               <th>Ending Balance</th>
             </tr>
           </thead>
@@ -314,7 +314,7 @@ export function YearlyProjection({ results }: YearlyProjectionProps) {
               return (
                 <tr key={year.year}>
                   <td>Year {year.year}</td>
-                  <td style={{ color: '#34d399' }}>{formatAddition(year.investmentReturns.totalReturn)}</td>
+                  <td style={{ color: '#a3e635' }}>{formatAddition(year.investmentReturns.totalReturn)}</td>
                   <td>{formatCurrency(year.investmentReturns.canadianDividends)}</td>
                   <td>{formatCurrency(year.investmentReturns.foreignIncome)}</td>
                   <td>{formatCurrency(year.investmentReturns.realizedCapitalGain)}</td>

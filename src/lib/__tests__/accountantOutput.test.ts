@@ -149,13 +149,13 @@ describe('Accountant Report - Executive Summary Generation', () => {
 
 describe('Email Accountant - mailto URL structure', () => {
   it('should generate valid mailto subject with year and province', () => {
-    const year = 2025;
+    const year = 2026;
     const provinceName = 'Ontario';
     const subject = `Optimal Compensation Plan — ${year} - ${provinceName}`;
     const encoded = encodeURIComponent(subject);
 
     expect(encoded).toContain('Optimal');
-    expect(encoded).toContain('2025');
+    expect(encoded).toContain('2026');
     expect(encoded).toContain('Ontario');
   });
 

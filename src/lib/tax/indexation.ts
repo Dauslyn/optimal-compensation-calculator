@@ -2,7 +2,7 @@
  * Tax Year Indexation Module
  *
  * This module provides inflation-adjusted tax values for multi-year projections.
- * It stores known CRA values for 2025 and 2026, and projects future years
+ * It stores known CRA values for 2026, and projects future years
  * using a user-specified inflation rate.
  *
  * Sources:
@@ -91,98 +91,10 @@ export interface TaxYearData {
 }
 
 /**
- * Known tax year data for 2025 and 2026
+ * Known tax year data for 2026
  * These are official CRA values - do not modify unless CRA publishes updates
  */
 export const KNOWN_TAX_YEARS: Record<number, TaxYearData> = {
-  2025: {
-    year: 2025,
-    federal: {
-      // Note: 2025 has a blended rate due to mid-year change from 15% to 14%
-      // Effective rate for 2025 is 14.5% on the lowest bracket
-      brackets: [
-        { threshold: 0, rate: 0.145 }, // Blended rate (15% Jan-Jun, 14% Jul-Dec)
-        { threshold: 57375, rate: 0.205 },
-        { threshold: 114750, rate: 0.26 },
-        { threshold: 177882, rate: 0.29 },
-        { threshold: 253414, rate: 0.33 },
-      ],
-      basicPersonalAmount: 16129, // CRA 2025: $16,129 (enhanced BPA, clawed back for high income)
-    },
-    provincial: {
-      // Ontario 2025 (indexed at 2.8%)
-      brackets: [
-        { threshold: 0, rate: 0.0505 },
-        { threshold: 51446, rate: 0.0915 },
-        { threshold: 102894, rate: 0.1116 },
-        { threshold: 150000, rate: 0.1216 },
-        { threshold: 220000, rate: 0.1316 },
-      ],
-      basicPersonalAmount: 12399,
-      surtax: {
-        firstThreshold: 5710,
-        firstRate: 0.20,
-        secondThreshold: 7307,
-        secondRate: 0.36,
-      },
-      healthPremium: {
-        brackets: [
-          { threshold: 0, base: 0, rate: 0, maxPremium: 0 },
-          { threshold: 20000, base: 0, rate: 0.06, maxPremium: 300 },
-          { threshold: 25000, base: 300, rate: 0.06, maxPremium: 450 },
-          { threshold: 36000, base: 450, rate: 0.25, maxPremium: 600 },
-          { threshold: 38500, base: 600, rate: 0.25, maxPremium: 750 },
-          { threshold: 48000, base: 750, rate: 0.25, maxPremium: 900 },
-          { threshold: 72000, base: 750, rate: 0.25, maxPremium: 900 },
-          { threshold: 200000, base: 900, rate: 0, maxPremium: 900 },
-        ],
-      },
-    },
-    cpp: {
-      rate: 0.0595,
-      ympe: 71300,
-      basicExemption: 3500,
-      maxContribution: 4034.10,
-    },
-    cpp2: {
-      rate: 0.04,
-      firstCeiling: 71300,
-      secondCeiling: 81200,
-      maxContribution: 396.00,
-    },
-    ei: {
-      rate: 0.0164,
-      maxInsurableEarnings: 65700,
-      maxContribution: 1077.48,
-      employerMultiplier: 1.4,
-    },
-    dividend: {
-      eligible: {
-        grossUp: 0.38,
-        federalCredit: 0.150198,
-        provincialCredit: 0.10,
-      },
-      nonEligible: {
-        grossUp: 0.15,
-        federalCredit: 0.090301,
-        provincialCredit: 0.029863,
-      },
-    },
-    corporate: {
-      smallBusiness: 0.122, // 9% federal + 3.2% Ontario
-      general: 0.265, // 15% federal + 11.5% Ontario
-    },
-    rrsp: {
-      contributionRate: 0.18,
-      dollarLimit: 32490,
-    },
-    tfsa: {
-      annualLimit: 7000,
-    },
-    rdtoh: {
-      refundRate: 0.3833,
-    },
-  },
   2026: {
     year: 2026,
     federal: {
@@ -197,21 +109,24 @@ export const KNOWN_TAX_YEARS: Record<number, TaxYearData> = {
       basicPersonalAmount: 16452,
     },
     provincial: {
-      // Ontario 2026 (projected at ~2% indexation)
+      // Ontario 2026 (indexed at 1.9%; $150K/$220K NOT indexed — legislatively fixed)
       brackets: [
         { threshold: 0, rate: 0.0505 },
-        { threshold: 52475, rate: 0.0915 },
-        { threshold: 104951, rate: 0.1116 },
+        { threshold: 53891, rate: 0.0915 },
+        { threshold: 107785, rate: 0.1116 },
         { threshold: 150000, rate: 0.1216 },
         { threshold: 220000, rate: 0.1316 },
       ],
-      basicPersonalAmount: 12647,
+      basicPersonalAmount: 12989,
       surtax: {
-        firstThreshold: 5824,
+        firstThreshold: 5818,
         firstRate: 0.20,
-        secondThreshold: 7453,
+        secondThreshold: 7446,
         secondRate: 0.36,
       },
+      // NOTE: Health premium data here is a legacy default fallback.
+      // For actual calculations, getTaxYearData() overwrites the provincial
+      // section with province-specific data from provincialRates.ts.
       healthPremium: {
         // Ontario Health Premium thresholds are NOT indexed
         brackets: [
@@ -221,8 +136,8 @@ export const KNOWN_TAX_YEARS: Record<number, TaxYearData> = {
           { threshold: 36000, base: 450, rate: 0.25, maxPremium: 600 },
           { threshold: 38500, base: 600, rate: 0.25, maxPremium: 750 },
           { threshold: 48000, base: 750, rate: 0.25, maxPremium: 900 },
-          { threshold: 72000, base: 750, rate: 0.25, maxPremium: 900 },
-          { threshold: 200000, base: 900, rate: 0, maxPremium: 900 },
+          { threshold: 72000, base: 900, rate: 0.25, maxPremium: 900 },
+          { threshold: 200600, base: 900, rate: 0, maxPremium: 900 },
         ],
       },
     },

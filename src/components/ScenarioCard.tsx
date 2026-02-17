@@ -26,9 +26,9 @@ interface ScenarioCardProps {
 
 const WinnerBadge = memo(function WinnerBadge({ type }: { type: 'tax' | 'balance' | 'overall' }) {
   const badges = {
-    tax: { label: 'Lowest Tax', icon: '💰', color: '#10b981' },
-    balance: { label: 'Highest Balance', icon: '📈', color: '#3b82f6' },
-    overall: { label: 'Best Overall', icon: '🏆', color: '#f59e0b' },
+    tax: { label: 'Lowest Tax', icon: '💰', color: '#6ee7b7' },
+    balance: { label: 'Highest Balance', icon: '📈', color: '#10b981' },
+    overall: { label: 'Best Overall', icon: '🏆', color: '#d4a017' },
   };
   const badge = badges[type];
 
@@ -86,8 +86,8 @@ export const ScenarioCard = memo(function ScenarioCard({
       }`}
       style={{
         background: 'var(--bg-elevated)',
-        border: `2px solid ${isSelected ? scenario.color : 'var(--border-subtle)'}`,
-        boxShadow: isSelected ? `0 0 0 3px ${scenario.color}30` : undefined,
+        border: `1px solid ${isSelected ? scenario.color + '40' : 'var(--border-subtle)'}`,
+        boxShadow: isSelected ? `0 0 24px ${scenario.color}12, inset 0 1px 0 rgba(255,255,255,0.04)` : 'inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
       onClick={onSelect}
     >
@@ -285,19 +285,19 @@ export const ScenarioCard = memo(function ScenarioCard({
           >
             <div className="text-center">
               <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Total Tax</div>
-              <div className="text-sm font-bold" style={{ color: '#ef4444' }}>
+              <div className="text-sm font-bold" style={{ color: '#f87171' }}>
                 {formatCurrency(totalTax)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Net Income</div>
-              <div className="text-sm font-bold" style={{ color: '#10b981' }}>
+              <div className="text-sm font-bold" style={{ color: '#6ee7b7' }}>
                 {formatCurrency(totalIncome)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Final Balance</div>
-              <div className="text-sm font-bold" style={{ color: '#3b82f6' }}>
+              <div className="text-sm font-bold" style={{ color: '#10b981' }}>
                 {formatCurrency(finalBalance)}
               </div>
             </div>

@@ -28,6 +28,19 @@ describe('Share Link', () => {
     contributeToRESP: false,
     payDownDebt: false,
     salaryStrategy: 'dynamic',
+    // Lifetime model defaults
+    currentAge: 45,
+    retirementAge: 65,
+    planningEndAge: 90,
+    retirementSpending: 70000,
+    lifetimeObjective: 'balanced',
+    cppStartAge: 65,
+    salaryStartAge: 22,
+    averageHistoricalSalary: 60000,
+    oasEligible: true,
+    oasStartAge: 65,
+    actualRRSPBalance: 0,
+    actualTFSABalance: 0,
   };
 
   describe('encodeShareLink', () => {
@@ -141,6 +154,19 @@ describe('Share Link', () => {
         totalDebtAmount: 50000,
         debtInterestRate: 0.045,
         fixedSalaryAmount: 60000,
+        // Lifetime model fields (v3)
+        currentAge: 50,
+        retirementAge: 60,
+        planningEndAge: 85,
+        retirementSpending: 80000,
+        lifetimeObjective: 'maximize-spending',
+        cppStartAge: 62,
+        salaryStartAge: 25,
+        averageHistoricalSalary: 75000,
+        oasEligible: true,
+        oasStartAge: 67,
+        actualRRSPBalance: 150000,
+        actualTFSABalance: 50000,
       };
 
       const encoded = encodeShareLink(fullInputs);

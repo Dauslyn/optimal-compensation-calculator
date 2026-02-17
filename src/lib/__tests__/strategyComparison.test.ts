@@ -229,3 +229,133 @@ describe('comparison data for report/email', () => {
     expect(ympeStrat.description).toMatch(/\$[\d,]+/);
   });
 });
+
+describe('lifetime winner determination', () => {
+  /** Helper: lifetime-aware inputs with retirement phase */
+  function makeLifetimeInputs(overrides: Partial<UserInputs> = {}): UserInputs {
+    return {
+      ...defaults,
+      province: 'ON',
+      requiredIncome: 100000,
+      annualCorporateRetainedEarnings: 200000,
+      corporateInvestmentBalance: 500000,
+      investmentReturnRate: 0.06,
+      inflationRate: 0.02,
+      currentAge: 55,
+      retirementAge: 65,
+      planningEndAge: 80,
+      planningHorizon: 25,
+      retirementSpending: 70000,
+      lifetimeObjective: 'balanced' as const,
+      cppStartAge: 65,
+      salaryStartAge: 22,
+      averageHistoricalSalary: 60000,
+      oasEligible: true,
+      oasStartAge: 65,
+      actualRRSPBalance: 200000,
+      actualTFSABalance: 50000,
+      salaryStrategy: 'dynamic',
+      ...overrides,
+    };
+  }
+
+  it('populates lifetimeWinner when lifetime data available', () => {
+    const result = runStrategyComparison(makeLifetimeInputs());
+
+    expect(result.lifetimeWinner).toBeDefined();
+    expect(result.lifetimeWinner!.maximizeSpending).toBeDefined();
+    expect(result.lifetimeWinner!.maximizeEstate).toBeDefined();
+    expect(result.lifetimeWinner!.balanced).toBeDefined();
+    expect(result.lifetimeWinner!.byObjective).toBeDefined();
+    expect(result.lifetimeWinner!.objective).toBe('balanced');
+  });
+
+  it('lifetime winner IDs reference valid strategies', () => {
+    const result = runStrategyComparison(makeLifetimeInputs());
+    const ids = result.strategies.map(s => s.id);
+
+    expect(ids).toContain(result.lifetimeWinner!.maximizeSpending);
+    expect(ids).toContain(result.lifetimeWinner!.maximizeEstate);
+    expect(ids).toContain(result.lifetimeWinner!.balanced);
+    expect(ids).toContain(result.lifetimeWinner!.byObjective);
+  });
+
+  it('bestOverall uses lifetime winner when lifetime data available', () => {
+    const result = runStrategyComparison(makeLifetimeInputs());
+
+    // bestOverall should match the lifetimeWinner.byObjective
+    expect(result.winner.bestOverall).toBe(result.lifetimeWinner!.byObjective);
+  });
+
+  it('maximize-spending objective picks highest spending strategy', () => {
+    const result = runStrategyComparison(makeLifetimeInputs({
+      lifetimeObjective: 'maximize-spending',
+    }));
+
+    const winnerStrategy = result.strategies.find(
+      s => s.id === result.lifetimeWinner!.maximizeSpending
+    )!;
+    // Winner should have the highest lifetime spending
+    for (const s of result.strategies) {
+      expect(winnerStrategy.summary.lifetime!.totalLifetimeSpending)
+        .toBeGreaterThanOrEqual(s.summary.lifetime!.totalLifetimeSpending);
+    }
+  });
+
+  it('maximize-estate objective picks highest estate strategy', () => {
+    const result = runStrategyComparison(makeLifetimeInputs({
+      lifetimeObjective: 'maximize-estate',
+    }));
+
+    const winnerStrategy = result.strategies.find(
+      s => s.id === result.lifetimeWinner!.maximizeEstate
+    )!;
+    // Winner should have the highest estate value
+    for (const s of result.strategies) {
+      expect(winnerStrategy.summary.lifetime!.estateValue)
+        .toBeGreaterThanOrEqual(s.summary.lifetime!.estateValue);
+    }
+  });
+
+  it('byObjective respects user objective choice', () => {
+    for (const objective of ['maximize-spending', 'maximize-estate', 'balanced'] as const) {
+      const result = runStrategyComparison(makeLifetimeInputs({
+        lifetimeObjective: objective,
+      }));
+
+      expect(result.lifetimeWinner!.objective).toBe(objective);
+
+      const expected = {
+        'maximize-spending': result.lifetimeWinner!.maximizeSpending,
+        'maximize-estate': result.lifetimeWinner!.maximizeEstate,
+        'balanced': result.lifetimeWinner!.balanced,
+      }[objective];
+
+      expect(result.lifetimeWinner!.byObjective).toBe(expected);
+    }
+  });
+
+  it('no lifetimeWinner for short-horizon (no retirement)', () => {
+    // Short horizon that doesn't reach retirement
+    const result = runStrategyComparison(makeInputs({
+      planningHorizon: 5,
+      currentAge: 45,
+      retirementAge: 65,
+    }));
+
+    // No retirement years → no lifetime data → no lifetimeWinner
+    expect(result.lifetimeWinner).toBeUndefined();
+  });
+
+  it('each strategy has lifetime stats when running lifetime model', () => {
+    const result = runStrategyComparison(makeLifetimeInputs());
+
+    for (const strategy of result.strategies) {
+      expect(strategy.summary.lifetime).toBeDefined();
+      expect(strategy.summary.lifetime!.totalAccumulationYears).toBe(10);
+      expect(strategy.summary.lifetime!.totalRetirementYears).toBe(15);
+      expect(strategy.summary.lifetime!.totalLifetimeSpending).toBeGreaterThan(0);
+      expect(strategy.summary.lifetime!.estateValue).toBeGreaterThanOrEqual(0);
+    }
+  });
+});

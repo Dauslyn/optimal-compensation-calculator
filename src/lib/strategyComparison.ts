@@ -48,6 +48,13 @@ export interface ComparisonResult {
     highestBalance: string;
     bestOverall: string;
   };
+  lifetimeWinner?: {
+    maximizeSpending: string;     // highest lifetime.totalLifetimeSpending
+    maximizeEstate: string;       // highest lifetime.estateValue
+    balanced: string;             // weighted 60% spending / 40% estate
+    byObjective: string;          // winner using user's chosen objective
+    objective: 'maximize-spending' | 'maximize-estate' | 'balanced';
+  };
   yearlyData: {
     strategyId: string;
     years: import('./types').YearlyResult[];
@@ -71,9 +78,10 @@ export function calculateAfterTaxWealth(
   const lowerRate = Math.max(averageMarginalRate - 0.10, 0.20);
   const corpLiquidationRate = 0.40; // Conservative estimate (non-eligible dividends)
 
-  // Base wealth = already taxed income + tax-free TFSA
+  // Base wealth = already taxed income (includes money used for TFSA contributions,
+  // which are tax-free on withdrawal — no additional adjustment needed for TFSA).
   const totalAfterTaxIncome = summary.totalCompensation - summary.totalTax;
-  const baseWealth = totalAfterTaxIncome + summary.totalTFSAContributions;
+  const baseWealth = totalAfterTaxIncome;
 
   return {
     atCurrentRate: baseWealth +
@@ -189,16 +197,69 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
     };
   });
 
+  // Lifetime winner determination (only when lifetime data is available)
+  const hasLifetime = strategies.every(s => s.summary.lifetime != null);
+  const lifetimeWinner = hasLifetime ? computeLifetimeWinner(strategies, inputs.lifetimeObjective ?? 'balanced') : undefined;
+
   return {
     strategies: results,
     winner: {
       lowestTax: lowestTaxStrategy.id,
       highestBalance: highestBalanceStrategy.id,
-      bestOverall: bestOverallStrategy.id,
+      bestOverall: lifetimeWinner?.byObjective ?? bestOverallStrategy.id,
     },
+    lifetimeWinner,
     yearlyData: strategies.map(s => ({
       strategyId: s.id,
       years: s.summary.yearlyResults,
     })),
+  };
+}
+
+/**
+ * Determine lifetime winners across strategies using spending, estate, and balanced metrics.
+ */
+function computeLifetimeWinner(
+  strategies: Array<{ id: string; summary: ProjectionSummary }>,
+  objective: 'maximize-spending' | 'maximize-estate' | 'balanced',
+): ComparisonResult['lifetimeWinner'] {
+  // Maximize spending: highest totalLifetimeSpending
+  const maxSpending = strategies.reduce((best, s) =>
+    (s.summary.lifetime!.totalLifetimeSpending > best.summary.lifetime!.totalLifetimeSpending) ? s : best
+  );
+
+  // Maximize estate: highest estateValue
+  const maxEstate = strategies.reduce((best, s) =>
+    (s.summary.lifetime!.estateValue > best.summary.lifetime!.estateValue) ? s : best
+  );
+
+  // Balanced: weighted 60% spending / 40% estate (normalized)
+  const maxSpendVal = Math.max(...strategies.map(s => s.summary.lifetime!.totalLifetimeSpending));
+  const maxEstateVal = Math.max(...strategies.map(s => s.summary.lifetime!.estateValue));
+
+  const balanced = strategies.reduce((best, s) => {
+    const spendScore = maxSpendVal > 0 ? s.summary.lifetime!.totalLifetimeSpending / maxSpendVal : 0;
+    const estateScore = maxEstateVal > 0 ? s.summary.lifetime!.estateValue / maxEstateVal : 0;
+    const score = spendScore * 0.6 + estateScore * 0.4;
+
+    const bestSpendScore = maxSpendVal > 0 ? best.summary.lifetime!.totalLifetimeSpending / maxSpendVal : 0;
+    const bestEstateScore = maxEstateVal > 0 ? best.summary.lifetime!.estateValue / maxEstateVal : 0;
+    const bestScore = bestSpendScore * 0.6 + bestEstateScore * 0.4;
+
+    return score > bestScore ? s : best;
+  });
+
+  const byObjectiveMap = {
+    'maximize-spending': maxSpending.id,
+    'maximize-estate': maxEstate.id,
+    'balanced': balanced.id,
+  };
+
+  return {
+    maximizeSpending: maxSpending.id,
+    maximizeEstate: maxEstate.id,
+    balanced: balanced.id,
+    byObjective: byObjectiveMap[objective],
+    objective,
   };
 }

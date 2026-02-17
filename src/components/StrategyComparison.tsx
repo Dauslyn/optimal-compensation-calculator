@@ -18,9 +18,9 @@ interface StrategyComparisonProps {
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
-  'salary-at-ympe': '#3b82f6',   // Blue
-  'dividends-only': '#10b981',   // Emerald
-  'dynamic': '#f59e0b',          // Amber
+  'salary-at-ympe': '#10b981',   // Emerald
+  'dividends-only': '#d4a017',   // Gold
+  'dynamic': '#6ee7b7',          // Bright Emerald
 };
 
 function StrategyCard({ strategy, isWinner, winnerId }: {
@@ -37,9 +37,10 @@ function StrategyCard({ strategy, isWinner, winnerId }: {
       style={{
         background: 'var(--bg-elevated)',
         border: isWinner
-          ? `2px solid ${color}`
+          ? `1px solid ${color}40`
           : '1px solid var(--border-subtle)',
-        boxShadow: isWinner ? `0 0 20px ${color}33` : undefined,
+        boxShadow: isWinner ? `0 0 30px ${color}15, inset 0 1px 0 rgba(255,255,255,0.04)` : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(12px)',
       }}
     >
       {/* Winner badge */}
@@ -75,11 +76,11 @@ function StrategyCard({ strategy, isWinner, winnerId }: {
           diffInvert={true}
         />
         <MetricRow
-          label="Effective Rate"
-          value={formatPercent(s.effectiveTaxRate)}
+          label="Integrated Rate"
+          value={formatPercent(s.effectiveCompensationRate)}
         />
         <MetricRow
-          label="Avg Annual Income"
+          label="Avg Annual Comp"
           value={formatCurrency(s.averageAnnualIncome)}
         />
         <MetricRow

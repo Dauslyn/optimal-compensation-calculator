@@ -59,6 +59,7 @@ export const ExportTab = memo(function ExportTab({
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-subtle)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           <div className="text-3xl">PDF</div>
@@ -72,7 +73,8 @@ export const ExportTab = memo(function ExportTab({
             onClick={() => handlePrint()}
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
             style={{
-              background: 'var(--accent-gradient, linear-gradient(135deg, #3b82f6, #8b5cf6))',
+              background: '#10b981',
+              border: '1px solid rgba(110, 231, 183, 0.25)',
               color: 'white',
             }}
           >
@@ -87,6 +89,7 @@ export const ExportTab = memo(function ExportTab({
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-subtle)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           <div className="text-3xl">@</div>
@@ -109,6 +112,7 @@ export const ExportTab = memo(function ExportTab({
           style={{
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-subtle)',
+            backdropFilter: 'blur(12px)',
           }}
         >
           <div className="text-3xl">Link</div>
@@ -122,7 +126,7 @@ export const ExportTab = memo(function ExportTab({
             onClick={handleCopyLink}
             className="w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all"
             style={{
-              background: copied ? 'var(--accent-success, #10b981)' : 'var(--bg-base)',
+              background: copied ? 'var(--accent-success, #6ee7b7)' : 'var(--bg-base)',
               border: '1px solid var(--border-subtle)',
               color: copied ? 'white' : 'var(--text-primary)',
             }}

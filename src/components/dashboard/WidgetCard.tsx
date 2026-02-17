@@ -25,9 +25,9 @@ interface WidgetCardProps {
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
-  'salary-at-ympe': '#3b82f6',
-  'dividends-only': '#10b981',
-  'dynamic': '#f59e0b',
+  'salary-at-ympe': '#10b981',
+  'dividends-only': '#d4a017',
+  'dynamic': '#6ee7b7',
 };
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -54,8 +54,10 @@ export const WidgetCard = memo(function WidgetCard({
   return (
     <div ref={setNodeRef} style={style} className="rounded-xl overflow-hidden" data-testid={`widget-card-${instanceId}`}>
       <div className="rounded-xl" style={{
-        background: 'rgba(0,0,0,0.3)',
-        border: isDragging ? '2px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+        background: 'rgba(10, 17, 13, 0.5)',
+        backdropFilter: 'blur(12px)',
+        border: isDragging ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border-subtle)',
+        boxShadow: isDragging ? '0 0 24px rgba(16, 185, 129, 0.15)' : 'inset 0 1px 0 rgba(255,255,255,0.03)',
       }}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
