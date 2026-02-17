@@ -279,4 +279,27 @@ export const INPUT_TOOLTIPS = {
   spouseConsiderIPP: 'Enable Individual Pension Plan analysis for the spouse. Like the primary IPP, this provides a corporate tax deduction based on the spouse\'s salary (pensionable earnings). Both IPPs draw from the same corporate account.',
   spouseIPPAge: 'The spouse\'s current age for IPP actuarial calculations. IPP contribution limits increase with age — the older the member, the larger the allowed contribution.',
   spouseIPPYearsOfService: 'Years the spouse has been employed by the corporation. More years of service = larger IPP contributions and projected pension benefit.',
+
+  // Lifetime Model
+  currentAge: 'Your current age. Determines the accumulation phase length (from now to retirement) and total planning horizon.',
+  retirementAge: 'The age you plan to stop working and start drawing down. At this age, the model switches from salary/dividend optimization to retirement income planning (CPP, OAS, RRIF, dividends).',
+  planningEndAge: 'The age to project to. Typically 85-95 for longevity planning. The model runs accumulation, retirement drawdown, and estate calculation through this age.',
+  retirementSpending: 'Target annual after-tax spending in retirement (today\'s dollars). Automatically adjusted for inflation each year. Common rule of thumb: 60-80% of pre-retirement spending.',
+  lifetimeObjective: 'How to determine the "best" strategy. Maximize Spending: highest lifetime after-tax income. Maximize Estate: largest after-tax value at death. Balanced: weighted 60% spending, 40% estate.',
+  cppStartAge: 'When to start CPP benefits (60-70). Starting at 60 reduces benefits by 36%. Waiting to 70 increases by 42%. Age 65 is the standard start with no adjustment.',
+  salaryStartAge: 'The age you first started earning employment income. Used to build CPP contributory earnings history for years before the projection starts.',
+  averageHistoricalSalary: 'Your average employment income before the projection period. Used to estimate CPP contributions from prior working years.',
+  oasEligible: 'Whether you qualify for Old Age Security. Requires 10+ years of Canadian residency after age 18. OAS is clawed back at higher incomes.',
+  oasStartAge: 'When to start OAS benefits (65-70). Deferring past 65 increases benefits by 0.6% per month (max 36% at age 70).',
+  actualRRSPBalance: 'Current market value of your RRSP/RRIF. Different from RRSP "room" — this is the actual balance that grows with investment returns and is drawn down in retirement.',
+  actualTFSABalance: 'Current market value of your TFSA holdings. Different from TFSA "room" — this is the actual balance. TFSA withdrawals in retirement are tax-free.',
+
+  // Spouse Lifetime
+  spouseCurrentAge: 'The spouse\'s current age. May differ from primary — the model handles different retirement timing.',
+  spouseRetirementAge: 'When the spouse plans to stop working. Can be different from the primary shareholder.',
+  spouseCPPStartAge: 'When the spouse will start CPP benefits (60-70).',
+  spouseOASEligible: 'Whether the spouse qualifies for Old Age Security.',
+  spouseOASStartAge: 'When the spouse will start OAS benefits (65-70).',
+  spouseActualRRSPBalance: 'Current market value of the spouse\'s RRSP/RRIF holdings.',
+  spouseActualTFSABalance: 'Current market value of the spouse\'s TFSA holdings.',
 };

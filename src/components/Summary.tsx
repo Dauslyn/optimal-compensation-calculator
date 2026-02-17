@@ -62,7 +62,11 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-semibold text-lg">Results Summary</h2>
         <div className="flex items-center gap-3">
-          <span className="badge badge-success">{summary.yearlyResults.length} Year Projection</span>
+          <span className="badge badge-success">
+            {summary.lifetime
+              ? `${summary.lifetime.totalAccumulationYears}yr Accum + ${summary.lifetime.totalRetirementYears}yr Retire`
+              : `${summary.yearlyResults.length} Year Projection`}
+          </span>
           <input
             type="text"
             value={clientName}
@@ -117,6 +121,58 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
           </div>
         </div>
       </div>
+
+      {/* Lifetime Summary (when available) */}
+      {summary.lifetime && (
+        <div className="p-5 rounded-xl" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}>
+          <div className="text-sm font-semibold mb-4">Lifetime Summary</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="stat-card">
+              <div className="stat-label">Lifetime Spending</div>
+              <div className="stat-value">{formatCurrency(summary.lifetime.totalLifetimeSpending)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Lifetime Tax</div>
+              <div className="stat-value">{formatCurrency(summary.lifetime.totalLifetimeTax)}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                {formatPercent(summary.lifetime.lifetimeEffectiveRate)} effective
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Estate Value</div>
+              <div className={`stat-value ${summary.lifetime.estateValue >= 0 ? 'positive' : 'negative'}`}>
+                {formatCurrency(summary.lifetime.estateValue)}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>after-tax at death</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Peak Corp Balance</div>
+              <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
+                {formatCurrency(summary.lifetime.peakCorporateBalance)}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>year {summary.lifetime.peakYear}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+            <div className="stat-card">
+              <div className="stat-label">CPP Received</div>
+              <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.cppTotalReceived)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">OAS Received</div>
+              <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.oasTotalReceived)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">RRIF Withdrawn</div>
+              <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.rrifTotalWithdrawn)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">TFSA Withdrawn</div>
+              <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.tfsaTotalWithdrawn)}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Effective Tax Rates */}
       <div

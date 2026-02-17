@@ -314,11 +314,12 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
         <SectionHeader
           title="Basic Information"
           section="basic"
-          description="Target income and time horizon"
+          description="Income, assets, and lifetime planning parameters"
         />
 
         {expandedSections.basic && (
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {/* Row 1: Province, Income, Corp Balance, Corp Net Income */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               <div>
                 <InfoLabel label="Province" tooltip={INPUT_TOOLTIPS.province} htmlFor="province" />
@@ -346,7 +347,6 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 hint="Annual amount you need to live on"
                 tooltip={INPUT_TOOLTIPS.requiredIncome}
               />
-
               <InputField
                 label="Corporate Investment Balance"
                 id="corpBalance"
@@ -357,7 +357,6 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 hint="Current corporate investment account"
                 tooltip={INPUT_TOOLTIPS.corporateInvestmentBalance}
               />
-
               <InputField
                 label="Annual Corporate Net Income"
                 id="netIncome"
@@ -365,31 +364,49 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 onChange={(v) => handleNumberChange('annualCorporateRetainedEarnings', v)}
                 prefix="$"
                 step="5000"
-                hint="Before owner compensation (salary/dividends paid from this)"
+                hint="Before owner compensation"
                 tooltip={INPUT_TOOLTIPS.annualCorporateRetainedEarnings}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div>
-                <InfoLabel label="Planning Horizon" tooltip={INPUT_TOOLTIPS.planningHorizon} htmlFor="planningHorizon" />
-                <select
-                  id="planningHorizon"
-                  value={formData.planningHorizon}
-                  onChange={(e) => setFormData({ ...formData, planningHorizon: parseInt(e.target.value) as 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 })}
-                >
-                  <option value={3}>3 years</option>
-                  <option value={4}>4 years</option>
-                  <option value={5}>5 years</option>
-                  <option value={6}>6 years</option>
-                  <option value={7}>7 years</option>
-                  <option value={8}>8 years</option>
-                  <option value={9}>9 years</option>
-                  <option value={10}>10 years</option>
-                </select>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Projection timeframe</p>
-              </div>
-
+            {/* Row 2: Age, Retirement Age, Planning End Age, Expected Return */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+              <InputField
+                label="Current Age"
+                id="currentAge"
+                value={formData.currentAge ?? 45}
+                onChange={(v) => {
+                  const age = parseInt(v) || 45;
+                  const retAge = formData.retirementAge ?? 65;
+                  const endAge = formData.planningEndAge ?? 90;
+                  setFormData({ ...formData, currentAge: age, planningHorizon: Math.max(1, endAge - age) });
+                }}
+                hint="Your age today"
+                tooltip={INPUT_TOOLTIPS.currentAge}
+              />
+              <InputField
+                label="Retirement Age"
+                id="retirementAge"
+                value={formData.retirementAge ?? 65}
+                onChange={(v) => {
+                  const retAge = parseInt(v) || 65;
+                  setFormData({ ...formData, retirementAge: retAge });
+                }}
+                hint="When you stop working"
+                tooltip={INPUT_TOOLTIPS.retirementAge}
+              />
+              <InputField
+                label="Planning End Age"
+                id="planningEndAge"
+                value={formData.planningEndAge ?? 90}
+                onChange={(v) => {
+                  const endAge = parseInt(v) || 90;
+                  const curAge = formData.currentAge ?? 45;
+                  setFormData({ ...formData, planningEndAge: endAge, planningHorizon: Math.max(1, endAge - curAge) });
+                }}
+                hint="Project through this age"
+                tooltip={INPUT_TOOLTIPS.planningEndAge}
+              />
               <div>
                 <InfoLabel label="Expected Total Return" tooltip={INPUT_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
                 <div className="relative">
@@ -410,7 +427,91 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Computed planning horizon info */}
+            <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>
+              Planning: age {formData.currentAge ?? 45} → {formData.planningEndAge ?? 90} ({(formData.planningEndAge ?? 90) - (formData.currentAge ?? 45)} years: {Math.max(0, (formData.retirementAge ?? 65) - (formData.currentAge ?? 45))} accumulation + {Math.max(0, (formData.planningEndAge ?? 90) - (formData.retirementAge ?? 65))} retirement)
+            </p>
+
+            {/* Row 3: CPP Start Age, Age Started Earning, Average Historical Salary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <InputField
+                label="CPP Start Age"
+                id="cppStartAge"
+                value={formData.cppStartAge ?? 65}
+                onChange={(v) => handleNumberChange('cppStartAge', v)}
+                hint="60 = -36%, 65 = standard, 70 = +42%"
+                tooltip={INPUT_TOOLTIPS.cppStartAge}
+              />
+              <InputField
+                label="Age Started Earning"
+                id="salaryStartAge"
+                value={formData.salaryStartAge ?? 22}
+                onChange={(v) => handleNumberChange('salaryStartAge', v)}
+                hint="For CPP contributory history"
+                tooltip={INPUT_TOOLTIPS.salaryStartAge}
+              />
+              <InputField
+                label="Avg. Historical Salary"
+                id="averageHistoricalSalary"
+                value={formData.averageHistoricalSalary ?? 60000}
+                onChange={(v) => handleNumberChange('averageHistoricalSalary', v)}
+                prefix="$"
+                hint="Pre-projection employment income"
+                tooltip={INPUT_TOOLTIPS.averageHistoricalSalary}
+              />
+            </div>
+
+            {/* Row 4: OAS Eligible, OAS Start Age, Retirement Spending, Lifetime Objective */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.oasEligible ?? true}
+                    onChange={(e) => setFormData({ ...formData, oasEligible: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                  <span>
+                    OAS Eligible
+                    <Tooltip text={INPUT_TOOLTIPS.oasEligible} />
+                  </span>
+                </label>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>10+ years Canadian residency</p>
+              </div>
+              <InputField
+                label="OAS Start Age"
+                id="oasStartAge"
+                value={formData.oasStartAge ?? 65}
+                onChange={(v) => handleNumberChange('oasStartAge', v)}
+                hint="65-70 (0.6%/mo deferral bonus)"
+                tooltip={INPUT_TOOLTIPS.oasStartAge}
+              />
+              <InputField
+                label="Retirement Spending"
+                id="retirementSpending"
+                value={formData.retirementSpending ?? 70000}
+                onChange={(v) => handleNumberChange('retirementSpending', v)}
+                prefix="$"
+                hint="Target annual spending (today's $)"
+                tooltip={INPUT_TOOLTIPS.retirementSpending}
+              />
+              <div>
+                <InfoLabel label="Lifetime Objective" tooltip={INPUT_TOOLTIPS.lifetimeObjective} htmlFor="lifetimeObjective" />
+                <select
+                  id="lifetimeObjective"
+                  value={formData.lifetimeObjective ?? 'balanced'}
+                  onChange={(e) => setFormData({ ...formData, lifetimeObjective: e.target.value as 'maximize-spending' | 'maximize-estate' | 'balanced' })}
+                >
+                  <option value="maximize-spending">Maximize Spending</option>
+                  <option value="maximize-estate">Maximize Estate</option>
+                  <option value="balanced">Balanced (60/40)</option>
+                </select>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Strategy winner criteria</p>
+              </div>
+            </div>
+
+            {/* Row 5: RRSP Room, TFSA Room, Actual RRSP Balance, Actual TFSA Balance */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               <InputField
                 label="Available RRSP Room"
                 id="rrsp"
@@ -421,6 +522,15 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 tooltip={INPUT_TOOLTIPS.rrspRoom}
               />
               <InputField
+                label="Actual RRSP Balance"
+                id="actualRRSPBalance"
+                value={formData.actualRRSPBalance ?? 0}
+                onChange={(v) => handleNumberChange('actualRRSPBalance', v)}
+                prefix="$"
+                hint="Current market value"
+                tooltip={INPUT_TOOLTIPS.actualRRSPBalance}
+              />
+              <InputField
                 label="Available TFSA Room"
                 id="tfsa"
                 value={formData.tfsaBalance}
@@ -428,6 +538,15 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 prefix="$"
                 hint="From CRA My Account"
                 tooltip={INPUT_TOOLTIPS.tfsaRoom}
+              />
+              <InputField
+                label="Actual TFSA Balance"
+                id="actualTFSABalance"
+                value={formData.actualTFSABalance ?? 0}
+                onChange={(v) => handleNumberChange('actualTFSABalance', v)}
+                prefix="$"
+                hint="Current market value"
+                tooltip={INPUT_TOOLTIPS.actualTFSABalance}
               />
             </div>
           </div>
@@ -960,6 +1079,63 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                     step="1000"
                     hint="Available TFSA contribution room"
                     tooltip={INPUT_TOOLTIPS.spouseTFSARoom}
+                  />
+                </div>
+
+                {/* Spouse Lifetime Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <InputField
+                    label="Spouse Current Age"
+                    id="spouseCurrentAge"
+                    value={formData.spouseCurrentAge || 45}
+                    onChange={(v) => handleNumberChange('spouseCurrentAge', v)}
+                    hint="Spouse's age today"
+                    tooltip={INPUT_TOOLTIPS.spouseCurrentAge}
+                  />
+                  <InputField
+                    label="Spouse Retirement Age"
+                    id="spouseRetirementAge"
+                    value={formData.spouseRetirementAge || 65}
+                    onChange={(v) => handleNumberChange('spouseRetirementAge', v)}
+                    hint="When spouse stops working"
+                    tooltip={INPUT_TOOLTIPS.spouseRetirementAge}
+                  />
+                  <InputField
+                    label="Spouse CPP Start"
+                    id="spouseCPPStartAge"
+                    value={formData.spouseCPPStartAge || 65}
+                    onChange={(v) => handleNumberChange('spouseCPPStartAge', v)}
+                    hint="60-70"
+                    tooltip={INPUT_TOOLTIPS.spouseCPPStartAge}
+                  />
+                  <InputField
+                    label="Spouse OAS Start"
+                    id="spouseOASStartAge"
+                    value={formData.spouseOASStartAge || 65}
+                    onChange={(v) => handleNumberChange('spouseOASStartAge', v)}
+                    hint="65-70"
+                    tooltip={INPUT_TOOLTIPS.spouseOASStartAge}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputField
+                    label="Spouse Actual RRSP Balance"
+                    id="spouseActualRRSPBalance"
+                    value={formData.spouseActualRRSPBalance || 0}
+                    onChange={(v) => handleNumberChange('spouseActualRRSPBalance', v)}
+                    prefix="$"
+                    hint="Spouse's current RRSP/RRIF market value"
+                    tooltip={INPUT_TOOLTIPS.spouseActualRRSPBalance}
+                  />
+                  <InputField
+                    label="Spouse Actual TFSA Balance"
+                    id="spouseActualTFSABalance"
+                    value={formData.spouseActualTFSABalance || 0}
+                    onChange={(v) => handleNumberChange('spouseActualTFSABalance', v)}
+                    prefix="$"
+                    hint="Spouse's current TFSA market value"
+                    tooltip={INPUT_TOOLTIPS.spouseActualTFSABalance}
                   />
                 </div>
 
