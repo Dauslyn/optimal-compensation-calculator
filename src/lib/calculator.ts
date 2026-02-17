@@ -5,6 +5,7 @@ import type {
   ProjectionSummary,
   BalanceTracking,
   RetirementIncome,
+  EstateBreakdown,
 } from './types';
 import {
   getTaxYearData,
@@ -562,6 +563,32 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
       actualTFSABalance = retTFSABalance;
       ippFundBalance = retIppFundBalance;
       currentAccounts = retAccounts;
+    }
+  }
+
+  // === ESTATE CALCULATION ===
+  // Attach estate breakdown to the last year's result (deemed dispositions at death)
+  if (yearlyResults.length > 0) {
+    const lastYear = yearlyResults[yearlyResults.length - 1];
+    const lastCalendarYear = lastYear.calendarYear ?? (startingYear + yearlyResults.length - 1);
+    const lastAge = lastYear.age ?? (currentAge + yearlyResults.length - 1);
+    const estateTaxData = getTaxYearData(lastCalendarYear, inflationRate, inputs.province);
+
+    const estate = calculateEstateYear({
+      calendarYear: lastCalendarYear,
+      age: lastAge,
+      province: inputs.province,
+      inflationRate,
+      rrspBalance: actualRRSPBalance,
+      tfsaBalance: actualTFSABalance,
+      corporateAccounts: currentAccounts,
+      ippFundBalance,
+    }, estateTaxData);
+
+    lastYear.estate = estate;
+    // Mark last year as estate phase if there was a retirement phase
+    if (lastYear.phase === 'retirement') {
+      lastYear.phase = 'estate';
     }
   }
 
@@ -1352,6 +1379,173 @@ function calculateRetirementYear(
   };
 }
 
+// === Estate Calculation ===
+
+interface EstateInputs {
+  calendarYear: number;
+  age: number;
+  province: string;
+  inflationRate: number;
+
+  // Final balances at time of death
+  rrspBalance: number;    // or RRIF balance
+  tfsaBalance: number;
+  corporateAccounts: NotionalAccounts;
+  ippFundBalance: number;
+}
+
+/**
+ * Calculate estate value at death (terminal year deemed dispositions).
+ *
+ * CRA rules at death:
+ * 1. RRSP/RRIF — deemed disposed, full balance taxed as income (unless rolled to spouse)
+ * 2. Corporate wind-up — deemed dividend on surplus:
+ *    - CDA portion: tax-free capital dividend to estate
+ *    - Remainder: taxed as non-eligible dividend
+ * 3. TFSA — passes to beneficiary tax-free (no deemed disposition)
+ * 4. CPP death benefit — flat $2,500 lump sum
+ * 5. IPP — remaining fund taxed similar to RRSP (commuted value is income)
+ */
+function calculateEstateYear(
+  inputs: EstateInputs,
+  taxData: TaxYearData,
+): EstateBreakdown {
+  const { province } = inputs;
+
+  // 1. Deemed RRSP/RRIF disposition — full balance is income in terminal year
+  const rrifBalance = inputs.rrspBalance;
+  const ippBalance = inputs.ippFundBalance;
+  const totalDeemedIncome = rrifBalance + ippBalance;
+
+  // Tax on deemed income (RRSP/RRIF + IPP treated as regular income)
+  const terminalIncomeTax = totalDeemedIncome > 0
+    ? calculatePersonalTaxForYear(
+        totalDeemedIncome, // treated as ordinary income
+        0, 0, 0,           // no dividends, no RRSP deduction
+        taxData, province,
+      ).totalTax
+    : 0;
+
+  // 2. Corporate wind-up — deemed dividend on all remaining corporate value
+  // Only positive corporate balances create a wind-up liability
+  const corpTotal = Math.max(0, inputs.corporateAccounts.corporateInvestments);
+  const cdaBalance = Math.max(0, inputs.corporateAccounts.CDA);
+  const eRDTOH = Math.max(0, inputs.corporateAccounts.eRDTOH);
+  const nRDTOH = Math.max(0, inputs.corporateAccounts.nRDTOH);
+  const gripBalance = Math.max(0, inputs.corporateAccounts.GRIP);
+
+  // CDA portion passes tax-free as capital dividend
+  const capitalDividendPortion = Math.min(cdaBalance, corpTotal);
+  const remainingCorpAfterCDA = Math.max(0, corpTotal - capitalDividendPortion);
+
+  // GRIP portion pays eligible dividends (lower tax rate)
+  const eligibleDividendPortion = Math.min(gripBalance, remainingCorpAfterCDA);
+  const nonEligibleDividendPortion = Math.max(0, remainingCorpAfterCDA - eligibleDividendPortion);
+
+  // Tax on corporate wind-up dividends
+  // RDTOH refunds reduce corporate tax, not personal — but at wind-up, the personal tax matters
+  const corpWindUpTax = (eligibleDividendPortion > 0 || nonEligibleDividendPortion > 0)
+    ? calculatePersonalTaxForYear(
+        0,
+        eligibleDividendPortion,
+        nonEligibleDividendPortion,
+        0,
+        taxData, province,
+      ).totalTax
+    : 0;
+
+  // RDTOH refunds at wind-up (corporation gets refund on dividend payment)
+  const rdtohRefund = Math.min(
+    eRDTOH + nRDTOH,
+    (eligibleDividendPortion + nonEligibleDividendPortion) * taxData.rdtoh.refundRate,
+  );
+
+  // 3. TFSA passes tax-free
+  const tfsaPassThrough = inputs.tfsaBalance;
+
+  // 4. CPP death benefit (flat $2,500)
+  const cppDeathBenefit = 2500;
+
+  // 5. Net estate value
+  // After-tax registered accounts: total balance minus tax on deemed disposition
+  const afterTaxRegistered = Math.max(0, totalDeemedIncome - terminalIncomeTax);
+
+  // After-tax corporate: CDA (tax-free) + taxable dividends minus tax + RDTOH refund
+  const afterTaxCorp = capitalDividendPortion + Math.max(0,
+    eligibleDividendPortion + nonEligibleDividendPortion - corpWindUpTax
+  ) + rdtohRefund;
+
+  const netEstateValue = afterTaxRegistered + afterTaxCorp + tfsaPassThrough + cppDeathBenefit;
+
+  return {
+    terminalRRIFTax: terminalIncomeTax,
+    corporateWindUpTax: corpWindUpTax,
+    tfsaPassThrough,
+    netEstateValue,
+  };
+}
+
+/**
+ * Build lifetime summary from yearly results (retirement income sources, estate, etc.)
+ */
+function buildLifetimeSummary(yearlyResults: YearlyResult[]): ProjectionSummary['lifetime'] {
+  const accumYears = yearlyResults.filter(yr => yr.phase === 'accumulation');
+  const retYears = yearlyResults.filter(yr => yr.phase === 'retirement' || yr.phase === 'estate');
+
+  // If no retirement years, this is a short-horizon projection — skip lifetime stats
+  if (retYears.length === 0 && accumYears.length > 0 && !accumYears.some(yr => yr.retirement)) {
+    return undefined;
+  }
+
+  let totalLifetimeSpending = 0;
+  let totalLifetimeTax = 0;
+  let peakCorporateBalance = 0;
+  let peakYear = 0;
+  let cppTotalReceived = 0;
+  let oasTotalReceived = 0;
+  let rrifTotalWithdrawn = 0;
+  let tfsaTotalWithdrawn = 0;
+
+  for (const yr of yearlyResults) {
+    totalLifetimeSpending += yr.afterTaxIncome;
+    totalLifetimeTax += yr.totalTax;
+
+    const corpBal = yr.balances?.corporateBalance ?? yr.notionalAccounts.corporateInvestments;
+    if (corpBal > peakCorporateBalance) {
+      peakCorporateBalance = corpBal;
+      peakYear = yr.year;
+    }
+
+    if (yr.retirement) {
+      cppTotalReceived += yr.retirement.cppIncome;
+      oasTotalReceived += yr.retirement.oasNet;
+      rrifTotalWithdrawn += yr.retirement.rrifWithdrawal;
+      tfsaTotalWithdrawn += yr.retirement.tfsaWithdrawal;
+    }
+  }
+
+  const lastYear = yearlyResults[yearlyResults.length - 1];
+  const estateValue = lastYear.estate?.netEstateValue ?? 0;
+  const lifetimeEffectiveRate = totalLifetimeSpending > 0
+    ? totalLifetimeTax / (totalLifetimeSpending + totalLifetimeTax)
+    : 0;
+
+  return {
+    totalAccumulationYears: accumYears.length,
+    totalRetirementYears: retYears.length,
+    totalLifetimeSpending,
+    totalLifetimeTax,
+    lifetimeEffectiveRate,
+    peakCorporateBalance,
+    peakYear,
+    estateValue,
+    cppTotalReceived,
+    oasTotalReceived,
+    rrifTotalWithdrawn,
+    tfsaTotalWithdrawn,
+  };
+}
+
 /**
  * Calculate summary statistics from yearly results
  */
@@ -1517,6 +1711,7 @@ function calculateSummary(
         totalPensionAdjustments: spouseIPPTotalPensionAdjustments,
       } : undefined,
     } : undefined,
+    lifetime: buildLifetimeSummary(yearlyResults),
   };
 }
 

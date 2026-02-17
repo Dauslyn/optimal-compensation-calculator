@@ -49,11 +49,14 @@ describe('Retirement Drawdown Engine', () => {
         expect(result.yearlyResults[i].age).toBe(45 + i);
       }
 
-      // Years 21-25 (age 65-69): retirement
-      for (let i = 20; i < 25; i++) {
+      // Years 21-24 (age 65-68): retirement; Year 25 (age 69): estate
+      for (let i = 20; i < 24; i++) {
         expect(result.yearlyResults[i].phase).toBe('retirement');
         expect(result.yearlyResults[i].age).toBe(45 + i);
       }
+      // Last year gets estate phase
+      expect(result.yearlyResults[24].phase).toBe('estate');
+      expect(result.yearlyResults[24].age).toBe(45 + 24);
     });
   });
 
