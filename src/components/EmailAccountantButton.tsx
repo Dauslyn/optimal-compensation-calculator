@@ -59,12 +59,24 @@ function buildMailtoUrl(inputs: UserInputs, summary: ProjectionSummary, comparis
     `Required After-Tax Income: ${formatCurrency(inputs.requiredIncome)}/yr`,
     `Corporate Investment Balance: ${formatCurrency(inputs.corporateInvestmentBalance)}`,
     `Expected Return: ${formatPercentage(inputs.investmentReturnRate)} | Inflation: ${formatPercentage(inputs.expectedInflationRate)}`,
+    ...(summary.lifetime ? [
+      '',
+      'LIFETIME MODEL',
+      '---',
+      `Total Lifetime Spending: ${formatCurrency(summary.lifetime.totalLifetimeSpending)}`,
+      `Lifetime Effective Tax Rate: ${formatPercentage(summary.lifetime.lifetimeEffectiveRate)}`,
+      `Net Estate Value: ${formatCurrency(summary.lifetime.estateValue)}`,
+      `Peak Corporate Balance: ${formatCurrency(summary.lifetime.peakCorporateBalance)} (year ${summary.lifetime.peakYear})`,
+      `CPP Received: ${formatCurrency(summary.lifetime.cppTotalReceived)} | OAS Received: ${formatCurrency(summary.lifetime.oasTotalReceived)}`,
+      `Accumulation: ${summary.lifetime.totalAccumulationYears} yrs | Retirement: ${summary.lifetime.totalRetirementYears} yrs`,
+    ] : []),
     ...(comparison ? [
       '',
       'STRATEGY COMPARISON',
       '---',
       ...comparison.strategies.map(s => {
-        const tag = s.id === comparison.winner.bestOverall ? ' <-- RECOMMENDED' : '';
+        const lifetimeObjectiveWinner = comparison.lifetimeWinner?.byObjective;
+        const tag = s.id === (lifetimeObjectiveWinner ?? comparison.winner.bestOverall) ? ' <-- RECOMMENDED' : '';
         return `${s.label}: Tax ${formatCurrency(s.summary.totalTax)} | Rate ${formatPercentage(s.summary.effectiveCompensationRate)} | Balance ${formatCurrency(s.summary.finalCorporateBalance)}${tag}`;
       }),
       '',
