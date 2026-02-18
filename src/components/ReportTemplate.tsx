@@ -72,6 +72,11 @@ function generateExecutiveBullets(inputs: UserInputs, summary: ProjectionSummary
         bullets.push(`Family compensation is split across two shareholders to utilize two sets of personal tax brackets, with spouse receiving ${formatCurrency(summary.spouse.totalAfterTaxIncome)} total after-tax over the period.`);
     }
 
+    // Lifetime summary
+    if (summary.lifetime) {
+        bullets.push(`Lifetime model projects ${formatCurrency(summary.lifetime.totalLifetimeSpending)} total spending over ${summary.lifetime.totalAccumulationYears + summary.lifetime.totalRetirementYears} years with a net estate of ${formatCurrency(summary.lifetime.estateValue)} after all taxes.`);
+    }
+
     return bullets;
 }
 
@@ -596,6 +601,155 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
                         </tbody>
                     </table>
                 </div>
+
+                {/* ===== LIFETIME SUMMARY ===== */}
+                {summary.lifetime && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h2>Lifetime Model Summary</h2>
+                    <p style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>
+                      Full lifetime projection from accumulation through retirement drawdown and estate settlement.
+                    </p>
+
+                    {/* Lifetime key metrics */}
+                    <div className="grid-4" style={{ marginBottom: '16px' }}>
+                      <div className="metric-box">
+                        <div className="metric-label">Total Lifetime Spending</div>
+                        <div className="metric-value">{formatCurrency(summary.lifetime.totalLifetimeSpending)}</div>
+                      </div>
+                      <div className="metric-box">
+                        <div className="metric-label">Lifetime Tax Rate</div>
+                        <div className="metric-value">{(summary.lifetime.lifetimeEffectiveRate * 100).toFixed(1)}%</div>
+                      </div>
+                      <div className="metric-box">
+                        <div className="metric-label">Net Estate Value</div>
+                        <div className="metric-value">{formatCurrency(summary.lifetime.estateValue)}</div>
+                      </div>
+                      <div className="metric-box">
+                        <div className="metric-label">Peak Corp Balance</div>
+                        <div className="metric-value">{formatCurrency(summary.lifetime.peakCorporateBalance)}</div>
+                      </div>
+                    </div>
+
+                    {/* Phase breakdown */}
+                    <div className="grid-3" style={{ marginBottom: '16px' }}>
+                      <div className="metric-box">
+                        <div className="metric-label">Accumulation Years</div>
+                        <div className="metric-value">{summary.lifetime.totalAccumulationYears}</div>
+                      </div>
+                      <div className="metric-box">
+                        <div className="metric-label">Retirement Years</div>
+                        <div className="metric-value">{summary.lifetime.totalRetirementYears}</div>
+                      </div>
+                      <div className="metric-box">
+                        <div className="metric-label">Total Lifetime Tax</div>
+                        <div className="metric-value">{formatCurrency(summary.lifetime.totalLifetimeTax)}</div>
+                      </div>
+                    </div>
+
+                    {/* Government benefits + withdrawals */}
+                    <h3>Government Benefits &amp; Registered Withdrawals</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left' }}>Item</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>CPP Benefits Received</td>
+                          <td>{formatCurrency(summary.lifetime.cppTotalReceived)}</td>
+                        </tr>
+                        <tr>
+                          <td>OAS Benefits Received</td>
+                          <td>{formatCurrency(summary.lifetime.oasTotalReceived)}</td>
+                        </tr>
+                        <tr>
+                          <td>Total RRIF Withdrawals</td>
+                          <td>{formatCurrency(summary.lifetime.rrifTotalWithdrawn)}</td>
+                        </tr>
+                        <tr>
+                          <td>Total TFSA Withdrawals</td>
+                          <td>{formatCurrency(summary.lifetime.tfsaTotalWithdrawn)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    {/* Estate breakdown from final year */}
+                    {(() => {
+                      const finalYear = summary.yearlyResults[summary.yearlyResults.length - 1];
+                      if (!finalYear?.estate) return null;
+                      return (
+                        <>
+                          <h3>Estate Settlement (Final Year)</h3>
+                          <table>
+                            <thead>
+                              <tr>
+                                <th style={{ textAlign: 'left' }}>Item</th>
+                                <th>Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td>Terminal RRIF Tax (deemed disposition)</td>
+                                <td style={{ color: '#c62828' }}>({formatCurrency(finalYear.estate.terminalRRIFTax)})</td>
+                              </tr>
+                              <tr>
+                                <td>Corporate Wind-Up Tax</td>
+                                <td style={{ color: '#c62828' }}>({formatCurrency(finalYear.estate.corporateWindUpTax)})</td>
+                              </tr>
+                              <tr>
+                                <td>TFSA Pass-Through (tax-free)</td>
+                                <td>{formatCurrency(finalYear.estate.tfsaPassThrough)}</td>
+                              </tr>
+                              <tr style={{ fontWeight: 700, borderTop: '2px solid #333' }}>
+                                <td>Net Estate Value</td>
+                                <td>{formatCurrency(finalYear.estate.netEstateValue)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </>
+                      );
+                    })()}
+
+                    {/* Retirement year-by-year */}
+                    {summary.yearlyResults.some(y => y.phase === 'retirement') && (
+                      <>
+                        <h3>Retirement Year-by-Year</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Year</th>
+                              <th>Age</th>
+                              <th>CPP</th>
+                              <th>OAS (Net)</th>
+                              <th>RRIF</th>
+                              <th>Corp Div</th>
+                              <th>TFSA</th>
+                              <th>Total Income</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {summary.yearlyResults
+                              .filter(y => y.phase === 'retirement')
+                              .map((y, i) => (
+                                <tr key={i}>
+                                  <td>{y.calendarYear ?? y.year}</td>
+                                  <td>{y.age ?? '—'}</td>
+                                  <td>{formatCurrency(y.retirement?.cppIncome ?? 0)}</td>
+                                  <td>{formatCurrency(y.retirement?.oasNet ?? 0)}</td>
+                                  <td>{formatCurrency(y.retirement?.rrifWithdrawal ?? 0)}</td>
+                                  <td>{formatCurrency(y.retirement?.corporateDividends ?? 0)}</td>
+                                  <td>{formatCurrency(y.retirement?.tfsaWithdrawal ?? 0)}</td>
+                                  <td><strong>{formatCurrency(y.retirement?.totalRetirementIncome ?? 0)}</strong></td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* ===== STRATEGY COMPARISON ===== */}
                 {comparison && (
