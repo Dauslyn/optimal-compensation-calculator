@@ -17,6 +17,7 @@ import { formatCurrency, formatPercent } from '../../lib/formatters';
 import { AfterTaxWealthTable } from '../charts/AfterTaxWealthTable';
 import { ActionPlanTable } from '../charts/ActionPlanTable';
 import { YearlyProjection } from '../YearlyProjection';
+import { RetirementIncomeChart, BalanceDepletionChart, LifetimeOverviewStats } from '../charts/LifetimeCharts';
 
 interface WidgetRendererProps {
   widgetType: string;
@@ -359,6 +360,17 @@ export const WidgetRenderer = memo(function WidgetRenderer({
           </div>
         </div>
       );
+    }
+
+    case 'retirement-income':
+      return <RetirementIncomeChart comparison={comparison} strategyId={strategyId} />;
+
+    case 'balance-depletion':
+      return <BalanceDepletionChart comparison={comparison} />;
+
+    case 'lifetime-overview': {
+      const s = getStrategyData(comparison, strategyId).strategy;
+      return <LifetimeOverviewStats summary={s.summary} />;
     }
 
     default:

@@ -20,6 +20,9 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'action-plan': { id: 'action-plan', label: 'Year-by-Year Action Plan', icon: '\u2705', category: 'table' },
   'yearly-projection': { id: 'yearly-projection', label: 'Full Yearly Projection', icon: '\u{1F4CB}', category: 'table' },
   'key-metrics': { id: 'key-metrics', label: 'Key Metrics Summary', icon: '\u{1F3AF}', category: 'stat' },
+  'retirement-income': { id: 'retirement-income', label: 'Retirement Income by Source', icon: '\u{1F4B0}', category: 'chart' },
+  'balance-depletion':  { id: 'balance-depletion',  label: 'Total Wealth Over Lifetime',   icon: '\u{1F4C9}', category: 'chart' },
+  'lifetime-overview':  { id: 'lifetime-overview',  label: 'Lifetime Overview Stats',       icon: '\u2728',    category: 'stat'  },
 };
 
 export function getAvailableWidgets(options?: { ippEnabled?: boolean }): WidgetDefinition[] {
