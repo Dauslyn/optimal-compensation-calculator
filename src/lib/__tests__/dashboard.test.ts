@@ -194,12 +194,12 @@ describe('Dashboard Integration', () => {
   it('available widgets count matches registry when IPP disabled', () => {
     const widgets = getAvailableWidgets({ ippEnabled: false });
     // Should have all widgets minus the conditional IPP one
-    expect(widgets.length).toBe(12);
+    expect(widgets.length).toBe(15);
   });
 
   it('available widgets count includes IPP when enabled', () => {
     const widgets = getAvailableWidgets({ ippEnabled: true });
-    expect(widgets.length).toBe(13);
+    expect(widgets.length).toBe(16);
   });
 
   it('createWidgetInstance generates unique IDs', () => {
