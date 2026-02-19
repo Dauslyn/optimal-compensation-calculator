@@ -173,6 +173,7 @@ export interface RetirementIncome {
   tfsaWithdrawal: number;
   corporateDividends: number;
   ippPension: number;
+  targetSpending: number;         // Inflation-adjusted spending target for this year
   totalRetirementIncome: number;
   totalTaxableIncome: number;
 }

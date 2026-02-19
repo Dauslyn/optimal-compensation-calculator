@@ -187,6 +187,22 @@ describe('Retirement Drawdown Engine', () => {
   });
 
   describe('target spending', () => {
+    it('exposes inflation-adjusted targetSpending on retirement year', () => {
+      const inputs = createLifetimeInputs({
+        planningHorizon: 22,
+        retirementSpending: 70000,
+        inflationRate: 0.02,
+      });
+      const result = calculateProjection(inputs);
+      const firstRetirementYear = result.yearlyResults.find(yr => yr.phase === 'retirement')!;
+
+      // targetSpending should be > 70000 (inflated from year 0 to year 20+)
+      expect(firstRetirementYear.retirement!.targetSpending).toBeGreaterThan(70000);
+      // Should be roughly 70000 * 1.02^20 ≈ 104040
+      expect(firstRetirementYear.retirement!.targetSpending).toBeGreaterThan(100000);
+      expect(firstRetirementYear.retirement!.targetSpending).toBeLessThan(115000);
+    });
+
     it('meets target when assets sufficient', () => {
       const inputs = createLifetimeInputs({
         planningHorizon: 22, // Short retirement, plenty of assets

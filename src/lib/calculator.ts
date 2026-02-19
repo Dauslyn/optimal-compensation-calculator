@@ -1306,6 +1306,7 @@ function calculateRetirementYear(
     tfsaWithdrawal,
     corporateDividends,
     ippPension,
+    targetSpending: inputs.retirementSpending,
     totalRetirementIncome,
     totalTaxableIncome: allTaxableIncome + corporateDividends,
   };
