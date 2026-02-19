@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import type { ComparisonResult } from '../../lib/strategyComparison';
-import { formatCurrency } from '../../lib/formatters';
+import { formatCurrency, formatPercent } from '../../lib/formatters';
 
 interface WinnerStrategyCardProps {
   comparison: ComparisonResult;
@@ -82,14 +82,38 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
               </>
             )}
           </li>
-          <li>
-            Estimated after-tax wealth: {formatCurrency(
-              (winner.summary.totalCompensation - winner.summary.totalTax) +
-              ((winner.summary.totalRRSPContributions || 0) * 0.70) +
-              (winner.summary.finalCorporateBalance * 0.60)
-            )}
-            {' '}(income + RRSP at 30% tax + corp at 40% tax)
-          </li>
+          {winner.summary.lifetime ? (
+            <>
+              <li>
+                Lifetime spending: {formatCurrency(winner.summary.lifetime.totalLifetimeSpending)}
+                {' '}· estate: {formatCurrency(winner.summary.lifetime.estateValue)}
+              </li>
+              <li>
+                Lifetime effective tax rate: {formatPercent(winner.summary.lifetime.lifetimeEffectiveRate)}
+                {comparison.lifetimeWinner && (
+                  <> · optimized for{' '}
+                    {comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeSpending &&
+                     comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeEstate
+                      ? 'spending & estate'
+                      : comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeSpending
+                      ? 'lifetime spending'
+                      : comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeEstate
+                      ? 'estate value'
+                      : 'balanced objective'}
+                  </>
+                )}
+              </li>
+            </>
+          ) : (
+            <li>
+              Estimated after-tax wealth: {formatCurrency(
+                (winner.summary.totalCompensation - winner.summary.totalTax) +
+                ((winner.summary.totalRRSPContributions || 0) * 0.70) +
+                (winner.summary.finalCorporateBalance * 0.60)
+              )}
+              {' '}(income + RRSP at 30% tax + corp at 40% tax)
+            </li>
+          )}
           <li>
             Optimal balance of tax efficiency + flexibility
           </li>

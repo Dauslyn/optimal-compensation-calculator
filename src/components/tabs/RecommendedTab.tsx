@@ -4,6 +4,7 @@ import { WinnerStrategyCard } from './WinnerStrategyCard';
 import { AfterTaxWealthTable } from '../charts/AfterTaxWealthTable';
 import { ActionPlanTable } from '../charts/ActionPlanTable';
 import { Chart } from '../Chart';
+import { BalanceDepletionChart } from '../charts/LifetimeCharts';
 
 interface RecommendedTabProps {
   comparison: ComparisonResult;
@@ -14,6 +15,8 @@ export const RecommendedTab = memo(function RecommendedTab({
 }: RecommendedTabProps) {
   const winner = comparison.strategies.find(s => s.id === comparison.winner.bestOverall);
   if (!winner) return null;
+
+  const hasLifetime = comparison.yearlyData[0]?.years.some(y => y.phase === 'retirement');
 
   return (
     <div className="space-y-6">
@@ -27,6 +30,10 @@ export const RecommendedTab = memo(function RecommendedTab({
         </h4>
         <Chart results={winner.summary.yearlyResults} />
       </div>
+
+      {hasLifetime && (
+        <BalanceDepletionChart comparison={comparison} />
+      )}
     </div>
   );
 });

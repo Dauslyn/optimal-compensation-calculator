@@ -604,7 +604,7 @@ export const ReportTemplate = forwardRef<HTMLDivElement, ReportTemplateProps>(
 
                 {/* ===== LIFETIME SUMMARY ===== */}
                 {summary.lifetime && (
-                  <div style={{ marginBottom: '20px' }}>
+                  <div style={{ pageBreakBefore: 'always', marginBottom: '20px' }}>
                     <h2>Lifetime Model Summary</h2>
                     <p style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>
                       Full lifetime projection from accumulation through retirement drawdown and estate settlement.
