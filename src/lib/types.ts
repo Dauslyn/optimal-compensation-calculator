@@ -174,6 +174,10 @@ export interface RetirementIncome {
   corporateDividends: number;
   ippPension: number;
   targetSpending: number;         // Inflation-adjusted spending target for this year
+  spouseCPPIncome: number;        // Spouse annual CPP benefit (0 if no spouse or not yet started)
+  spouseOASGross: number;         // Spouse OAS before clawback
+  spouseOASNet: number;           // Spouse OAS after clawback
+  spouseRRIFWithdrawal: number;   // Spouse RRIF minimum withdrawal
   totalRetirementIncome: number;
   totalTaxableIncome: number;
 }
@@ -333,6 +337,8 @@ export interface ProjectionSummary {
     oasTotalReceived: number;
     rrifTotalWithdrawn: number;
     tfsaTotalWithdrawn: number;
+    spouseCPPTotalReceived: number;
+    spouseOASTotalReceived: number;
   };
 }
 
