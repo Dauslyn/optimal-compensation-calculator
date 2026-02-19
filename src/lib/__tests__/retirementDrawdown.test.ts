@@ -191,7 +191,7 @@ describe('Retirement Drawdown Engine', () => {
       const inputs = createLifetimeInputs({
         planningHorizon: 22,
         retirementSpending: 70000,
-        inflationRate: 0.02,
+        expectedInflationRate: 0.02,
       });
       const result = calculateProjection(inputs);
       const firstRetirementYear = result.yearlyResults.find(yr => yr.phase === 'retirement')!;
