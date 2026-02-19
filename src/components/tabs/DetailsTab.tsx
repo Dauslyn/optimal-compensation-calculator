@@ -1,8 +1,11 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import type { ComparisonResult } from '../../lib/strategyComparison';
 import type { UserInputs } from '../../lib/types';
 import { YearlyProjection } from '../YearlyProjection';
 import { DetailedCharts } from '../charts/DetailedCharts';
+import { RetirementIncomeChart, LifetimeOverviewStats, MonteCarloChart } from '../charts/LifetimeCharts';
+import { runMonteCarlo } from '../../lib/monteCarlo';
+import type { MonteCarloResult } from '../../lib/monteCarlo';
 
 interface DetailsTabProps {
   comparison: ComparisonResult;
@@ -19,6 +22,23 @@ export const DetailsTab = memo(function DetailsTab({
     || comparison.strategies[0];
 
   const showIPP = inputs.considerIPP || inputs.spouseConsiderIPP;
+  const winner = comparison.strategies.find(s => s.id === comparison.winner.bestOverall)
+    || comparison.strategies[0];
+  const hasLifetime = comparison.yearlyData[0]?.years.some(y => y.phase === 'retirement');
+
+  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
+
+  useEffect(() => {
+    if (!hasLifetime) {
+      setMonteCarloResult(null);
+      return;
+    }
+    const id = setTimeout(() => {
+      const result = runMonteCarlo(inputs, { simulationCount: 500 });
+      setMonteCarloResult(result);
+    }, 0);
+    return () => clearTimeout(id);
+  }, [hasLifetime, inputs]);
 
   return (
     <div className="space-y-6">
@@ -55,6 +75,30 @@ export const DetailsTab = memo(function DetailsTab({
         </h3>
         <DetailedCharts comparison={comparison} showIPP={showIPP} />
       </div>
+
+      {/* Lifetime Analysis */}
+      {hasLifetime && (
+        <div>
+          <h3 className="font-semibold text-lg mb-4" style={{ color: 'var(--text-primary)' }}>
+            Lifetime Analysis
+          </h3>
+          <div className="space-y-4">
+            <LifetimeOverviewStats summary={winner.summary} />
+            <RetirementIncomeChart comparison={comparison} strategyId={selectedStrategy} />
+            {monteCarloResult && (
+              <MonteCarloChart
+                result={monteCarloResult}
+                years={comparison.yearlyData[0].years.map(y => y.calendarYear ?? y.year)}
+              />
+            )}
+            {!monteCarloResult && hasLifetime && (
+              <div className="glass-card p-5 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                Running Monte Carlo simulation…
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

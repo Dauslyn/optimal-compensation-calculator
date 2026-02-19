@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import type { ComparisonResult } from '../../lib/strategyComparison';
 import type { ProjectionSummary } from '../../lib/types';
+import type { MonteCarloResult } from '../../lib/monteCarlo';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
@@ -277,6 +278,68 @@ export const LifetimeOverviewStats = memo(function LifetimeOverviewStats({
           <div>Spouse OAS: {formatCurrency(lt.spouseOASTotalReceived)}</div>
         </div>
       )}
+    </div>
+  );
+});
+
+// ── 4. MonteCarloChart ───────────────────────────────────────────────────────
+
+interface MonteCarloChartProps {
+  result: MonteCarloResult;
+  years: number[];
+}
+
+export const MonteCarloChart = memo(function MonteCarloChart({
+  result,
+  years,
+}: MonteCarloChartProps) {
+  const data = years.map((year, i) => ({
+    year,
+    p10: result.percentiles.p10[i],
+    p25: result.percentiles.p25[i],
+    p50: result.percentiles.p50[i],
+    p75: result.percentiles.p75[i],
+    p90: result.percentiles.p90[i],
+  }));
+
+  return (
+    <div className="glass-card p-5">
+      <div className="flex items-start justify-between mb-1">
+        <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Monte Carlo — Wealth Projection
+        </h3>
+        <span
+          className="text-xs px-2 py-0.5 rounded-full"
+          style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7' }}
+        >
+          {(result.successRate * 100).toFixed(0)}% success rate
+        </span>
+      </div>
+      <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+        {result.simulationCount} simulations · shaded bands show 10th–90th and 25th–75th percentiles
+      </p>
+      <ResponsiveContainer width="100%" height={300}>
+        <AreaChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+          <XAxis dataKey="year" {...axisProps} />
+          <YAxis tickFormatter={formatCompact} {...axisProps} width={60} />
+          <Tooltip content={<CustomTooltip />} />
+          {/* Outer band: p10-p90 */}
+          <Area type="monotone" dataKey="p90" stroke="none" fill="#10b981" fillOpacity={0.12} legendType="none" />
+          <Area type="monotone" dataKey="p10" stroke="none" fill="#10b981" fillOpacity={0} legendType="none" />
+          {/* Inner band: p25-p75 */}
+          <Area type="monotone" dataKey="p75" stroke="none" fill="#10b981" fillOpacity={0.20} legendType="none" />
+          <Area type="monotone" dataKey="p25" stroke="none" fill="#10b981" fillOpacity={0} legendType="none" />
+          {/* Median line */}
+          <Line type="monotone" dataKey="p50" stroke="#6ee7b7" strokeWidth={2} dot={false} name="Median" />
+        </AreaChart>
+      </ResponsiveContainer>
+      <div className="mt-3 flex gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <span><span style={{ color: '#6ee7b7' }}>—</span> Median</span>
+        <span><span style={{ opacity: 0.4 }}>■</span> 25th–75th %ile</span>
+        <span><span style={{ opacity: 0.2 }}>■</span> 10th–90th %ile</span>
+        <span>Median estate: {formatCompact(result.medianEstate)}</span>
+      </div>
     </div>
   );
 });
