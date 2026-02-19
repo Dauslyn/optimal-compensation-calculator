@@ -560,19 +560,7 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         ? inflateAmount(spouseCPPResult.totalAnnualBenefit, spouseAge - spouseCPPStartAge, inflationRate)
         : 0;
 
-      // Spouse OAS
-      const spouseOASResult = (inputs.hasSpouse && spouseAge !== undefined)
-        ? calculateOAS({
-            calendarYear,
-            age: spouseAge,
-            oasStartAge: inputs.spouseOASStartAge ?? 65,
-            oasEligible: inputs.spouseOASEligible ?? false,
-            baseIncomeBeforeOAS: spouseCPPIncome,
-            inflationRate,
-          })
-        : { grossOAS: 0, clawback: 0, netOAS: 0 };
-
-      // Grow spouse RRSP and compute spouse RRIF minimum
+      // Grow spouse RRSP and compute spouse RRIF minimum (must be before OAS for correct clawback)
       retSpouseRRSPBalance *= (1 + inputs.investmentReturnRate);
       if (spouseAge !== undefined && spouseAge >= 71 && !isSpouseRRIF) {
         isSpouseRRIF = true;
@@ -583,6 +571,18 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         spouseRRIFWithdrawal = retSpouseRRSPBalance * rrifRate;
         retSpouseRRSPBalance -= spouseRRIFWithdrawal;
       }
+
+      // Spouse OAS (baseIncome includes CPP + RRIF so clawback is correctly calculated)
+      const spouseOASResult = (inputs.hasSpouse && spouseAge !== undefined)
+        ? calculateOAS({
+            calendarYear,
+            age: spouseAge,
+            oasStartAge: inputs.spouseOASStartAge ?? 65,
+            oasEligible: inputs.spouseOASEligible ?? false,
+            baseIncomeBeforeOAS: spouseCPPIncome + spouseRRIFWithdrawal,
+            inflationRate,
+          })
+        : { grossOAS: 0, clawback: 0, netOAS: 0 };
 
       const retResult = calculateRetirementYear({
         displayYear: yearIndex + 1,

@@ -319,7 +319,7 @@ describe('Retirement Drawdown Engine', () => {
       const inputs: UserInputs = {
         ...createLifetimeInputs({ planningHorizon: 22 }),
         hasSpouse: true,
-        spouseCurrentAge: 42,
+        spouseCurrentAge: 45, // age 45 → age 65 at year 20 (first retirement year)
         spouseCPPStartAge: 65,
         spouseSalaryStartAge: 22,
         spouseAverageHistoricalSalary: 60000,
@@ -331,12 +331,11 @@ describe('Retirement Drawdown Engine', () => {
       };
       const result = calculateProjection(inputs);
       const retYears = result.yearlyResults.filter(yr => yr.phase === 'retirement');
-      const spouseAge65Year = retYears.find(yr =>
+      const spouseAt65Year = retYears.find(yr =>
         yr.spouseAge !== undefined && yr.spouseAge >= 65
       );
-      if (spouseAge65Year) {
-        expect(spouseAge65Year.retirement!.spouseOASNet).toBeGreaterThan(0);
-      }
+      expect(spouseAt65Year).toBeDefined(); // spouse must reach 65 in a retirement year
+      expect(spouseAt65Year!.retirement!.spouseOASNet).toBeGreaterThan(0);
     });
 
     it('spouse CPP/OAS reduces drawdown from corporate', () => {

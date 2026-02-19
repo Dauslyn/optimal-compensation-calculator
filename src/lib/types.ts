@@ -99,6 +99,7 @@ export interface UserInputs {
 
   // Spouse lifetime fields
   spouseCurrentAge?: number;
+  /** Reserved for future use: spouse's planned retirement age */
   spouseRetirementAge?: number;
   spouseCPPStartAge?: number;
   spouseSalaryStartAge?: number;
