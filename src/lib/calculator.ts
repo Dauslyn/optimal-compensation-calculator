@@ -36,7 +36,7 @@ import {
 } from './tax/ipp';
 import { projectCPPBenefit, type CPPBenefitResult } from './tax/cpp';
 import { calculateOAS } from './tax/oas';
-import { calculateRRIFYear, mustConvertToRRIF } from './tax/rrif';
+import { calculateRRIFYear, mustConvertToRRIF, getRRIFMinimumRate } from './tax/rrif';
 
 /**
  * Calculate effective dividend tax rate at a given income level
@@ -503,11 +503,31 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
     const lastAccumYear = yearlyResults.length > 0 ? yearlyResults[yearlyResults.length - 1] : null;
     const ippAnnualPension = lastAccumYear?.ipp?.projectedAnnualPension ?? 0;
 
+    // Spouse CPP projection
+    const spouseHasRetirement = inputs.hasSpouse === true &&
+      inputs.spouseCPPStartAge !== undefined &&
+      inputs.spouseCurrentAge !== undefined;
+
+    const spouseCPPResult = spouseHasRetirement
+      ? projectCPPBenefit({
+          birthYear: startingYear - (inputs.spouseCurrentAge!),
+          salaryStartAge: inputs.spouseSalaryStartAge ?? 22,
+          averageHistoricalSalary: inputs.spouseAverageHistoricalSalary ?? 60000,
+          projectedSalaries: cppEarningsHistory.map(() => 0),
+          currentAge: inputs.spouseCurrentAge!,
+          cppStartAge: inputs.spouseCPPStartAge!,
+          inflationRate,
+        })
+      : null;
+
     let isRRIF = false;
     let retRRSPBalance = actualRRSPBalance;
     let retTFSABalance = actualTFSABalance;
     let retIppFundBalance = ippFundBalance;
     let retAccounts = { ...currentAccounts };
+
+    let retSpouseRRSPBalance = inputs.hasSpouse ? (inputs.spouseActualRRSPBalance ?? 0) : 0;
+    let isSpouseRRIF = false;
 
     for (let retIdx = 0; retIdx < retirementYears; retIdx++) {
       const yearIndex = accumulationYears + retIdx;
@@ -529,6 +549,41 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         ? inflateAmount(cppResult.totalAnnualBenefit, age - cppStartAge, inflationRate)
         : 0;
 
+      // Spouse age for this year
+      const spouseAge = (inputs.hasSpouse && inputs.spouseCurrentAge !== undefined)
+        ? inputs.spouseCurrentAge + yearIndex
+        : undefined;
+
+      // Spouse CPP
+      const spouseCPPStartAge = inputs.spouseCPPStartAge ?? 65;
+      const spouseCPPIncome = (spouseCPPResult && spouseAge !== undefined && spouseAge >= spouseCPPStartAge)
+        ? inflateAmount(spouseCPPResult.totalAnnualBenefit, spouseAge - spouseCPPStartAge, inflationRate)
+        : 0;
+
+      // Spouse OAS
+      const spouseOASResult = (inputs.hasSpouse && spouseAge !== undefined)
+        ? calculateOAS({
+            calendarYear,
+            age: spouseAge,
+            oasStartAge: inputs.spouseOASStartAge ?? 65,
+            oasEligible: inputs.spouseOASEligible ?? false,
+            baseIncomeBeforeOAS: spouseCPPIncome,
+            inflationRate,
+          })
+        : { grossOAS: 0, clawback: 0, netOAS: 0 };
+
+      // Grow spouse RRSP and compute spouse RRIF minimum
+      retSpouseRRSPBalance *= (1 + inputs.investmentReturnRate);
+      if (spouseAge !== undefined && spouseAge >= 71 && !isSpouseRRIF) {
+        isSpouseRRIF = true;
+      }
+      let spouseRRIFWithdrawal = 0;
+      if (isSpouseRRIF && retSpouseRRSPBalance > 0 && spouseAge !== undefined) {
+        const rrifRate = getRRIFMinimumRate(spouseAge);
+        spouseRRIFWithdrawal = retSpouseRRSPBalance * rrifRate;
+        retSpouseRRSPBalance -= spouseRRIFWithdrawal;
+      }
+
       const retResult = calculateRetirementYear({
         displayYear: yearIndex + 1,
         calendarYear,
@@ -546,10 +601,23 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         ippAnnualPension: ippAnnualPension,
         retirementSpending,
         isRRIF,
+        householdExtraIncome: spouseCPPIncome + spouseOASResult.netOAS + spouseRRIFWithdrawal,
       }, taxData);
 
       // Push result as a full YearlyResult
       yearlyResults.push(retResult.yearResult as YearlyResult);
+
+      // Patch spouse income fields onto the year result (calculated outside calculateRetirementYear)
+      const lastResult = yearlyResults[yearlyResults.length - 1];
+      if (spouseAge !== undefined) {
+        lastResult.spouseAge = spouseAge;
+      }
+      if (lastResult.retirement) {
+        lastResult.retirement.spouseCPPIncome = spouseCPPIncome;
+        lastResult.retirement.spouseOASGross = spouseOASResult.grossOAS;
+        lastResult.retirement.spouseOASNet = spouseOASResult.netOAS;
+        lastResult.retirement.spouseRRIFWithdrawal = spouseRRIFWithdrawal;
+      }
 
       // Update state for next year
       retRRSPBalance = retResult.updatedBalances.rrspBalance;
@@ -1132,6 +1200,7 @@ interface RetirementYearInputs {
   // Target
   retirementSpending: number;  // Inflation-adjusted target
   isRRIF: boolean;             // Whether RRSP has converted to RRIF
+  householdExtraIncome: number; // Spouse CPP + OAS + RRIF already covered outside
 }
 
 /**
@@ -1204,7 +1273,7 @@ function calculateRetirementYear(
 
   // 4. Calculate gap
   const mandatoryAfterTaxEstimate = cppIncome + oasResult.netOAS + ippPension + rrifWithdrawal;
-  const spendingGap = Math.max(0, inputs.retirementSpending - mandatoryAfterTaxEstimate);
+  const spendingGap = Math.max(0, inputs.retirementSpending - mandatoryAfterTaxEstimate - inputs.householdExtraIncome);
 
   // 5. Fill gap using drawdown priority
   let corporateDividends = 0;
@@ -1307,6 +1376,10 @@ function calculateRetirementYear(
     corporateDividends,
     ippPension,
     targetSpending: inputs.retirementSpending,
+    spouseCPPIncome: 0,      // Overridden by outer loop patch
+    spouseOASGross: 0,
+    spouseOASNet: 0,
+    spouseRRIFWithdrawal: 0,
     totalRetirementIncome,
     totalTaxableIncome: allTaxableIncome + corporateDividends,
   };
@@ -1506,6 +1579,8 @@ function buildLifetimeSummary(yearlyResults: YearlyResult[]): ProjectionSummary[
   let oasTotalReceived = 0;
   let rrifTotalWithdrawn = 0;
   let tfsaTotalWithdrawn = 0;
+  let spouseCPPTotalReceived = 0;
+  let spouseOASTotalReceived = 0;
 
   for (const yr of yearlyResults) {
     totalLifetimeSpending += yr.afterTaxIncome;
@@ -1522,6 +1597,8 @@ function buildLifetimeSummary(yearlyResults: YearlyResult[]): ProjectionSummary[
       oasTotalReceived += yr.retirement.oasNet;
       rrifTotalWithdrawn += yr.retirement.rrifWithdrawal;
       tfsaTotalWithdrawn += yr.retirement.tfsaWithdrawal;
+      spouseCPPTotalReceived += yr.retirement.spouseCPPIncome;
+      spouseOASTotalReceived += yr.retirement.spouseOASNet;
     }
   }
 
@@ -1544,6 +1621,8 @@ function buildLifetimeSummary(yearlyResults: YearlyResult[]): ProjectionSummary[
     oasTotalReceived,
     rrifTotalWithdrawn,
     tfsaTotalWithdrawn,
+    spouseCPPTotalReceived,
+    spouseOASTotalReceived,
   };
 }
 

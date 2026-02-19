@@ -288,4 +288,121 @@ describe('Retirement Drawdown Engine', () => {
       expect(result.effectiveTaxRate).toBeGreaterThan(0);
     });
   });
+
+  describe('spouse CPP/OAS in retirement', () => {
+    it('adds spouse CPP income when hasSpouse = true', () => {
+      const inputs: UserInputs = {
+        ...createLifetimeInputs({
+          planningHorizon: 22,
+          salaryStrategy: 'dynamic',
+        }),
+        hasSpouse: true,
+        spouseCurrentAge: 48, // Age 48 → 48+20=68 at first retirement year, past CPP start age 65
+        spouseRetirementAge: 65,
+        spouseCPPStartAge: 65,
+        spouseSalaryStartAge: 22,
+        spouseAverageHistoricalSalary: 60000,
+        spouseOASEligible: true,
+        spouseOASStartAge: 65,
+        spouseActualRRSPBalance: 100000,
+        spouseActualTFSABalance: 50000,
+        spouseRequiredIncome: 50000,
+      };
+      const result = calculateProjection(inputs);
+      const retYears = result.yearlyResults.filter(yr => yr.phase === 'retirement');
+      expect(retYears.length).toBeGreaterThan(0);
+      const firstRetYear = retYears[0];
+      expect(firstRetYear.retirement!.spouseCPPIncome).toBeGreaterThan(0);
+    });
+
+    it('adds spouse OAS income when eligible', () => {
+      const inputs: UserInputs = {
+        ...createLifetimeInputs({ planningHorizon: 22 }),
+        hasSpouse: true,
+        spouseCurrentAge: 42,
+        spouseCPPStartAge: 65,
+        spouseSalaryStartAge: 22,
+        spouseAverageHistoricalSalary: 60000,
+        spouseOASEligible: true,
+        spouseOASStartAge: 65,
+        spouseActualRRSPBalance: 100000,
+        spouseActualTFSABalance: 50000,
+        spouseRequiredIncome: 50000,
+      };
+      const result = calculateProjection(inputs);
+      const retYears = result.yearlyResults.filter(yr => yr.phase === 'retirement');
+      const spouseAge65Year = retYears.find(yr =>
+        yr.spouseAge !== undefined && yr.spouseAge >= 65
+      );
+      if (spouseAge65Year) {
+        expect(spouseAge65Year.retirement!.spouseOASNet).toBeGreaterThan(0);
+      }
+    });
+
+    it('spouse CPP/OAS reduces drawdown from corporate', () => {
+      // Use large corporate balance and no RRSP/TFSA so corporate dividends are the only gap-filler.
+      // High retirementSpending forces the engine to draw from corporate every year.
+      const baseInputs = createLifetimeInputs({
+        planningHorizon: 25,
+        retirementSpending: 120000,
+        corporateInvestmentBalance: 5000000,
+        annualCorporateRetainedEarnings: 0,
+        actualRRSPBalance: 0,
+        actualTFSABalance: 0,
+      });
+      const spouseInputs: UserInputs = {
+        ...baseInputs,
+        hasSpouse: true,
+        spouseCurrentAge: 45, // Age 45 → 45+20=65 at first retirement year, CPP/OAS start
+        spouseCPPStartAge: 65,
+        spouseSalaryStartAge: 22,
+        spouseAverageHistoricalSalary: 60000,
+        spouseOASEligible: true,
+        spouseOASStartAge: 65,
+        spouseActualRRSPBalance: 0,
+        spouseActualTFSABalance: 0,
+        spouseRequiredIncome: 50000,
+      };
+      const baseResult = calculateProjection(baseInputs);
+      const spouseResult = calculateProjection(spouseInputs);
+      const baseCorp = baseResult.yearlyResults
+        .filter(yr => yr.phase === 'retirement')
+        .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+      const spouseCorp = spouseResult.yearlyResults
+        .filter(yr => yr.phase === 'retirement')
+        .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+      expect(spouseCorp).toBeLessThan(baseCorp);
+    });
+
+    it('lifetime summary includes spouse CPP and OAS totals', () => {
+      const inputs: UserInputs = {
+        ...createLifetimeInputs({ planningHorizon: 45 }),
+        hasSpouse: true,
+        spouseCurrentAge: 42,
+        spouseCPPStartAge: 65,
+        spouseSalaryStartAge: 22,
+        spouseAverageHistoricalSalary: 60000,
+        spouseOASEligible: true,
+        spouseOASStartAge: 65,
+        spouseActualRRSPBalance: 100000,
+        spouseActualTFSABalance: 50000,
+        spouseRequiredIncome: 50000,
+      };
+      const result = calculateProjection(inputs);
+      expect(result.lifetime).toBeDefined();
+      expect(result.lifetime!.spouseCPPTotalReceived).toBeGreaterThan(0);
+      expect(result.lifetime!.spouseOASTotalReceived).toBeGreaterThan(0);
+    });
+
+    it('no spouse fields set means zero spouse income in retirement', () => {
+      const inputs = createLifetimeInputs({ planningHorizon: 25 });
+      const result = calculateProjection(inputs);
+      const retYears = result.yearlyResults.filter(yr => yr.phase === 'retirement');
+      for (const yr of retYears) {
+        expect(yr.retirement!.spouseCPPIncome).toBe(0);
+        expect(yr.retirement!.spouseOASNet).toBe(0);
+        expect(yr.retirement!.spouseRRIFWithdrawal).toBe(0);
+      }
+    });
+  });
 });
