@@ -271,6 +271,12 @@ export const LifetimeOverviewStats = memo(function LifetimeOverviewStats({
         <div>RRIF Withdrawn: {formatCurrency(lt.rrifTotalWithdrawn)}</div>
         <div>TFSA Withdrawn: {formatCurrency(lt.tfsaTotalWithdrawn)}</div>
       </div>
+      {(lt.spouseCPPTotalReceived > 0 || lt.spouseOASTotalReceived > 0) && (
+        <div className="mt-3 grid grid-cols-2 gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <div>Spouse CPP: {formatCurrency(lt.spouseCPPTotalReceived)}</div>
+          <div>Spouse OAS: {formatCurrency(lt.spouseOASTotalReceived)}</div>
+        </div>
+      )}
     </div>
   );
 });
