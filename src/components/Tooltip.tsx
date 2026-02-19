@@ -284,7 +284,7 @@ export const INPUT_TOOLTIPS = {
   currentAge: 'Your current age. Determines the accumulation phase length (from now to retirement) and total planning horizon.',
   retirementAge: 'The age you plan to stop working and start drawing down. At this age, the model switches from salary/dividend optimization to retirement income planning (CPP, OAS, RRIF, dividends).',
   planningEndAge: 'The age to project to. Typically 85-95 for longevity planning. The model runs accumulation, retirement drawdown, and estate calculation through this age.',
-  retirementSpending: 'Target annual after-tax spending in retirement (today\'s dollars). Automatically adjusted for inflation each year. Common rule of thumb: 60-80% of pre-retirement spending.',
+  retirementSpending: "Annual after-tax spending target in retirement, in today's dollars. The model inflates this each year by your inflation rate — so $70,000 today becomes ~$104,000 in year 20 at 2% inflation.",
   lifetimeObjective: 'How to determine the "best" strategy. Maximize Spending: highest lifetime after-tax income. Maximize Estate: largest after-tax value at death. Balanced: weighted 60% spending, 40% estate.',
   cppStartAge: 'When to start CPP benefits (60-70). Starting at 60 reduces benefits by 36%. Waiting to 70 increases by 42%. Age 65 is the standard start with no adjustment.',
   salaryStartAge: 'The age you first started earning employment income. Used to build CPP contributory earnings history for years before the projection starts.',

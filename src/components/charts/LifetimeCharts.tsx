@@ -242,7 +242,7 @@ export const LifetimeOverviewStats = memo(function LifetimeOverviewStats({
   }
 
   const stats = [
-    { label: 'Total Lifetime Spending', value: formatCurrency(lt.totalLifetimeSpending), positive: true },
+    { label: 'Total Lifetime Spending (nominal)', value: formatCurrency(lt.totalLifetimeSpending), positive: true },
     { label: 'Lifetime Effective Tax Rate', value: formatPercent(lt.lifetimeEffectiveRate), positive: false },
     { label: 'Peak Corporate Balance', value: `${formatCurrency(lt.peakCorporateBalance)} (yr ${lt.peakYear})`, positive: true },
     { label: 'Net Estate Value', value: formatCurrency(lt.estateValue), positive: true },
