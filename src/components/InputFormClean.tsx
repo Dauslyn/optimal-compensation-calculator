@@ -7,6 +7,7 @@ import { getContributionLimitsForYear } from '../lib/tax/constants';
 import { validateInputs } from '../lib/validation';
 import { InfoLabel, Tooltip, INPUT_TOOLTIPS } from './Tooltip';
 import { saveInputsToStorage, loadInputsFromStorage, getDefaultInputs, clearStoredInputs } from '../lib/localStorage';
+import { computeBlendedReturnRate, ASSET_CLASS_DEFAULT_RETURNS } from '../lib/accounts/investmentReturns';
 
 interface InputFormProps {
   onCalculate: (inputs: UserInputs) => void;
@@ -230,6 +231,43 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     spouse: false,
   });
 
+  const [advancedOpen, setAdvancedOpen] = useState<Record<string, boolean>>({
+    basic: false,
+    accounts: false,
+    portfolio: false,
+    strategy: false,
+    retirement: false,
+  });
+
+  const toggleAdvanced = (section: string) =>
+    setAdvancedOpen(prev => ({ ...prev, [section]: !prev[section] }));
+
+  // Keep investmentReturnRate in sync with allocation and per-class return overrides
+  useEffect(() => {
+    const blended = computeBlendedReturnRate(
+      formData.canadianEquityPercent,
+      formData.usEquityPercent,
+      formData.internationalEquityPercent,
+      formData.fixedIncomePercent,
+      formData.canadianEquityReturnRate,
+      formData.usEquityReturnRate,
+      formData.internationalEquityReturnRate,
+      formData.fixedIncomeReturnRate,
+    );
+    if (Math.abs(blended - formData.investmentReturnRate) > 0.0005) {
+      setFormData(prev => ({ ...prev, investmentReturnRate: blended }));
+    }
+  }, [
+    formData.canadianEquityPercent,
+    formData.usEquityPercent,
+    formData.internationalEquityPercent,
+    formData.fixedIncomePercent,
+    formData.canadianEquityReturnRate,
+    formData.usEquityReturnRate,
+    formData.internationalEquityReturnRate,
+    formData.fixedIncomeReturnRate,
+  ]);
+
   // Validation
   const validationErrors = useMemo(() => validateInputs(formData), [formData]);
   const isFormValid = validationErrors.length === 0;
@@ -307,6 +345,28 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     </button>
   );
 
+  // Per-section advanced toggle button
+  const AdvancedToggle = ({ section }: { section: string }) => (
+    <button
+      type="button"
+      onClick={() => toggleAdvanced(section)}
+      className="flex items-center gap-1.5 text-xs mt-3 px-2 py-1 rounded"
+      style={{
+        color: advancedOpen[section] ? 'var(--text-primary)' : 'var(--text-muted)',
+        background: advancedOpen[section] ? 'rgba(255,255,255,0.06)' : 'transparent',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <svg
+        className={`w-3 h-3 transition-transform duration-150 ${advancedOpen[section] ? 'rotate-180' : ''}`}
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+      {advancedOpen[section] ? 'Hide advanced' : 'Advanced settings'}
+    </button>
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       {/* Basic Information */}
@@ -319,7 +379,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
 
         {expandedSections.basic && (
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            {/* Row 1: Province, Income, Corp Balance, Corp Net Income */}
+            {/* Quick fields: Province, Income, Corp Balance, Corp Net Income */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
               <div>
                 <InfoLabel label="Province" tooltip={INPUT_TOOLTIPS.province} htmlFor="province" />
@@ -369,15 +429,14 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
               />
             </div>
 
-            {/* Row 2: Age, Retirement Age, Planning End Age, Expected Return */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            {/* Quick fields: Current Age, Retirement Age */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <InputField
                 label="Current Age"
                 id="currentAge"
                 value={formData.currentAge ?? 45}
                 onChange={(v) => {
                   const age = parseInt(v) || 45;
-                  const retAge = formData.retirementAge ?? 65;
                   const endAge = formData.planningEndAge ?? 90;
                   setFormData({ ...formData, currentAge: age, planningHorizon: Math.max(1, endAge - age) });
                 }}
@@ -395,230 +454,225 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 hint="When you stop working"
                 tooltip={INPUT_TOOLTIPS.retirementAge}
               />
-              <InputField
-                label="Planning End Age"
-                id="planningEndAge"
-                value={formData.planningEndAge ?? 90}
-                onChange={(v) => {
-                  const endAge = parseInt(v) || 90;
-                  const curAge = formData.currentAge ?? 45;
-                  setFormData({ ...formData, planningEndAge: endAge, planningHorizon: Math.max(1, endAge - curAge) });
-                }}
-                hint="Project through this age"
-                tooltip={INPUT_TOOLTIPS.planningEndAge}
-              />
-              <div>
-                <InfoLabel label="Expected Total Return" tooltip={INPUT_TOOLTIPS.investmentReturnRate} htmlFor="returnRate" />
-                <div className="relative">
-                  <PercentInput
-                    id="returnRate"
-                    decimalValue={formData.investmentReturnRate}
-                    onDecimalChange={(v) => setFormData({ ...formData, investmentReturnRate: v })}
-                    placeholder="4.31"
+            </div>
+
+            <AdvancedToggle section="basic" />
+
+            {advancedOpen.basic && (
+              <div className="space-y-5 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {/* Planning end age + Starting year */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <InputField
+                    label="Planning End Age"
+                    id="planningEndAge"
+                    value={formData.planningEndAge ?? 90}
+                    onChange={(v) => {
+                      const endAge = parseInt(v) || 90;
+                      const curAge = formData.currentAge ?? 45;
+                      setFormData({ ...formData, planningEndAge: endAge, planningHorizon: Math.max(1, endAge - curAge) });
+                    }}
+                    hint="Project through this age"
+                    tooltip={INPUT_TOOLTIPS.planningEndAge}
                   />
-                  <span
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    %
-                  </span>
+                  <div>
+                    <InfoLabel label="Starting Year" tooltip={INPUT_TOOLTIPS.startingYear} htmlFor="startingYear" />
+                    <select
+                      id="startingYear"
+                      value={formData.startingYear}
+                      onChange={(e) => setFormData({ ...formData, startingYear: parseInt(e.target.value) })}
+                    >
+                      <option value={2025}>2025</option>
+                      <option value={2026}>2026</option>
+                    </select>
+                    <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>First year of projection</p>
+                  </div>
+                  <div>
+                    <InfoLabel label="Expected Inflation Rate" tooltip={INPUT_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
+                    <div className="relative">
+                      <PercentInput
+                        id="inflationRate"
+                        decimalValue={formData.expectedInflationRate}
+                        onDecimalChange={(v) => setFormData({ ...formData, expectedInflationRate: v })}
+                        placeholder="2.0"
+                      />
+                      <span
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        %
+                      </span>
+                    </div>
+                    <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>CRA default: {(getDefaultInflationRate() * 100).toFixed(1)}%</p>
+                  </div>
                 </div>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Annual portfolio return</p>
-              </div>
-            </div>
 
-            {/* Computed planning horizon info */}
-            <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>
-              Planning: age {formData.currentAge ?? 45} → {formData.planningEndAge ?? 90} ({(formData.planningEndAge ?? 90) - (formData.currentAge ?? 45)} years: {Math.max(0, (formData.retirementAge ?? 65) - (formData.currentAge ?? 45))} accumulation + {Math.max(0, (formData.planningEndAge ?? 90) - (formData.retirementAge ?? 65))} retirement)
-            </p>
-
-            {/* Row 3: CPP Start Age, Age Started Earning, Average Historical Salary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <InputField
-                label="CPP Start Age"
-                id="cppStartAge"
-                value={formData.cppStartAge ?? 65}
-                onChange={(v) => handleNumberChange('cppStartAge', v)}
-                hint="60 = -36%, 65 = standard, 70 = +42%"
-                tooltip={INPUT_TOOLTIPS.cppStartAge}
-              />
-              <InputField
-                label="Age Started Earning"
-                id="salaryStartAge"
-                value={formData.salaryStartAge ?? 22}
-                onChange={(v) => handleNumberChange('salaryStartAge', v)}
-                hint="For CPP contributory history"
-                tooltip={INPUT_TOOLTIPS.salaryStartAge}
-              />
-              <InputField
-                label="Avg. Historical Salary"
-                id="averageHistoricalSalary"
-                value={formData.averageHistoricalSalary ?? 60000}
-                onChange={(v) => handleNumberChange('averageHistoricalSalary', v)}
-                prefix="$"
-                hint="Pre-projection employment income"
-                tooltip={INPUT_TOOLTIPS.averageHistoricalSalary}
-              />
-            </div>
-
-            {/* Row 4: OAS Eligible, OAS Start Age, Retirement Spending, Lifetime Objective */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.oasEligible ?? true}
-                    onChange={(e) => setFormData({ ...formData, oasEligible: e.target.checked })}
-                    className="w-4 h-4 rounded"
+                {/* Inflate spending + Retirement spending + Lifetime objective */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.inflateSpendingNeeds}
+                        onChange={(e) => setFormData({ ...formData, inflateSpendingNeeds: e.target.checked })}
+                      />
+                      <div>
+                        <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          Inflate Spending Needs
+                          <Tooltip content={INPUT_TOOLTIPS.inflateSpendingNeeds} />
+                        </span>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Increase income requirement each year</p>
+                      </div>
+                    </label>
+                  </div>
+                  <InputField
+                    label="Retirement Spending"
+                    id="retirementSpending"
+                    value={formData.retirementSpending ?? 70000}
+                    onChange={(v) => handleNumberChange('retirementSpending', v)}
+                    prefix="$"
+                    hint="Target annual spending (today's $)"
+                    tooltip={INPUT_TOOLTIPS.retirementSpending}
                   />
-                  <span>
-                    OAS Eligible
-                    <Tooltip text={INPUT_TOOLTIPS.oasEligible} />
-                  </span>
-                </label>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>10+ years Canadian residency</p>
-              </div>
-              <InputField
-                label="OAS Start Age"
-                id="oasStartAge"
-                value={formData.oasStartAge ?? 65}
-                onChange={(v) => handleNumberChange('oasStartAge', v)}
-                hint="65-70 (0.6%/mo deferral bonus)"
-                tooltip={INPUT_TOOLTIPS.oasStartAge}
-              />
-              <InputField
-                label="Retirement Spending"
-                id="retirementSpending"
-                value={formData.retirementSpending ?? 70000}
-                onChange={(v) => handleNumberChange('retirementSpending', v)}
-                prefix="$"
-                hint="Target annual spending (today's $)"
-                tooltip={INPUT_TOOLTIPS.retirementSpending}
-              />
-              <div>
-                <InfoLabel label="Lifetime Objective" tooltip={INPUT_TOOLTIPS.lifetimeObjective} htmlFor="lifetimeObjective" />
-                <select
-                  id="lifetimeObjective"
-                  value={formData.lifetimeObjective ?? 'balanced'}
-                  onChange={(e) => setFormData({ ...formData, lifetimeObjective: e.target.value as 'maximize-spending' | 'maximize-estate' | 'balanced' })}
-                >
-                  <option value="maximize-spending">Maximize Spending</option>
-                  <option value="maximize-estate">Maximize Estate</option>
-                  <option value="balanced">Balanced (60/40)</option>
-                </select>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Strategy winner criteria</p>
-              </div>
-            </div>
+                  <div>
+                    <InfoLabel label="Lifetime Objective" tooltip={INPUT_TOOLTIPS.lifetimeObjective} htmlFor="lifetimeObjective" />
+                    <select
+                      id="lifetimeObjective"
+                      value={formData.lifetimeObjective ?? 'balanced'}
+                      onChange={(e) => setFormData({ ...formData, lifetimeObjective: e.target.value as 'maximize-spending' | 'maximize-estate' | 'balanced' })}
+                    >
+                      <option value="maximize-spending">Maximize Spending</option>
+                      <option value="maximize-estate">Maximize Estate</option>
+                      <option value="balanced">Balanced (60/40)</option>
+                    </select>
+                    <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Strategy winner criteria</p>
+                  </div>
+                </div>
 
-            {/* Row 5: RRSP Room, TFSA Room, Actual RRSP Balance, Actual TFSA Balance */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              <InputField
-                label="Available RRSP Room"
-                id="rrsp"
-                value={formData.rrspBalance}
-                onChange={(v) => handleNumberChange('rrspBalance', v)}
-                prefix="$"
-                hint="From CRA My Account or NOA"
-                tooltip={INPUT_TOOLTIPS.rrspRoom}
-              />
-              <InputField
-                label="Actual RRSP Balance"
-                id="actualRRSPBalance"
-                value={formData.actualRRSPBalance ?? 0}
-                onChange={(v) => handleNumberChange('actualRRSPBalance', v)}
-                prefix="$"
-                hint="Current market value"
-                tooltip={INPUT_TOOLTIPS.actualRRSPBalance}
-              />
-              <InputField
-                label="Available TFSA Room"
-                id="tfsa"
-                value={formData.tfsaBalance}
-                onChange={(v) => handleNumberChange('tfsaBalance', v)}
-                prefix="$"
-                hint="From CRA My Account"
-                tooltip={INPUT_TOOLTIPS.tfsaRoom}
-              />
-              <InputField
-                label="Actual TFSA Balance"
-                id="actualTFSABalance"
-                value={formData.actualTFSABalance ?? 0}
-                onChange={(v) => handleNumberChange('actualTFSABalance', v)}
-                prefix="$"
-                hint="Current market value"
-                tooltip={INPUT_TOOLTIPS.actualTFSABalance}
-              />
-            </div>
+                {/* Computed planning horizon info */}
+                <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>
+                  Planning: age {formData.currentAge ?? 45} → {formData.planningEndAge ?? 90} ({(formData.planningEndAge ?? 90) - (formData.currentAge ?? 45)} years: {Math.max(0, (formData.retirementAge ?? 65) - (formData.currentAge ?? 45))} accumulation + {Math.max(0, (formData.planningEndAge ?? 90) - (formData.retirementAge ?? 65))} retirement)
+                </p>
+
+                {/* CPP / OAS / Historical Salary */}
+                <div className="space-y-4">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>CPP, OAS &amp; Retirement Income</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <InputField
+                      label="CPP Start Age"
+                      id="cppStartAge"
+                      value={formData.cppStartAge ?? 65}
+                      onChange={(v) => handleNumberChange('cppStartAge', v)}
+                      hint="60 = -36%, 65 = standard, 70 = +42%"
+                      tooltip={INPUT_TOOLTIPS.cppStartAge}
+                    />
+                    <InputField
+                      label="Age Started Earning"
+                      id="salaryStartAge"
+                      value={formData.salaryStartAge ?? 22}
+                      onChange={(v) => handleNumberChange('salaryStartAge', v)}
+                      hint="For CPP contributory history"
+                      tooltip={INPUT_TOOLTIPS.salaryStartAge}
+                    />
+                    <InputField
+                      label="Avg. Historical Salary"
+                      id="averageHistoricalSalary"
+                      value={formData.averageHistoricalSalary ?? 60000}
+                      onChange={(v) => handleNumberChange('averageHistoricalSalary', v)}
+                      prefix="$"
+                      hint="Pre-projection employment income"
+                      tooltip={INPUT_TOOLTIPS.averageHistoricalSalary}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.oasEligible ?? true}
+                          onChange={(e) => setFormData({ ...formData, oasEligible: e.target.checked })}
+                          className="w-4 h-4 rounded"
+                        />
+                        <span>
+                          OAS Eligible
+                          <Tooltip text={INPUT_TOOLTIPS.oasEligible} />
+                        </span>
+                      </label>
+                      <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>10+ years Canadian residency</p>
+                    </div>
+                    <InputField
+                      label="OAS Start Age"
+                      id="oasStartAge"
+                      value={formData.oasStartAge ?? 65}
+                      onChange={(v) => handleNumberChange('oasStartAge', v)}
+                      hint="65-70 (0.6%/mo deferral bonus)"
+                      tooltip={INPUT_TOOLTIPS.oasStartAge}
+                    />
+                  </div>
+                </div>
+
+                {/* RRSP / TFSA balances */}
+                <div className="space-y-4">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Registered Account Balances</p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                    <InputField
+                      label="Available RRSP Room"
+                      id="rrsp"
+                      value={formData.rrspBalance}
+                      onChange={(v) => handleNumberChange('rrspBalance', v)}
+                      prefix="$"
+                      hint="From CRA My Account or NOA"
+                      tooltip={INPUT_TOOLTIPS.rrspRoom}
+                    />
+                    <InputField
+                      label="Actual RRSP Balance"
+                      id="actualRRSPBalance"
+                      value={formData.actualRRSPBalance ?? 0}
+                      onChange={(v) => handleNumberChange('actualRRSPBalance', v)}
+                      prefix="$"
+                      hint="Current market value"
+                      tooltip={INPUT_TOOLTIPS.actualRRSPBalance}
+                    />
+                    <InputField
+                      label="Available TFSA Room"
+                      id="tfsa"
+                      value={formData.tfsaBalance}
+                      onChange={(v) => handleNumberChange('tfsaBalance', v)}
+                      prefix="$"
+                      hint="From CRA My Account"
+                      tooltip={INPUT_TOOLTIPS.tfsaRoom}
+                    />
+                    <InputField
+                      label="Actual TFSA Balance"
+                      id="actualTFSABalance"
+                      value={formData.actualTFSABalance ?? 0}
+                      onChange={(v) => handleNumberChange('actualTFSABalance', v)}
+                      prefix="$"
+                      hint="Current market value"
+                      tooltip={INPUT_TOOLTIPS.actualTFSABalance}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Inflation & Indexing */}
+      {/* Inflation & Indexing — collapsed by default, fields kept for completeness */}
       <div className="p-4 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
         <SectionHeader
           title="Inflation & Indexing"
           section="inflation"
-          description="Adjust spending needs and tax brackets for inflation"
+          description="Bracket indexation details (already included in Basic advanced settings)"
         />
 
         {expandedSections.inflation && (
-          <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div>
-                <InfoLabel label="Starting Year" tooltip={INPUT_TOOLTIPS.startingYear} htmlFor="startingYear" />
-                <select
-                  id="startingYear"
-                  value={formData.startingYear}
-                  onChange={(e) => setFormData({ ...formData, startingYear: parseInt(e.target.value) })}
-                >
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                </select>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>First year of projection</p>
-              </div>
-
-              <div>
-                <InfoLabel label="Expected Inflation Rate" tooltip={INPUT_TOOLTIPS.inflationRate} htmlFor="inflationRate" />
-                <div className="relative">
-                  <PercentInput
-                    id="inflationRate"
-                    decimalValue={formData.expectedInflationRate}
-                    onDecimalChange={(v) => setFormData({ ...formData, expectedInflationRate: v })}
-                    placeholder="2.0"
-                  />
-                  <span
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    %
-                  </span>
-                </div>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>CRA default: {(getDefaultInflationRate() * 100).toFixed(1)}%</p>
-              </div>
-
-              <div className="flex items-center">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.inflateSpendingNeeds}
-                    onChange={(e) => setFormData({ ...formData, inflateSpendingNeeds: e.target.checked })}
-                  />
-                  <div>
-                    <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                      Inflate Spending Needs
-                      <Tooltip content={INPUT_TOOLTIPS.inflateSpendingNeeds} />
-                    </span>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Increase income requirement each year</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
+          <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div
               className="p-3 rounded-lg text-xs"
               style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}
             >
-              Tax brackets, CPP/EI limits, and contribution limits are automatically indexed using CRA values for 2025-2026, then projected forward using your expected inflation rate.
+              Tax brackets, CPP/EI limits, and contribution limits are automatically indexed using CRA values for 2025-2026, then projected forward using your expected inflation rate (set in Basic → Advanced settings above).
             </div>
           </div>
         )}
@@ -634,6 +688,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
 
         {expandedSections.portfolio && (
           <div className="pt-4 mt-2 animate-fade-in space-y-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {/* Quick: 4 allocation sliders */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InputField
                 label="Canadian Equity"
@@ -676,11 +731,89 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                 tooltip={INPUT_TOOLTIPS.fixedIncome}
               />
             </div>
+
+            {/* Computed blended return — read-only */}
+            <div className="text-xs pt-2" style={{ color: 'var(--text-muted)' }}>
+              Blended expected return:{' '}
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                {(computeBlendedReturnRate(
+                  formData.canadianEquityPercent,
+                  formData.usEquityPercent,
+                  formData.internationalEquityPercent,
+                  formData.fixedIncomePercent,
+                  formData.canadianEquityReturnRate,
+                  formData.usEquityReturnRate,
+                  formData.internationalEquityReturnRate,
+                  formData.fixedIncomeReturnRate,
+                ) * 100).toFixed(1)}%/yr
+              </span>
+              {' '}(weighted average of asset class defaults)
+            </div>
+
+            <AdvancedToggle section="portfolio" />
+
+            {advancedOpen.portfolio && (
+              <div className="space-y-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Override per-class expected returns. Defaults: CA {(ASSET_CLASS_DEFAULT_RETURNS.canadianEquity * 100).toFixed(1)}%, US {(ASSET_CLASS_DEFAULT_RETURNS.usEquity * 100).toFixed(1)}%, Intl {(ASSET_CLASS_DEFAULT_RETURNS.internationalEquity * 100).toFixed(1)}%, Fixed {(ASSET_CLASS_DEFAULT_RETURNS.fixedIncome * 100).toFixed(1)}%.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label htmlFor="caReturnRate" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>CA Return Rate</label>
+                    <div className="relative mt-1.5">
+                      <PercentInput
+                        id="caReturnRate"
+                        decimalValue={formData.canadianEquityReturnRate ?? ASSET_CLASS_DEFAULT_RETURNS.canadianEquity}
+                        onDecimalChange={(v) => setFormData({ ...formData, canadianEquityReturnRate: v })}
+                        placeholder={(ASSET_CLASS_DEFAULT_RETURNS.canadianEquity * 100).toFixed(1)}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="usReturnRate" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>US Return Rate</label>
+                    <div className="relative mt-1.5">
+                      <PercentInput
+                        id="usReturnRate"
+                        decimalValue={formData.usEquityReturnRate ?? ASSET_CLASS_DEFAULT_RETURNS.usEquity}
+                        onDecimalChange={(v) => setFormData({ ...formData, usEquityReturnRate: v })}
+                        placeholder={(ASSET_CLASS_DEFAULT_RETURNS.usEquity * 100).toFixed(1)}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="intlReturnRate" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Intl Return Rate</label>
+                    <div className="relative mt-1.5">
+                      <PercentInput
+                        id="intlReturnRate"
+                        decimalValue={formData.internationalEquityReturnRate ?? ASSET_CLASS_DEFAULT_RETURNS.internationalEquity}
+                        onDecimalChange={(v) => setFormData({ ...formData, internationalEquityReturnRate: v })}
+                        placeholder={(ASSET_CLASS_DEFAULT_RETURNS.internationalEquity * 100).toFixed(1)}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="fiReturnRate" className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Fixed Income Rate</label>
+                    <div className="relative mt-1.5">
+                      <PercentInput
+                        id="fiReturnRate"
+                        decimalValue={formData.fixedIncomeReturnRate ?? ASSET_CLASS_DEFAULT_RETURNS.fixedIncome}
+                        onDecimalChange={(v) => setFormData({ ...formData, fixedIncomeReturnRate: v })}
+                        placeholder={(ASSET_CLASS_DEFAULT_RETURNS.fixedIncome * 100).toFixed(1)}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Notional Accounts */}
+      {/* Notional Account Balances */}
       <div className="p-4 rounded-xl" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
         <SectionHeader
           title="Notional Account Balances"
@@ -689,43 +822,54 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
         />
 
         {expandedSections.balances && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 mt-2 animate-fade-in" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <InputField
-              label="CDA Balance"
-              id="cda"
-              value={formData.cdaBalance}
-              onChange={(v) => handleNumberChange('cdaBalance', v)}
-              prefix="$"
-              hint="From your T2 Schedule 89"
-              tooltip={INPUT_TOOLTIPS.cdaBalance}
-            />
-            <InputField
-              label="GRIP Balance"
-              id="grip"
-              value={formData.gripBalance}
-              onChange={(v) => handleNumberChange('gripBalance', v)}
-              prefix="$"
-              hint="From your T2 Schedule 53"
-              tooltip={INPUT_TOOLTIPS.gripBalance}
-            />
-            <InputField
-              label="eRDTOH Balance"
-              id="erdtoh"
-              value={formData.eRDTOHBalance}
-              onChange={(v) => handleNumberChange('eRDTOHBalance', v)}
-              prefix="$"
-              hint="From your T2 Schedule 3"
-              tooltip={INPUT_TOOLTIPS.erdtohBalance}
-            />
-            <InputField
-              label="nRDTOH Balance"
-              id="nrdtoh"
-              value={formData.nRDTOHBalance}
-              onChange={(v) => handleNumberChange('nRDTOHBalance', v)}
-              prefix="$"
-              hint="From your T2 Schedule 3"
-              tooltip={INPUT_TOOLTIPS.nrdtohBalance}
-            />
+          <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {/* Quick: brief note */}
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Leave at zero if unknown — defaults are conservative. Enter values from your T2 return for more accurate results.
+            </p>
+
+            <AdvancedToggle section="accounts" />
+
+            {advancedOpen.accounts && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <InputField
+                  label="CDA Balance"
+                  id="cda"
+                  value={formData.cdaBalance}
+                  onChange={(v) => handleNumberChange('cdaBalance', v)}
+                  prefix="$"
+                  hint="From your T2 Schedule 89"
+                  tooltip={INPUT_TOOLTIPS.cdaBalance}
+                />
+                <InputField
+                  label="GRIP Balance"
+                  id="grip"
+                  value={formData.gripBalance}
+                  onChange={(v) => handleNumberChange('gripBalance', v)}
+                  prefix="$"
+                  hint="From your T2 Schedule 53"
+                  tooltip={INPUT_TOOLTIPS.gripBalance}
+                />
+                <InputField
+                  label="eRDTOH Balance"
+                  id="erdtoh"
+                  value={formData.eRDTOHBalance}
+                  onChange={(v) => handleNumberChange('eRDTOHBalance', v)}
+                  prefix="$"
+                  hint="From your T2 Schedule 3"
+                  tooltip={INPUT_TOOLTIPS.erdtohBalance}
+                />
+                <InputField
+                  label="nRDTOH Balance"
+                  id="nrdtoh"
+                  value={formData.nRDTOHBalance}
+                  onChange={(v) => handleNumberChange('nRDTOHBalance', v)}
+                  prefix="$"
+                  hint="From your T2 Schedule 3"
+                  tooltip={INPUT_TOOLTIPS.nrdtohBalance}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -740,61 +884,72 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
 
         {expandedSections.strategy && (
           <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <div>
-              <InfoLabel label="Salary Strategy" tooltip={INPUT_TOOLTIPS.salaryStrategy} htmlFor="salaryStrategy" />
-              <select
-                id="salaryStrategy"
-                value={formData.salaryStrategy}
-                onChange={(e) => setFormData({ ...formData, salaryStrategy: e.target.value as UserInputs['salaryStrategy'] })}
-              >
-                <option value="dynamic">Dynamic (Optimize Automatically)</option>
-                <option value="fixed">Fixed Salary Amount</option>
-                <option value="dividends-only">Dividends Only (No Salary)</option>
-              </select>
-            </div>
+            {/* Quick: default note */}
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Default: <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Dynamic Optimizer</span> — optimizes salary/dividend mix each year to minimize tax while meeting your income target.
+            </p>
 
-            {formData.salaryStrategy === 'fixed' && (
-              <InputField
-                label="Fixed Salary Amount"
-                id="fixedSalary"
-                value={formData.fixedSalaryAmount || 0}
-                onChange={(v) => handleNumberChange('fixedSalaryAmount', v)}
-                prefix="$"
-                hint="Annual salary to pay yourself"
-                tooltip={INPUT_TOOLTIPS.fixedSalaryAmount}
-              />
+            <AdvancedToggle section="strategy" />
+
+            {advancedOpen.strategy && (
+              <div className="space-y-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div>
+                  <InfoLabel label="Salary Strategy" tooltip={INPUT_TOOLTIPS.salaryStrategy} htmlFor="salaryStrategy" />
+                  <select
+                    id="salaryStrategy"
+                    value={formData.salaryStrategy}
+                    onChange={(e) => setFormData({ ...formData, salaryStrategy: e.target.value as UserInputs['salaryStrategy'] })}
+                  >
+                    <option value="dynamic">Dynamic (Optimize Automatically)</option>
+                    <option value="fixed">Fixed Salary Amount</option>
+                    <option value="dividends-only">Dividends Only (No Salary)</option>
+                  </select>
+                </div>
+
+                {formData.salaryStrategy === 'fixed' && (
+                  <InputField
+                    label="Fixed Salary Amount"
+                    id="fixedSalary"
+                    value={formData.fixedSalaryAmount || 0}
+                    onChange={(v) => handleNumberChange('fixedSalaryAmount', v)}
+                    prefix="$"
+                    hint="Annual salary to pay yourself"
+                    tooltip={INPUT_TOOLTIPS.fixedSalaryAmount}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-6 pt-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.maximizeTFSA}
+                      onChange={(e) => setFormData({ ...formData, maximizeTFSA: e.target.checked })}
+                    />
+                    <div>
+                      <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        Maximize TFSA
+                        <Tooltip content={INPUT_TOOLTIPS.maximizeTFSA} />
+                      </span>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contribute ${getContributionLimitsForYear(formData.startingYear).tfsaLimit.toLocaleString('en-CA')}/year</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.contributeToRRSP}
+                      onChange={(e) => setFormData({ ...formData, contributeToRRSP: e.target.checked })}
+                    />
+                    <div>
+                      <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        Contribute to RRSP
+                        <Tooltip content={INPUT_TOOLTIPS.contributeToRRSP} />
+                      </span>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Use available room</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
             )}
-
-            <div className="grid grid-cols-2 gap-6 pt-2">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.maximizeTFSA}
-                  onChange={(e) => setFormData({ ...formData, maximizeTFSA: e.target.checked })}
-                />
-                <div>
-                  <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    Maximize TFSA
-                    <Tooltip content={INPUT_TOOLTIPS.maximizeTFSA} />
-                  </span>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contribute ${getContributionLimitsForYear(formData.startingYear).tfsaLimit.toLocaleString('en-CA')}/year</p>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.contributeToRRSP}
-                  onChange={(e) => setFormData({ ...formData, contributeToRRSP: e.target.checked })}
-                />
-                <div>
-                  <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                    Contribute to RRSP
-                    <Tooltip content={INPUT_TOOLTIPS.contributeToRRSP} />
-                  </span>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Use available room</p>
-                </div>
-              </label>
-            </div>
           </div>
         )}
       </div>
