@@ -108,10 +108,28 @@ export interface UserInputs {
   ippMemberAge?: number;
   ippYearsOfService?: number;
 
+  // IPP v3.4 — expanded fields
+  ippMode?: 'considering' | 'existing';           // default: 'considering'
+  ippBest3AvgSalary?: number;                     // defaults to requiredIncome if unset
+  ippPastServiceYears?: number;                   // years credited before IPP was set up
+  ippExistingFundBalance?: number;                // current FMV of fund (existing mode only)
+  ippLastValuationYear?: number;                  // year of last actuarial valuation
+  ippLastValuationLiability?: number;             // actuarial liability from last report ($)
+  ippLastValuationAnnualContribution?: number;    // annual CSC from last report ($)
+
   // Spouse IPP - optional
   spouseConsiderIPP?: boolean;
   spouseIPPAge?: number;
   spouseIPPYearsOfService?: number;
+
+  // Spouse IPP v3.4 — expanded fields
+  spouseIPPMode?: 'considering' | 'existing';
+  spouseIPPBest3AvgSalary?: number;
+  spouseIPPPastServiceYears?: number;
+  spouseIPPExistingFundBalance?: number;
+  spouseIPPLastValuationYear?: number;
+  spouseIPPLastValuationLiability?: number;
+  spouseIPPLastValuationAnnualContribution?: number;
 
   // ─── Lifetime Model Fields ─────────────────────────────────────────
   currentAge: number;                    // default: 45

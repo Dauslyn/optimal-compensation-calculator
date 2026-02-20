@@ -156,6 +156,7 @@ export function getDefaultInputs(): UserInputs {
     debtInterestRate: 0.05,
     debts: [],
     considerIPP: false,
+    ippMode: 'considering' as const,
 
     // Lifetime model defaults
     currentAge: 45,

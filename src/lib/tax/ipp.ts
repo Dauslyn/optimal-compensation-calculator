@@ -282,6 +282,94 @@ export function estimateIPPAdminCosts(): {
   };
 }
 
+// Annuity factor at retirement age 65 using 1983 GAM with 3% post-retirement indexing
+// This is a CRA-prescribed approximation for planning purposes
+const ANNUITY_FACTOR_AT_65 = 12.5;
+const PRESCRIBED_DISCOUNT_RATE = 0.075; // ITA Reg 8515
+
+/**
+ * Calculate projected annual pension at retirement.
+ * Formula: min(2% × best3AvgSalary, DB_limit_at_retirement) × totalYearsOfService
+ * Source: ITA Regulation 8504
+ */
+export function calculateProjectedPension(
+  totalYearsOfService: number,
+  best3AvgSalary: number,
+  retirementYear: number,
+): number {
+  const limitEntry = IPP_LIMITS[retirementYear] ?? IPP_LIMITS[2026];
+  const dbLimit = limitEntry.maxPensionableBenefit;
+  const unitPension = Math.min(0.02 * best3AvgSalary, dbLimit);
+  return unitPension * totalYearsOfService;
+}
+
+/**
+ * Estimate the current actuarial target liability by rolling forward
+ * from the last triennial valuation using the prescribed 7.5% discount rate.
+ * Between-valuation estimate only — not a formal actuarial valuation.
+ * Source: ITA Reg 8515; Projected Unit Credit method
+ */
+export function estimateCurrentTargetLiability(
+  lastValuationLiability: number,
+  lastValuationYear: number,
+  annualCSC: number,
+  currentYear: number,
+): number {
+  const yearsElapsed = Math.max(0, currentYear - lastValuationYear);
+  // Liability grows at prescribed 7.5% (unwinding of discount)
+  const liabilityGrown = lastValuationLiability * Math.pow(1 + PRESCRIBED_DISCOUNT_RATE, yearsElapsed);
+  // Add CSC contributions accumulated at 7.5%
+  const cscAccumulated =
+    yearsElapsed > 0
+      ? annualCSC * ((Math.pow(1 + PRESCRIBED_DISCOUNT_RATE, yearsElapsed) - 1) / PRESCRIBED_DISCOUNT_RATE)
+      : 0;
+  return liabilityGrown + cscAccumulated;
+}
+
+export interface FundingStatus {
+  estimatedTargetLiability: number;
+  currentFundFMV: number;
+  gap: number;               // positive = deficiency (need more contributions)
+  surplus: number;           // positive = surplus
+  fundingRatio: number;      // fund / liability
+  contributionHolidayTriggered: boolean; // fund > 1.25× liability (ITA s.147.2(2)(d))
+  deficiencyLikely: boolean; // gap > 0
+}
+
+/**
+ * Calculate current funding status of an existing IPP.
+ */
+export function calculateFundingStatus(
+  currentFundFMV: number,
+  estimatedTargetLiability: number,
+): FundingStatus {
+  const gap = Math.max(0, estimatedTargetLiability - currentFundFMV);
+  const surplus = Math.max(0, currentFundFMV - estimatedTargetLiability);
+  const fundingRatio = estimatedTargetLiability > 0 ? currentFundFMV / estimatedTargetLiability : 1;
+  return {
+    estimatedTargetLiability,
+    currentFundFMV,
+    gap,
+    surplus,
+    fundingRatio,
+    contributionHolidayTriggered: currentFundFMV > estimatedTargetLiability * 1.25,
+    deficiencyLikely: gap > 0,
+  };
+}
+
+/**
+ * Estimate terminal funding room available at retirement.
+ * This is the additional deductible lump-sum the corporation can contribute
+ * at pension commencement to bridge fund shortfall to annuity cost.
+ */
+export function estimateTerminalFunding(
+  projectedFundAtRetirement: number,
+  projectedAnnualPension: number,
+): number {
+  const annuityCost = projectedAnnualPension * ANNUITY_FACTOR_AT_65;
+  return Math.max(0, annuityCost - projectedFundAtRetirement);
+}
+
 /**
  * Calculate effective IPP contribution after admin costs
  */
