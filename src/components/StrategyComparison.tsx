@@ -23,10 +23,11 @@ const STRATEGY_COLORS: Record<string, string> = {
   'dynamic': '#6ee7b7',          // Bright Emerald
 };
 
-function StrategyCard({ strategy, isWinner, winnerId }: {
+function StrategyCard({ strategy, isWinner, winnerId, lifetimeWinner }: {
   strategy: StrategyResult;
   isWinner: boolean;
   winnerId: string;
+  lifetimeWinner?: ComparisonResult['lifetimeWinner'];
 }) {
   const color = STRATEGY_COLORS[strategy.id] || '#6b7280';
   const s = strategy.summary;
@@ -62,6 +63,14 @@ function StrategyCard({ strategy, isWinner, winnerId }: {
         <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
           {strategy.label}
         </span>
+        {strategy.isCurrentSetup && (
+          <span
+            className="ml-2 text-xs px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}
+          >
+            Your current setup
+          </span>
+        )}
         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
           {strategy.description}
         </p>
@@ -101,6 +110,16 @@ function StrategyCard({ strategy, isWinner, winnerId }: {
           }
         />
       </div>
+
+      {/* Current setup callout */}
+      {strategy.isCurrentSetup && lifetimeWinner && (
+        <div
+          className="text-xs mt-2 p-2 rounded"
+          style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)' }}
+        >
+          vs. recommended strategy: see how your current setup compares above
+        </div>
+      )}
     </div>
   );
 }
@@ -143,7 +162,7 @@ function MetricRow({ label, value, diff, diffInvert }: {
 export const StrategyComparison = memo(function StrategyComparison({
   comparison,
 }: StrategyComparisonProps) {
-  const { strategies, winner } = comparison;
+  const { strategies, winner, lifetimeWinner } = comparison;
 
   // Find winner and losers for insight
   const bestOverall = strategies.find(s => s.id === winner.bestOverall);
@@ -175,14 +194,15 @@ export const StrategyComparison = memo(function StrategyComparison({
         )}
       </div>
 
-      {/* 3-Column Strategy Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Strategy Cards — 3 or 4 columns depending on whether a current-setup strategy is present */}
+      <div className={`grid grid-cols-1 gap-4 ${strategies.length >= 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         {strategies.map(strategy => (
           <StrategyCard
             key={strategy.id}
             strategy={strategy}
             isWinner={strategy.id === winner.bestOverall}
             winnerId={winner.bestOverall}
+            lifetimeWinner={lifetimeWinner}
           />
         ))}
       </div>
