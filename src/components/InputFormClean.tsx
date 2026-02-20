@@ -593,7 +593,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
                         />
                         <span>
                           OAS Eligible
-                          <Tooltip text={INPUT_TOOLTIPS.oasEligible} />
+                          <Tooltip content={INPUT_TOOLTIPS.oasEligible} />
                         </span>
                       </label>
                       <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>10+ years Canadian residency</p>
