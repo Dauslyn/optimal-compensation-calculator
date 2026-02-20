@@ -5,7 +5,7 @@
  * Uses base64 encoding of JSON for compact representation.
  */
 
-import type { UserInputs } from './types';
+import type { UserInputs, PaymentFrequency } from './types';
 import type { ProvinceCode } from './tax/provinces';
 import { DEFAULT_PROVINCE, PROVINCES } from './tax/provinces';
 
@@ -86,6 +86,31 @@ interface CompactInputs {
   sosa?: number;  // spouseOASStartAge
   sarb?: number;  // spouseActualRRSPBalance
   satb?: number;  // spouseActualTFSABalance
+  // Multi-debt (v3.4)
+  dts?: Array<{
+    id: string;
+    lb: string;         // label
+    bl: number;         // balance
+    pa: number;         // paymentAmount
+    pf: string;         // paymentFrequency
+    ir: number;         // interestRate
+  }>;
+  // IPP expanded (v3.4)
+  im?: string;          // ippMode
+  ib3?: number;         // ippBest3AvgSalary
+  ips?: number;         // ippPastServiceYears
+  ief?: number;         // ippExistingFundBalance
+  ilvy?: number;        // ippLastValuationYear
+  ilvl?: number;        // ippLastValuationLiability
+  ilvc?: number;        // ippLastValuationAnnualContribution
+  // Spouse IPP expanded (v3.4)
+  sim?: string;         // spouseIPPMode
+  sib3?: number;
+  sips?: number;
+  sief?: number;
+  silvy?: number;
+  silvl?: number;
+  silvc?: number;
 }
 
 /**
@@ -202,6 +227,36 @@ function compressInputs(inputs: UserInputs): CompactInputs {
     if (inputs.spouseActualTFSABalance !== undefined) compact.satb = inputs.spouseActualTFSABalance;
   }
 
+  // Multi-debt (v3.4)
+  if (inputs.debts && inputs.debts.length > 0) {
+    compact.dts = inputs.debts.map(d => ({
+      id: d.id,
+      lb: d.label,
+      bl: d.balance,
+      pa: d.paymentAmount,
+      pf: d.paymentFrequency,
+      ir: d.interestRate,
+    }));
+  }
+
+  // IPP expanded (v3.4)
+  if (inputs.ippMode && inputs.ippMode !== 'considering') compact.im = inputs.ippMode;
+  if (inputs.ippBest3AvgSalary !== undefined) compact.ib3 = inputs.ippBest3AvgSalary;
+  if (inputs.ippPastServiceYears !== undefined) compact.ips = inputs.ippPastServiceYears;
+  if (inputs.ippExistingFundBalance !== undefined) compact.ief = inputs.ippExistingFundBalance;
+  if (inputs.ippLastValuationYear !== undefined) compact.ilvy = inputs.ippLastValuationYear;
+  if (inputs.ippLastValuationLiability !== undefined) compact.ilvl = inputs.ippLastValuationLiability;
+  if (inputs.ippLastValuationAnnualContribution !== undefined) compact.ilvc = inputs.ippLastValuationAnnualContribution;
+
+  // Spouse IPP expanded (v3.4)
+  if (inputs.spouseIPPMode && inputs.spouseIPPMode !== 'considering') compact.sim = inputs.spouseIPPMode;
+  if (inputs.spouseIPPBest3AvgSalary !== undefined) compact.sib3 = inputs.spouseIPPBest3AvgSalary;
+  if (inputs.spouseIPPPastServiceYears !== undefined) compact.sips = inputs.spouseIPPPastServiceYears;
+  if (inputs.spouseIPPExistingFundBalance !== undefined) compact.sief = inputs.spouseIPPExistingFundBalance;
+  if (inputs.spouseIPPLastValuationYear !== undefined) compact.silvy = inputs.spouseIPPLastValuationYear;
+  if (inputs.spouseIPPLastValuationLiability !== undefined) compact.silvl = inputs.spouseIPPLastValuationLiability;
+  if (inputs.spouseIPPLastValuationAnnualContribution !== undefined) compact.silvc = inputs.spouseIPPLastValuationAnnualContribution;
+
   return compact;
 }
 
@@ -302,6 +357,33 @@ function expandInputs(compact: CompactInputs): UserInputs {
     oasStartAge: compact.osa !== undefined ? clamp(compact.osa, 65, 70) : 65,
     actualRRSPBalance: compact.arb !== undefined ? clamp(compact.arb, 0, 10_000_000) : 0,
     actualTFSABalance: compact.atb !== undefined ? clamp(compact.atb, 0, 10_000_000) : 0,
+    // Multi-debt (v3.4)
+    debts: compact.dts
+      ? compact.dts.map(d => ({
+          id: d.id,
+          label: d.lb,
+          balance: d.bl,
+          paymentAmount: d.pa,
+          paymentFrequency: d.pf as PaymentFrequency,
+          interestRate: d.ir,
+        }))
+      : [],
+    // IPP expanded (v3.4)
+    ippMode: (compact.im as 'considering' | 'existing') ?? 'considering',
+    ippBest3AvgSalary: compact.ib3,
+    ippPastServiceYears: compact.ips,
+    ippExistingFundBalance: compact.ief,
+    ippLastValuationYear: compact.ilvy,
+    ippLastValuationLiability: compact.ilvl,
+    ippLastValuationAnnualContribution: compact.ilvc,
+    // Spouse IPP expanded (v3.4)
+    spouseIPPMode: (compact.sim as 'considering' | 'existing') ?? 'considering',
+    spouseIPPBest3AvgSalary: compact.sib3,
+    spouseIPPPastServiceYears: compact.sips,
+    spouseIPPExistingFundBalance: compact.sief,
+    spouseIPPLastValuationYear: compact.silvy,
+    spouseIPPLastValuationLiability: compact.silvl,
+    spouseIPPLastValuationAnnualContribution: compact.silvc,
     // Spouse fields (v2) — only include when present for backward compatibility
     ...(compact.hs ? {
       hasSpouse: true,

@@ -167,6 +167,24 @@ describe('Share Link', () => {
         oasStartAge: 67,
         actualRRSPBalance: 150000,
         actualTFSABalance: 50000,
+        // Multi-debt (v3.4)
+        debts: [],
+        // IPP expanded (v3.4)
+        ippMode: 'considering',
+        ippBest3AvgSalary: undefined,
+        ippPastServiceYears: undefined,
+        ippExistingFundBalance: undefined,
+        ippLastValuationYear: undefined,
+        ippLastValuationLiability: undefined,
+        ippLastValuationAnnualContribution: undefined,
+        // Spouse IPP expanded (v3.4)
+        spouseIPPMode: 'considering',
+        spouseIPPBest3AvgSalary: undefined,
+        spouseIPPPastServiceYears: undefined,
+        spouseIPPExistingFundBalance: undefined,
+        spouseIPPLastValuationYear: undefined,
+        spouseIPPLastValuationLiability: undefined,
+        spouseIPPLastValuationAnnualContribution: undefined,
       };
 
       const encoded = encodeShareLink(fullInputs);
