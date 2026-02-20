@@ -105,7 +105,7 @@ export interface UserInputs {
 
   // Spouse lifetime fields
   spouseCurrentAge?: number;
-  /** Reserved for future use: spouse's planned retirement age */
+  /** Spouse's planned retirement age. Salary income (spouseRequiredIncome) continues as householdExtraIncome until this age during the primary physician's retirement phase. Defaults to primary retirementAge if unset. */
   spouseRetirementAge?: number;
   spouseCPPStartAge?: number;
   spouseSalaryStartAge?: number;
