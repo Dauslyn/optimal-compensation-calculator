@@ -554,6 +554,19 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         ? inputs.spouseCurrentAge + yearIndex
         : undefined;
 
+      // Spouse salary income: continues until spouse reaches spouseRetirementAge
+      // Falls back to primary retirementAge if spouseRetirementAge not set
+      const spouseRetirementAge = inputs.spouseRetirementAge ?? inputs.retirementAge;
+      const spouseStillWorking =
+        inputs.hasSpouse &&
+        spouseAge !== undefined &&
+        inputs.spouseRequiredIncome !== undefined &&
+        inputs.spouseRequiredIncome > 0 &&
+        spouseAge < spouseRetirementAge;
+      const spouseSalaryIncome = spouseStillWorking
+        ? inflateAmount(inputs.spouseRequiredIncome!, yearIndex, inflationRate)
+        : 0;
+
       // Spouse CPP
       const spouseCPPStartAge = inputs.spouseCPPStartAge ?? 65;
       const spouseCPPIncome = (spouseCPPResult && spouseAge !== undefined && spouseAge >= spouseCPPStartAge)
@@ -605,7 +618,7 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         fixedIncomePercent: inputs.fixedIncomePercent,
         retirementSpending,
         isRRIF,
-        householdExtraIncome: spouseCPPIncome + spouseOASResult.netOAS + spouseRRIFWithdrawal,
+        householdExtraIncome: spouseSalaryIncome + spouseCPPIncome + spouseOASResult.netOAS + spouseRRIFWithdrawal,
       }, taxData);
 
       // Push result as a full YearlyResult

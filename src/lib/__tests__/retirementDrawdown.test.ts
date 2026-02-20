@@ -403,5 +403,77 @@ describe('Retirement Drawdown Engine', () => {
         expect(yr.retirement!.spouseRRIFWithdrawal).toBe(0);
       }
     });
+
+    it('spouse still working reduces drawdown until spouseRetirementAge', () => {
+      // Primary retires at 65. Spouse is 10 years younger (age 35) and retires at 60.
+      // When primary is 45, spouse is 35. Primary retires at 65 (20 years later), spouse is 55.
+      // Spouse retires at 60 → spouse works during primary's first 5 retirement years (spouseAge 55-59).
+      // Use large corporate balance, no RRSP/TFSA, high spending to force corporate drawdown each year.
+      const baseInputs = createLifetimeInputs({
+        currentAge: 45,
+        retirementAge: 65,
+        planningHorizon: 30, // age 45-75
+        retirementSpending: 120000,
+        corporateInvestmentBalance: 5000000,
+        annualCorporateRetainedEarnings: 0,
+        actualRRSPBalance: 0,
+        actualTFSABalance: 0,
+      });
+
+      // Without spouse
+      const noSpouseResult = calculateProjection(baseInputs);
+
+      // With a working spouse who retires 5 years into primary's retirement
+      const withSpouseInputs: UserInputs = {
+        ...baseInputs,
+        hasSpouse: true,
+        spouseCurrentAge: 35,        // age 35 when primary is 45 (10 years younger)
+        spouseRetirementAge: 60,     // spouse retires at 60 (primary is 70, still in our 30yr horizon)
+        spouseCPPStartAge: 65,       // won't be reached in the spouse working window
+        spouseSalaryStartAge: 22,
+        spouseAverageHistoricalSalary: 60000,
+        spouseOASEligible: false,    // no OAS in this window
+        spouseOASStartAge: 65,
+        spouseActualRRSPBalance: 0,
+        spouseActualTFSABalance: 0,
+        spouseRequiredIncome: 80000, // substantial salary that should reduce drawdown
+      };
+      const withSpouseResult = calculateProjection(withSpouseInputs);
+
+      // During retirement years where spouse is still working (spouseAge < 60),
+      // corporate drawdown should be less than without a spouse.
+      const noSpouseRetYears = noSpouseResult.yearlyResults.filter(yr => yr.phase === 'retirement');
+      const withSpouseRetYears = withSpouseResult.yearlyResults.filter(yr => yr.phase === 'retirement');
+
+      // Find years where spouse is still working (spouseAge < spouseRetirementAge = 60)
+      const spouseWorkingYears = withSpouseRetYears.filter(
+        yr => yr.spouseAge !== undefined && yr.spouseAge < 60
+      );
+      expect(spouseWorkingYears.length).toBeGreaterThan(0); // must have some working years
+
+      const noSpouseCorp = noSpouseRetYears
+        .slice(0, spouseWorkingYears.length)
+        .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+      const withSpouseCorp = spouseWorkingYears
+        .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+
+      // Spouse salary should reduce how much the primary needs to draw from corporate
+      expect(withSpouseCorp).toBeLessThan(noSpouseCorp);
+
+      // After spouse retires (spouseAge >= 60), drawdown should be similar to no-spouse case
+      // (CPP/OAS not yet in this window, so householdExtraIncome drops to 0 from spouse)
+      const spouseRetiredYears = withSpouseRetYears.filter(
+        yr => yr.spouseAge !== undefined && yr.spouseAge >= 60 && yr.spouseAge < 65
+      );
+      if (spouseRetiredYears.length > 0 && noSpouseRetYears.length >= spouseWorkingYears.length + spouseRetiredYears.length) {
+        const noSpouseCorpAfter = noSpouseRetYears
+          .slice(spouseWorkingYears.length, spouseWorkingYears.length + spouseRetiredYears.length)
+          .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+        const withSpouseCorpAfter = spouseRetiredYears
+          .reduce((s, yr) => s + (yr.retirement?.corporateDividends ?? 0), 0);
+        // After spouse retires (no CPP/OAS yet), drawdown should be close to base case (within 10%)
+        expect(withSpouseCorpAfter).toBeGreaterThan(noSpouseCorpAfter * 0.9);
+      }
+    });
   });
 });
