@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
-import type { UserInputs } from '../lib/types';
+import type { UserInputs, PaymentFrequency } from '../lib/types';
+import { PAYMENT_FREQUENCY_MULTIPLIERS } from '../lib/types';
 import type { ProvinceCode } from '../lib/tax/provinces';
+
+const FREQUENCY_LABELS: Record<PaymentFrequency, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Bi-weekly',
+  'semi-monthly': 'Semi-monthly (2×/month)',
+  monthly: 'Monthly',
+  annually: 'Annually',
+};
+
+function makeDebtId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString();
+}
 import { PROVINCES } from '../lib/tax/provinces';
 import { getDefaultInflationRate } from '../lib/tax/indexation';
 import { getContributionLimitsForYear } from '../lib/tax/constants';
@@ -958,66 +973,142 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
         <SectionHeader
           title="Debt Management"
           section="debt"
-          description="Optional: Factor in debt payments"
+          description={
+            formData.debts && formData.debts.length > 0
+              ? `${formData.debts.length} debt${formData.debts.length > 1 ? 's' : ''} — $${Math.round(
+                  formData.debts.reduce((s, d) => s + d.paymentAmount * PAYMENT_FREQUENCY_MULTIPLIERS[d.paymentFrequency], 0)
+                ).toLocaleString()}/yr in payments`
+              : 'Add debts to model paydown in your plan'
+          }
         />
 
         {expandedSections.debt && (
           <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.payDownDebt}
-                onChange={(e) => setFormData({ ...formData, payDownDebt: e.target.checked })}
-              />
-              <div>
-                <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Include Debt Payments
-                  <Tooltip content={INPUT_TOOLTIPS.includeDebt} />
-                </span>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add debt paydown to income requirements</p>
-              </div>
-            </label>
-
-            {formData.payDownDebt && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                <InputField
-                  label="Total Debt Amount"
-                  id="totalDebt"
-                  value={formData.totalDebtAmount || 0}
-                  onChange={(v) => handleNumberChange('totalDebtAmount', v)}
-                  prefix="$"
-                  hint="Outstanding balance"
-                  tooltip={INPUT_TOOLTIPS.totalDebtAmount}
-                />
-                <InputField
-                  label="Annual Debt Payment"
-                  id="debtPaydown"
-                  value={formData.debtPaydownAmount || 0}
-                  onChange={(v) => handleNumberChange('debtPaydownAmount', v)}
-                  prefix="$"
-                  hint="Amount to pay down per year"
-                  tooltip={INPUT_TOOLTIPS.annualDebtPayment}
-                />
-                <div>
-                  <InfoLabel label="Interest Rate" tooltip={INPUT_TOOLTIPS.debtInterestRate} htmlFor="debtRate" />
-                  <div className="relative">
-                    <PercentInput
-                      id="debtRate"
-                      decimalValue={formData.debtInterestRate || 0}
-                      onDecimalChange={(v) => setFormData({ ...formData, debtInterestRate: v })}
-                      placeholder="5.0"
+            {/* Debt rows */}
+            {(formData.debts ?? []).map((debt, idx) => (
+              <div key={debt.id} className="p-3 rounded-lg space-y-3" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Debt {idx + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, debts: (formData.debts ?? []).filter(d => d.id !== debt.id) })
+                    }
+                    className="text-xs px-2 py-1 rounded"
+                    style={{ color: 'var(--text-dim)', background: 'var(--bg-elevated)' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Label</label>
+                    <input
+                      type="text"
+                      value={debt.label}
+                      onChange={e => setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, label: e.target.value } : d) })}
+                      placeholder="e.g. Mortgage, Clinic LOC"
+                      className="w-full px-3 py-2 rounded-lg text-sm"
+                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
                     />
-                    <span
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      %
-                    </span>
                   </div>
-                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-dim)' }}>Annual interest rate on debt</p>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Outstanding Balance</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-dim)' }}>$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={debt.balance === 0 ? '' : debt.balance}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value);
+                          setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, balance: isNaN(v) ? 0 : v } : d) });
+                        }}
+                        placeholder="450000"
+                        className="w-full pl-7 pr-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Payment Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-dim)' }}>$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={debt.paymentAmount === 0 ? '' : debt.paymentAmount}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value);
+                          setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, paymentAmount: isNaN(v) ? 0 : v } : d) });
+                        }}
+                        placeholder="2800"
+                        className="w-full pl-7 pr-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Frequency</label>
+                    <select
+                      value={debt.paymentFrequency}
+                      onChange={e => setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, paymentFrequency: e.target.value as PaymentFrequency } : d) })}
+                      className="w-full px-3 py-2 rounded-lg text-sm"
+                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                    >
+                      {(Object.keys(FREQUENCY_LABELS) as PaymentFrequency[]).map(f => (
+                        <option key={f} value={f}>{FREQUENCY_LABELS[f]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Interest Rate</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={debt.interestRate === 0 ? '' : (debt.interestRate * 100).toPrecision(4).replace(/\.?0+$/, '')}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value);
+                          setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, interestRate: isNaN(v) ? 0 : v / 100 } : d) });
+                        }}
+                        placeholder="5.5"
+                        className="w-full pr-8 pl-3 py-2 rounded-lg text-sm"
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-dim)' }}>%</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
+            ))}
+
+            {/* Add debt button */}
+            <button
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  debts: [
+                    ...(formData.debts ?? []),
+                    {
+                      id: makeDebtId(),
+                      label: '',
+                      balance: 0,
+                      paymentAmount: 0,
+                      paymentFrequency: 'monthly' as PaymentFrequency,
+                      interestRate: 0.055,
+                    },
+                  ],
+                })
+              }
+              className="w-full py-2 rounded-lg text-sm font-medium border-dashed border-2 transition-colors"
+              style={{ borderColor: 'var(--border-default)', color: 'var(--text-secondary)', background: 'transparent' }}
+            >
+              + Add a debt
+            </button>
           </div>
         )}
       </div>
