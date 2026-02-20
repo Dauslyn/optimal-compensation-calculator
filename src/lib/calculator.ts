@@ -599,6 +599,10 @@ export function calculateProjection(inputs: UserInputs): ProjectionSummary {
         oasEligible: inputs.oasEligible ?? true,
         oasStartAge: inputs.oasStartAge ?? 65,
         ippAnnualPension: ippAnnualPension,
+        canadianEquityPercent: inputs.canadianEquityPercent,
+        usEquityPercent: inputs.usEquityPercent,
+        internationalEquityPercent: inputs.internationalEquityPercent,
+        fixedIncomePercent: inputs.fixedIncomePercent,
         retirementSpending,
         isRRIF,
         householdExtraIncome: spouseCPPIncome + spouseOASResult.netOAS + spouseRRIFWithdrawal,
@@ -1197,6 +1201,12 @@ interface RetirementYearInputs {
   oasStartAge: number;
   ippAnnualPension: number;
 
+  // Portfolio allocation (passed through to calculateInvestmentReturns)
+  canadianEquityPercent: number;
+  usEquityPercent: number;
+  internationalEquityPercent: number;
+  fixedIncomePercent: number;
+
   // Target
   retirementSpending: number;  // Inflation-adjusted target
   isRRIF: boolean;             // Whether RRSP has converted to RRIF
@@ -1232,8 +1242,12 @@ function calculateRetirementYear(
 
   // Corporate investment returns
   const investmentReturns = calculateInvestmentReturns(
-    accounts.corporateInvestments, investmentReturnRate,
-    33.33, 33.33, 33.33, 0 // Default equity-heavy portfolio for retirement
+    accounts.corporateInvestments,
+    investmentReturnRate,
+    inputs.canadianEquityPercent,
+    inputs.usEquityPercent,
+    inputs.internationalEquityPercent,
+    inputs.fixedIncomePercent,
   );
   accounts = updateAccountsFromReturns(accounts, investmentReturns);
 
