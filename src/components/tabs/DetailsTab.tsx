@@ -39,6 +39,9 @@ export const DetailsTab = memo(function DetailsTab({
     worker.onmessage = (event: MessageEvent<MonteCarloResult | null>) => {
       setMonteCarloResult(event.data);
     };
+    worker.onerror = () => {
+      setMonteCarloResult(null);
+    };
     worker.postMessage({ inputs, options: { simulationCount: 500 } });
     return () => worker.terminate();
   }, [hasLifetime, inputs]);
