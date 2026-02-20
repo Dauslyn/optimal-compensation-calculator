@@ -122,6 +122,24 @@ export function getLastSavedTime(): Date | null {
   }
 }
 
+const WIZARD_COMPLETE_KEY = 'ccpc-wizard-complete';
+
+export function hasCompletedWizard(): boolean {
+  try {
+    return localStorage.getItem(WIZARD_COMPLETE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function markWizardComplete(): void {
+  try {
+    localStorage.setItem(WIZARD_COMPLETE_KEY, 'true');
+  } catch {
+    // ignore — localStorage may be unavailable
+  }
+}
+
 /**
  * Get default inputs (centralized for consistency)
  */

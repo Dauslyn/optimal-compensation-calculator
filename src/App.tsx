@@ -16,7 +16,8 @@ import type { ProjectionSummary, UserInputs } from './lib/types';
 import type { ComparisonResult } from './lib/strategyComparison';
 import { calculateProjection } from './lib/calculator';
 import { getInputsFromUrl, generateShareUrl } from './lib/shareLink';
-import { clearStoredInputs, getDefaultInputs } from './lib/localStorage';
+import { clearStoredInputs, getDefaultInputs, saveInputsToStorage, hasCompletedWizard, markWizardComplete } from './lib/localStorage';
+import { SetupWizard } from './components/wizard/SetupWizard';
 import { PROVINCES, DEFAULT_PROVINCE } from './lib/tax/provinces';
 import { getStartingYear } from './lib/tax/indexation';
 
@@ -34,6 +35,11 @@ function App() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('calculator');
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [showWizard, setShowWizard] = useState<boolean>(() => {
+    // Show wizard if: no wizard completion in localStorage AND no URL share link
+    const hasShareLink = new URLSearchParams(window.location.search).get('s') !== null;
+    return !hasCompletedWizard() && !hasShareLink;
+  });
   const { theme, toggleTheme } = useTheme();
   const formRef = useRef<{ submit: () => void; reset: () => void } | null>(null);
 
@@ -141,6 +147,21 @@ function App() {
               </div>
             </div>
             <div className="no-print flex items-center gap-2 flex-wrap">
+              {/* Start over button — resets wizard */}
+              {!showWizard && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    try { localStorage.removeItem('ccpc-wizard-complete'); } catch {}
+                    setShowWizard(true);
+                    setResults(null);
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-lg"
+                  style={{ color: 'var(--text-dim)', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+                >
+                  Start over
+                </button>
+              )}
               {/* Keyboard shortcuts help button */}
               <button
                 onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
@@ -247,10 +268,21 @@ function App() {
                 province={currentInputs?.province ?? DEFAULT_PROVINCE}
               />
 
-              {/* Input Form */}
-              <section className="glass-card p-6">
-                <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
-              </section>
+              {/* Input Form / Setup Wizard */}
+              {showWizard ? (
+                <SetupWizard
+                  onComplete={(wizardInputs) => {
+                    saveInputsToStorage(wizardInputs);
+                    markWizardComplete();
+                    setShowWizard(false);
+                    handleCalculate(wizardInputs);
+                  }}
+                />
+              ) : (
+                <section className="glass-card p-6">
+                  <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
+                </section>
+              )}
 
               {/* How It Works - Educational Content */}
               <HowItWorks />
