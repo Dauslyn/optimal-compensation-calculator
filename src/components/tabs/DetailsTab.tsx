@@ -4,7 +4,6 @@ import type { UserInputs } from '../../lib/types';
 import { YearlyProjection } from '../YearlyProjection';
 import { DetailedCharts } from '../charts/DetailedCharts';
 import { RetirementIncomeChart, LifetimeOverviewStats, MonteCarloChart } from '../charts/LifetimeCharts';
-import { runMonteCarlo } from '../../lib/monteCarlo';
 import type { MonteCarloResult } from '../../lib/monteCarlo';
 
 interface DetailsTabProps {
@@ -33,11 +32,15 @@ export const DetailsTab = memo(function DetailsTab({
       setMonteCarloResult(null);
       return;
     }
-    const id = setTimeout(() => {
-      const result = runMonteCarlo(inputs, { simulationCount: 500 });
-      setMonteCarloResult(result);
-    }, 0);
-    return () => clearTimeout(id);
+    const worker = new Worker(
+      new URL('../../workers/monteCarlo.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    worker.onmessage = (event: MessageEvent<MonteCarloResult | null>) => {
+      setMonteCarloResult(event.data);
+    };
+    worker.postMessage({ inputs, options: { simulationCount: 500 } });
+    return () => worker.terminate();
   }, [hasLifetime, inputs]);
 
   return (

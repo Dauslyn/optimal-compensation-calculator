@@ -43,8 +43,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-// Note: per-simulation return is arithmetic mean of per-year draws (not geometric).
-// At σ=0.12 this inflates upper percentiles by ~0.7%/yr — a known optimistic bias.
 /**
  * Run Monte Carlo simulation on a lifetime projection.
  * Returns null if the inputs don't produce a retirement phase.
@@ -70,10 +68,14 @@ export function runMonteCarlo(
   let successCount = 0;
 
   for (let sim = 0; sim < simulationCount; sim++) {
-    // Build a per-year return sequence
+    // Build a per-year return sequence.
+    // Geometric mean correction: arithmeticMean - σ²/2 removes the
+    // ~0.7%/yr log-normal bias. The user's investmentReturnRate is treated as the
+    // geometric (compounded) return, which is the convention in financial planning.
+    const geometricMean = inputs.investmentReturnRate - (returnStdDev ** 2) / 2;
     const perYearReturns = Array.from({ length: years }, () =>
       clamp(
-        inputs.investmentReturnRate + randn() * returnStdDev,
+        geometricMean + randn() * returnStdDev,
         -0.40,
         0.60,
       )
