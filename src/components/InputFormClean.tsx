@@ -236,7 +236,6 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     accounts: false,
     portfolio: false,
     strategy: false,
-    retirement: false,
   });
 
   const toggleAdvanced = (section: string) =>
