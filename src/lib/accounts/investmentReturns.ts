@@ -104,7 +104,7 @@ export function calculateInvestmentReturns(
   const intlForeignDividends = corporateBalance * wIntl * INTL_EQUITY_FOREIGN_INCOME_RATE;
 
   // Fixed income: all return is interest income — treated as passive income for AAII
-  const interestIncome = corporateBalance * wFI * returnRate;
+  const interestIncome = corporateBalance * wFI * ASSET_CLASS_DEFAULT_RETURNS.fixedIncome;
 
   const foreignIncome    = usForeignDividends + intlForeignDividends + interestIncome;
   const foreignDividends = usForeignDividends + intlForeignDividends;
@@ -123,14 +123,14 @@ export function calculateInvestmentReturns(
   // ── Notional account updates ─────────────────────────────────────────────────
 
   // CDA: non-taxable half of realized capital gains (flows to CDA, payable tax-free)
-  const CDAIncrease = realizedCapitalGain * CG_INCLUSION_RATE;
+  const CDAIncrease = realizedCapitalGain * (1 - CG_INCLUSION_RATE);
 
-  // nRDTOH: 30.67% of foreign passive income, REDUCED by foreign withholding tax credit
-  // Per s.126(1)/s.129(3): the FTC for withholding reduces the nRDTOH addition —
+  // nRDTOH: 30.67% of aggregate investment income per ITA s.129(3).
+  // Aggregate investment income includes foreign passive income AND taxable capital gains.
+  // Per s.126(1): the FTC for withholding reduces the nRDTOH addition —
   // 15% withholding on foreign dividends is a permanent (non-recoverable) cost.
-  // Capital gains generate nRDTOH separately (tracked via CDA/inclusion rate mechanism).
   const taxableCapitalGain = realizedCapitalGain * CG_INCLUSION_RATE;
-  const grossNRDTOH        = foreignIncome * NERDTOH_RATE;
+  const grossNRDTOH        = (foreignIncome + taxableCapitalGain) * NERDTOH_RATE;
   const withholdingCredit  = foreignDividends * FOREIGN_WITHHOLDING_RATE;
   const nRDTOHIncrease     = Math.max(0, grossNRDTOH - withholdingCredit);
 

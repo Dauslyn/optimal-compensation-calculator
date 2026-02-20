@@ -586,10 +586,11 @@ describe('Stress: dynamic strategy convergence', () => {
     const yr = result.yearlyResults[0];
     // Dynamic strategy targets requiredIncome after tax.
     // The after-tax income should be in the right ballpark. The dynamic strategy
-    // may overshoot slightly due to iterative salary estimation + dividend mix,
-    // and RDTOH refunds from the investment return model can add a small boost.
+    // may overshoot slightly due to iterative salary estimation + dividend mix.
+    // RDTOH refunds (nRDTOH now includes taxable capital gains per ITA s.129(3))
+    // add a modest boost above the target.
     expect(yr.afterTaxIncome).toBeGreaterThanOrEqual(75000 - 2000);
-    expect(yr.afterTaxIncome).toBeLessThanOrEqual(75000 + 2000);
+    expect(yr.afterTaxIncome).toBeLessThanOrEqual(75000 + 4000);
   });
 });
 

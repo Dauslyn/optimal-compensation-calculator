@@ -44,10 +44,11 @@ describe('calculateInvestmentReturns', () => {
       expect(result.canadianDividends).toBe(0);
     });
 
-    it('all return is foreign income (interest)', () => {
-      const result = calculateInvestmentReturns(BALANCE, 0.04, 0, 0, 0, 100);
-      // All return is interest; modeled as foreign income for AAII purposes
-      expect(result.foreignIncome).toBeGreaterThan(0);
+    it('all return is interest income at the fixed income asset-class rate (~4%)', () => {
+      const result = calculateInvestmentReturns(BALANCE, 0.07, 0, 0, 0, 100);
+      // Fixed income should use its own 4% rate, NOT the blended 7% returnRate
+      // $1M × 4% = $40,000 expected
+      expect(result.foreignIncome).toBeCloseTo(40000, -3);
     });
   });
 
@@ -62,11 +63,13 @@ describe('calculateInvestmentReturns', () => {
       expect(result.canadianDividends).toBe(0);
     });
 
-    it('nRDTOH reduced by 15% withholding on foreign dividends', () => {
+    it('nRDTOH includes taxable capital gains and is reduced by 15% withholding on foreign dividends', () => {
       const result = calculateInvestmentReturns(BALANCE, 0.095, 0, 100, 0, 0);
-      // nRDTOH = foreignIncome * 0.3067 - foreignDividends * 0.15
+      // Per ITA s.129(3): nRDTOH = (foreignIncome + taxableCapGain) * 0.3067 - foreignDividends * 0.15
       // foreignDividends = 1.5% of balance = 15000
-      const expectedNRDTOH = (result.foreignIncome * 0.3067) - (15000 * 0.15);
+      // taxableCapGain = realizedCG * 0.50 (50% inclusion rate)
+      const taxableCapGain = result.realizedCapitalGain * 0.50;
+      const expectedNRDTOH = ((result.foreignIncome + taxableCapGain) * 0.3067) - (15000 * 0.15);
       expect(result.nRDTOHIncrease).toBeCloseTo(expectedNRDTOH, 0);
     });
   });

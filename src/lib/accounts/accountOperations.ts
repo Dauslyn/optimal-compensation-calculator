@@ -116,7 +116,7 @@ export function depleteAccountsWithRates(
         funding.nonEligibleDividends += actualDividend;
         funding.afterTaxIncome += afterTax;
         remaining -= afterTax;
-        updatedAccounts.nRDTOH -= refund;
+        updatedAccounts.nRDTOH = Math.max(0, updatedAccounts.nRDTOH - refund);
         updatedAccounts.corporateInvestments -= netCorpCost;
         availableCash -= netCorpCost;
         totalRdtohRefund += refund;
