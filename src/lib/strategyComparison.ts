@@ -15,6 +15,7 @@ import type { ProvinceCode } from './tax/provinces';
 import { calculateProjection } from './calculator';
 import { getTaxYearData } from './tax/indexation';
 import { getTopProvincialRate } from './tax/provinces';
+import { formatCurrency } from './formatters';
 
 export interface AfterTaxWealthScenarios {
   atCurrentRate: number;      // Using average marginal rate from projection
@@ -39,6 +40,7 @@ export interface StrategyResult {
     rrspRoomDifference: number; // vs best-overall
   };
   trueAfterTaxWealth: AfterTaxWealthScenarios;
+  isCurrentSetup?: boolean;   // true when this slot represents the user's actual current inputs
 }
 
 export interface ComparisonResult {
@@ -119,6 +121,7 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
     label: string;
     description: string;
     inputOverrides: Partial<UserInputs>;
+    isCurrentSetup?: boolean;
   }> = [
     {
       id: 'salary-at-ympe',
@@ -147,12 +150,26 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
     },
   ];
 
+  // If the user has a fixed salary set, add their current setup as a 4th strategy
+  const hasCustomSetup = inputs.salaryStrategy === 'fixed' && (inputs.fixedSalaryAmount ?? 0) > 0;
+  const strategyDefsWithCurrent = hasCustomSetup ? [
+    {
+      id: 'current-setup',
+      label: 'My Current Setup',
+      description: `Your current fixed salary of ${formatCurrency(inputs.fixedSalaryAmount ?? 0)} — compare against the optimized strategies`,
+      inputOverrides: {} as Partial<UserInputs>,
+      isCurrentSetup: true as const,
+    },
+    ...strategyDefs,
+  ] : strategyDefs;
+
   // Run each strategy
-  const strategies: Array<{ id: string; label: string; description: string; summary: ProjectionSummary }> =
-    strategyDefs.map(def => ({
+  const strategies: Array<{ id: string; label: string; description: string; summary: ProjectionSummary; isCurrentSetup?: boolean }> =
+    strategyDefsWithCurrent.map(def => ({
       id: def.id,
       label: def.label,
       description: def.description,
+      isCurrentSetup: def.isCurrentSetup,
       summary: calculateProjection({ ...inputs, ...def.inputOverrides }),
     }));
 
@@ -187,6 +204,7 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
       id: s.id,
       label: s.label,
       description: s.description,
+      isCurrentSetup: s.isCurrentSetup,
       summary: s.summary,
       diff: {
         taxSavings: bestOverallStrategy.summary.totalTax - s.summary.totalTax,

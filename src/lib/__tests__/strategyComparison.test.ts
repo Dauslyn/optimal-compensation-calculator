@@ -359,3 +359,61 @@ describe('lifetime winner determination', () => {
     }
   });
 });
+
+describe('lifetime winner as primary recommendation', () => {
+  it('lifetimeWinner.byObjective is defined when planningHorizon >= 20', () => {
+    const result = runStrategyComparison(makeInputs({
+      planningHorizon: 45,
+      currentAge: 45,
+      retirementAge: 65,
+      planningEndAge: 90,
+      retirementSpending: 70000,
+      actualRRSPBalance: 200000,
+      actualTFSABalance: 100000,
+      cppStartAge: 65,
+      salaryStartAge: 22,
+      averageHistoricalSalary: 60000,
+      oasEligible: true,
+      oasStartAge: 65,
+      lifetimeObjective: 'balanced',
+    }));
+    expect(result.lifetimeWinner).toBeDefined();
+    expect(result.lifetimeWinner!.byObjective).toBeTruthy();
+  });
+});
+
+describe('4th strategy slot — my current setup', () => {
+  it('returns 3 strategies when salaryStrategy is dynamic', () => {
+    const result = runStrategyComparison(makeInputs({ salaryStrategy: 'dynamic' }));
+    expect(result.strategies).toHaveLength(3);
+  });
+
+  it('returns 4 strategies when user has a fixed salary amount set', () => {
+    const result = runStrategyComparison(makeInputs({
+      salaryStrategy: 'fixed',
+      fixedSalaryAmount: 150000,
+    }));
+    expect(result.strategies).toHaveLength(4);
+  });
+
+  it('4th strategy is labelled "My Current Setup" and marked isCurrentSetup', () => {
+    const result = runStrategyComparison(makeInputs({
+      salaryStrategy: 'fixed',
+      fixedSalaryAmount: 150000,
+    }));
+    const current = result.strategies.find(s => s.isCurrentSetup);
+    expect(current).toBeDefined();
+    expect(current!.label).toBe('My Current Setup');
+  });
+
+  it('current setup salary matches user input', () => {
+    const result = runStrategyComparison(makeInputs({
+      salaryStrategy: 'fixed',
+      fixedSalaryAmount: 150000,
+    }));
+    const current = result.strategies.find(s => s.isCurrentSetup);
+    expect(current).toBeDefined();
+    const firstYear = current!.summary.yearlyResults[0];
+    expect(firstYear.salary).toBeCloseTo(150000, -3);
+  });
+});
