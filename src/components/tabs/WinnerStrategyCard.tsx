@@ -1,6 +1,8 @@
 import { memo } from 'react';
 import type { ComparisonResult } from '../../lib/strategyComparison';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
+import { buildRecommendationNarrative } from '../../lib/narrativeSynthesis';
+import type { NarrativeInput } from '../../lib/narrativeSynthesis';
 
 interface WinnerStrategyCardProps {
   comparison: ComparisonResult;
@@ -15,12 +17,41 @@ const STRATEGY_COLORS: Record<string, string> = {
 export const WinnerStrategyCard = memo(function WinnerStrategyCard({
   comparison,
 }: WinnerStrategyCardProps) {
-  const winner = comparison.strategies.find(s => s.id === comparison.winner.bestOverall);
+  const lifetimeWinnerId = comparison.lifetimeWinner?.byObjective;
+  const winner = comparison.strategies.find(
+    s => s.id === (lifetimeWinnerId ?? comparison.winner.bestOverall)
+  );
   if (!winner) return null;
 
   const others = comparison.strategies.filter(s => s.id !== winner.id);
   const lowestTaxStrategy = comparison.strategies.find(s => s.id === comparison.winner.lowestTax);
   const color = STRATEGY_COLORS[winner.id] || '#6b7280';
+
+  const lt = winner.summary.lifetime;
+  const runner = others.length > 0
+    ? others.reduce((best, s) =>
+        (s.summary.lifetime?.estateValue ?? 0) > (best.summary.lifetime?.estateValue ?? 0) ? s : best
+      , others[0])
+    : null;
+
+  const retirementYears = winner.summary.yearlyResults.filter(y => y.phase === 'retirement').length;
+
+  const narrative = (lt && runner)
+    ? buildRecommendationNarrative({
+        winnerId: winner.id,
+        winnerLabel: winner.label,
+        runnerId: runner.id,
+        runnerLabel: runner.label,
+        lifetimeTaxDifference: lt.totalLifetimeTax - (runner.summary.lifetime?.totalLifetimeTax ?? lt.totalLifetimeTax),
+        estateValueDifference: lt.estateValue - (runner.summary.lifetime?.estateValue ?? lt.estateValue),
+        rrspRoomDifference: (winner.summary.totalRRSPRoomGenerated ?? 0) - (runner.summary.totalRRSPRoomGenerated ?? 0),
+        annualRetirementIncome: retirementYears > 0
+          ? lt.totalLifetimeSpending / retirementYears
+          : lt.totalLifetimeSpending / 20,
+        retirementSuccessRate: 0.85,
+        objective: comparison.lifetimeWinner?.objective ?? 'balanced',
+      } satisfies NarrativeInput)
+    : null;
 
   return (
     <div
@@ -55,69 +86,23 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
       </div>
 
       {/* Why this wins */}
-      <div className="space-y-2">
+      <div className="mt-4 space-y-2">
         <h4 className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
           Why this strategy wins:
         </h4>
-        <ul className="space-y-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <li>
-            {winner.id === comparison.winner.lowestTax ? (
-              <>
-                Lowest total tax: {formatCurrency(winner.summary.totalTax)}
-                {' '}(vs{' '}
-                {others.map((s, idx) => (
-                  <span key={s.id}>
-                    {formatCurrency(s.summary.totalTax)}
-                    {idx < others.length - 1 ? ' & ' : ''}
-                  </span>
-                ))}
-                )
-              </>
-            ) : (
-              <>
-                Total tax: {formatCurrency(winner.summary.totalTax)}
-                {lowestTaxStrategy && (
-                  <> ({formatCurrency(winner.summary.totalTax - lowestTaxStrategy.summary.totalTax)} more than {lowestTaxStrategy.label})</>
-                )}
-              </>
-            )}
-          </li>
-          {winner.summary.lifetime ? (
-            <>
-              <li>
-                Lifetime spending: {formatCurrency(winner.summary.lifetime.totalLifetimeSpending)}
-                {' '}· estate: {formatCurrency(winner.summary.lifetime.estateValue)}
-              </li>
-              <li>
-                Lifetime effective tax rate: {formatPercent(winner.summary.lifetime.lifetimeEffectiveRate)}
-                {comparison.lifetimeWinner && (
-                  <> · optimized for{' '}
-                    {comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeSpending &&
-                     comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeEstate
-                      ? 'spending & estate'
-                      : comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeSpending
-                      ? 'lifetime spending'
-                      : comparison.lifetimeWinner.byObjective === comparison.lifetimeWinner.maximizeEstate
-                      ? 'estate value'
-                      : 'balanced objective'}
-                  </>
-                )}
-              </li>
-            </>
-          ) : (
-            <li>
-              Estimated after-tax wealth: {formatCurrency(
-                (winner.summary.totalCompensation - winner.summary.totalTax) +
-                ((winner.summary.totalRRSPContributions || 0) * 0.70) +
-                (winner.summary.finalCorporateBalance * 0.60)
-              )}
-              {' '}(income + RRSP at 30% tax + corp at 40% tax)
-            </li>
-          )}
-          <li>
-            Optimal balance of tax efficiency + flexibility
-          </li>
-        </ul>
+        {narrative ? (
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            {narrative}
+          </p>
+        ) : (
+          <div className="text-sm space-y-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div>Total tax: {formatCurrency(winner.summary.totalTax)}</div>
+            <div>Final corporate balance: {formatCurrency(winner.summary.finalCorporateBalance)}</div>
+          </div>
+        )}
       </div>
     </div>
   );
