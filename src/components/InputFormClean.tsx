@@ -23,6 +23,12 @@ import { validateInputs } from '../lib/validation';
 import { InfoLabel, Tooltip, INPUT_TOOLTIPS } from './Tooltip';
 import { saveInputsToStorage, loadInputsFromStorage, getDefaultInputs, clearStoredInputs } from '../lib/localStorage';
 import { computeBlendedReturnRate, ASSET_CLASS_DEFAULT_RETURNS } from '../lib/accounts/investmentReturns';
+import {
+  estimateCurrentTargetLiability,
+  calculateFundingStatus,
+  calculateProjectedPension,
+  estimateTerminalFunding,
+} from '../lib/tax/ipp';
 
 interface InputFormProps {
   onCalculate: (inputs: UserInputs) => void;
@@ -1123,93 +1129,222 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
 
         {expandedSections.ipp && (
           <div className="pt-4 mt-2 animate-fade-in space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <label className="flex items-center gap-3 cursor-pointer">
+            {/* Include IPP toggle */}
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               <input
                 type="checkbox"
-                checked={formData.considerIPP || false}
-                onChange={(e) => setFormData({ ...formData, considerIPP: e.target.checked })}
+                checked={formData.considerIPP ?? false}
+                onChange={e => setFormData({ ...formData, considerIPP: e.target.checked })}
+                className="w-4 h-4 rounded"
               />
-              <div>
-                <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Include IPP Analysis
-                  <Tooltip content={INPUT_TOOLTIPS.includeIPP} />
-                </span>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Compare IPP contributions vs RRSP</p>
-              </div>
+              <span>Include IPP Analysis</span>
             </label>
 
             {formData.considerIPP && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <InputField
-                  label="Your Age"
-                  id="ippAge"
-                  value={formData.ippMemberAge || 45}
-                  onChange={(v) => handleNumberChange('ippMemberAge', v)}
-                  hint="Current age for IPP calculations"
-                  tooltip={INPUT_TOOLTIPS.ippAge}
-                />
-                <InputField
-                  label="Years of Service"
-                  id="ippService"
-                  value={formData.ippYearsOfService || 10}
-                  onChange={(v) => handleNumberChange('ippYearsOfService', v)}
-                  hint="Years employed by your corporation"
-                  tooltip={INPUT_TOOLTIPS.ippYearsOfService}
-                />
-              </div>
-            )}
+              <div className="space-y-4">
+                {/* Mode toggle */}
+                <div>
+                  <InfoLabel label="IPP Status" tooltip={INPUT_TOOLTIPS.ippMode} htmlFor="ippMode" />
+                  <select
+                    id="ippMode"
+                    value={formData.ippMode ?? 'considering'}
+                    onChange={e => setFormData({ ...formData, ippMode: e.target.value as 'considering' | 'existing' })}
+                    className="mt-1 w-full px-3 py-2 rounded-lg text-sm"
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="considering">Considering starting an IPP</option>
+                    <option value="existing">Already have an IPP</option>
+                  </select>
+                </div>
 
-            {/* Spouse IPP sub-section (only when both IPP and spouse are enabled) */}
-            {formData.considerIPP && formData.hasSpouse && (
-              <div className="pt-3 mt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.spouseConsiderIPP || false}
-                    onChange={(e) => setFormData({ ...formData, spouseConsiderIPP: e.target.checked })}
+                {/* Common fields */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputField
+                    label="Your Age"
+                    id="ippMemberAge"
+                    value={formData.ippMemberAge ?? formData.currentAge}
+                    onChange={v => handleNumberChange('ippMemberAge', v)}
+                    tooltip={INPUT_TOOLTIPS.ippAge}
                   />
-                  <div>
-                    <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                      Spouse IPP
-                      <Tooltip content={INPUT_TOOLTIPS.spouseConsiderIPP} />
-                    </span>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Include IPP for spouse (separate plan, same corporation)</p>
-                  </div>
-                </label>
+                  <InputField
+                    label="Years of Service"
+                    id="ippYearsOfService"
+                    value={formData.ippYearsOfService ?? ''}
+                    onChange={v => handleNumberChange('ippYearsOfService', v)}
+                    tooltip={INPUT_TOOLTIPS.ippYearsOfService}
+                    hint="Years employed by your corporation"
+                  />
+                  <InputField
+                    label="Best 3-Year Avg T4 Salary"
+                    id="ippBest3AvgSalary"
+                    value={formData.ippBest3AvgSalary ?? ''}
+                    onChange={v => handleNumberChange('ippBest3AvgSalary', v)}
+                    tooltip={INPUT_TOOLTIPS.ippBest3AvgSalary}
+                    prefix="$"
+                    placeholder={String(formData.requiredIncome)}
+                  />
+                </div>
 
-                {formData.spouseConsiderIPP && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <InputField
-                      label="Spouse Age"
-                      id="spouseIPPAge"
-                      value={formData.spouseIPPAge || 45}
-                      onChange={(v) => handleNumberChange('spouseIPPAge', v)}
-                      hint="Spouse's current age for IPP"
-                      tooltip={INPUT_TOOLTIPS.spouseIPPAge}
-                    />
-                    <InputField
-                      label="Spouse Years of Service"
-                      id="spouseIPPService"
-                      value={formData.spouseIPPYearsOfService || 0}
-                      onChange={(v) => handleNumberChange('spouseIPPYearsOfService', v)}
-                      hint="Years spouse employed by corporation"
-                      tooltip={INPUT_TOOLTIPS.spouseIPPYearsOfService}
-                    />
+                {/* Existing IPP fields */}
+                {(formData.ippMode ?? 'considering') === 'existing' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InputField
+                        label="Past Service Years Credited"
+                        id="ippPastServiceYears"
+                        value={formData.ippPastServiceYears ?? ''}
+                        onChange={v => handleNumberChange('ippPastServiceYears', v)}
+                        tooltip={INPUT_TOOLTIPS.ippPastServiceYears}
+                        hint="Years credited at IPP setup"
+                      />
+                      <InputField
+                        label="Current Fund Balance (FMV)"
+                        id="ippExistingFundBalance"
+                        value={formData.ippExistingFundBalance ?? ''}
+                        onChange={v => handleNumberChange('ippExistingFundBalance', v)}
+                        tooltip={INPUT_TOOLTIPS.ippExistingFundBalance}
+                        prefix="$"
+                      />
+                      <InputField
+                        label="Last Valuation Year"
+                        id="ippLastValuationYear"
+                        value={formData.ippLastValuationYear ?? ''}
+                        onChange={v => handleNumberChange('ippLastValuationYear', v)}
+                        tooltip={INPUT_TOOLTIPS.ippLastValuationYear}
+                        placeholder="2023"
+                      />
+                      <InputField
+                        label="Actuarial Liability (from report)"
+                        id="ippLastValuationLiability"
+                        value={formData.ippLastValuationLiability ?? ''}
+                        onChange={v => handleNumberChange('ippLastValuationLiability', v)}
+                        tooltip={INPUT_TOOLTIPS.ippLastValuationLiability}
+                        prefix="$"
+                      />
+                      <InputField
+                        label="Annual Contribution (from report)"
+                        id="ippLastValuationAnnualContribution"
+                        value={formData.ippLastValuationAnnualContribution ?? ''}
+                        onChange={v => handleNumberChange('ippLastValuationAnnualContribution', v)}
+                        tooltip={INPUT_TOOLTIPS.ippLastValuationAnnualContribution}
+                        prefix="$"
+                      />
+                    </div>
+
+                    {/* Funding status panel — computed from ipp.ts functions */}
+                    {formData.ippExistingFundBalance != null &&
+                      formData.ippLastValuationYear != null &&
+                      formData.ippLastValuationLiability != null &&
+                      formData.ippLastValuationAnnualContribution != null && (() => {
+                        const currentYear = formData.startingYear;
+                        const targetLiability = estimateCurrentTargetLiability(
+                          formData.ippLastValuationLiability!,
+                          formData.ippLastValuationYear!,
+                          formData.ippLastValuationAnnualContribution!,
+                          currentYear,
+                        );
+                        const status = calculateFundingStatus(formData.ippExistingFundBalance!, targetLiability);
+                        const totalServiceYears = (formData.ippYearsOfService ?? 0) + (formData.ippPastServiceYears ?? 0);
+                        const best3Salary = formData.ippBest3AvgSalary ?? formData.requiredIncome;
+                        const retirementYear = currentYear + (formData.retirementAge - formData.currentAge);
+                        const projectedPension = calculateProjectedPension(totalServiceYears, best3Salary, retirementYear);
+                        const yearsToRetirement = formData.retirementAge - formData.currentAge;
+                        const projectedFundAtRetirement = yearsToRetirement > 0
+                          ? formData.ippExistingFundBalance! *
+                            Math.pow(1 + formData.investmentReturnRate, yearsToRetirement) +
+                            formData.ippLastValuationAnnualContribution! *
+                              ((Math.pow(1 + formData.investmentReturnRate, yearsToRetirement) - 1) /
+                                formData.investmentReturnRate)
+                          : formData.ippExistingFundBalance!;
+                        const terminalFunding = estimateTerminalFunding(projectedFundAtRetirement, projectedPension);
+                        return (
+                          <div className="p-4 rounded-lg space-y-2" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}>
+                            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-dim)' }}>Funding Estimate (between valuations)</p>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <p style={{ color: 'var(--text-dim)' }}>Est. target liability</p>
+                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>${Math.round(targetLiability).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p style={{ color: 'var(--text-dim)' }}>Current fund (FMV)</p>
+                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>${Math.round(formData.ippExistingFundBalance!).toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <p style={{ color: 'var(--text-dim)' }}>{status.deficiencyLikely ? 'Funding gap ⚠' : 'Surplus'}</p>
+                                <p className="font-medium" style={{ color: status.deficiencyLikely ? '#f59e0b' : '#10b981' }}>
+                                  ${Math.round(status.deficiencyLikely ? status.gap : status.surplus).toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p style={{ color: 'var(--text-dim)' }}>Projected pension/yr</p>
+                                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>${Math.round(projectedPension).toLocaleString()}</p>
+                              </div>
+                              {terminalFunding > 0 && (
+                                <div className="col-span-2">
+                                  <p style={{ color: 'var(--text-dim)' }}>Est. terminal funding room at retirement</p>
+                                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>~${Math.round(terminalFunding).toLocaleString()} additional deductible</p>
+                                </div>
+                              )}
+                              {status.contributionHolidayTriggered && (
+                                <div className="col-span-2 p-2 rounded" style={{ background: 'rgba(99,102,241,0.1)' }}>
+                                  <p className="text-xs" style={{ color: '#818cf8' }}>⚠ Fund may exceed the 25% surplus limit — contribution holiday may apply at next valuation.</p>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs mt-3" style={{ color: 'var(--text-dim)' }}>Planning estimates only. Formal funding status determined at next actuarial valuation.</p>
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
+
+                {/* Spouse IPP sub-section (only when both IPP and spouse are enabled) */}
+                {formData.hasSpouse && (
+                  <div className="pt-3 mt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.spouseConsiderIPP || false}
+                        onChange={(e) => setFormData({ ...formData, spouseConsiderIPP: e.target.checked })}
+                      />
+                      <div>
+                        <span className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                          Spouse IPP
+                          <Tooltip content={INPUT_TOOLTIPS.spouseConsiderIPP} />
+                        </span>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Include IPP for spouse (separate plan, same corporation)</p>
+                      </div>
+                    </label>
+
+                    {formData.spouseConsiderIPP && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        <InputField
+                          label="Spouse Age"
+                          id="spouseIPPAge"
+                          value={formData.spouseIPPAge || 45}
+                          onChange={(v) => handleNumberChange('spouseIPPAge', v)}
+                          hint="Spouse's current age for IPP"
+                          tooltip={INPUT_TOOLTIPS.spouseIPPAge}
+                        />
+                        <InputField
+                          label="Spouse Years of Service"
+                          id="spouseIPPService"
+                          value={formData.spouseIPPYearsOfService || 0}
+                          onChange={(v) => handleNumberChange('spouseIPPYearsOfService', v)}
+                          hint="Years spouse employed by corporation"
+                          tooltip={INPUT_TOOLTIPS.spouseIPPYearsOfService}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Admin costs info box */}
+                <div className="p-3 rounded-lg text-xs" style={{ background: 'var(--bg-base)', color: 'var(--text-muted)' }}>
+                  IPP setup: ~$3,000–$5,000 one-time. Annual actuarial + admin: ~$2,500–$4,000/yr. Triennial valuation: ~$3,000–$5,000.
+                </div>
               </div>
             )}
-
-            <div
-              className="p-3 rounded-lg"
-              style={{ background: 'rgba(59, 130, 246, 0.1)' }}
-            >
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                IPP allows higher tax-deductible contributions than RRSP for older individuals (typically 40+).
-                The corporation contributes directly to the IPP, providing corporate tax deductions.
-                An actuary must administer the plan (adds $2,000-3,000/year in costs).
-              </p>
-            </div>
           </div>
         )}
       </div>

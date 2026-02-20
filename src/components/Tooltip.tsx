@@ -266,6 +266,13 @@ export const INPUT_TOOLTIPS = {
   includeIPP: 'Compare Individual Pension Plan (IPP) contributions to RRSP. IPP allows higher tax-deductible contributions for older individuals (typically 40+). The corporation contributes directly, getting a corporate tax deduction. Requires an actuary ($2,000-3,000/year).',
   ippAge: 'Your current age. IPP contribution limits increase with age — the older you are, the larger the advantage over RRSP. IPP becomes most beneficial around age 45-50+.',
   ippYearsOfService: 'Years you have been employed by your corporation. Past service can be bought back when establishing an IPP, allowing a large initial contribution. More service years = larger IPP contributions.',
+  ippMode: 'Select whether you are evaluating starting an IPP or already have one established.',
+  ippBest3AvgSalary: 'Your 3 highest years of T4 employment income, averaged. Used to calculate your maximum pension entitlement. Leave blank to use your current required income as a proxy.',
+  ippPastServiceYears: 'Years of employment by your corporation before the IPP was set up. Past service recognized at inception increases your pension entitlement.',
+  ippExistingFundBalance: 'Current fair market value of your IPP investment fund. Found on your most recent investment statement.',
+  ippLastValuationYear: 'The year of your most recent formal actuarial valuation report. CRA requires a valuation at least every 3 years.',
+  ippLastValuationLiability: 'The actuarial liability (target funding amount) from your most recent valuation report. Your actuary calculates this.',
+  ippLastValuationAnnualContribution: 'The recommended annual current service cost from your most recent valuation report.',
 
   // Spouse / Second Shareholder
   hasSpouse: 'Enable to include a spouse or second shareholder who draws salary and/or dividends from the same CCPC. The family\'s total tax is optimized across two sets of personal tax brackets sharing one set of corporate accounts (CDA, RDTOH, GRIP).',
