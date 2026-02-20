@@ -9,7 +9,7 @@ import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { LoadingSpinner, CardSkeleton } from './components/LoadingSpinner';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
-import { ScenarioBuilder } from './components/ScenarioBuilder';
+// import { ScenarioBuilder } from './components/ScenarioBuilder'; // disabled — stale monteCarlo imports
 import { YearEndAlert } from './components/YearEndAlert';
 import { HowItWorks } from './components/HowItWorks';
 import type { ProjectionSummary, UserInputs } from './lib/types';
@@ -274,10 +274,8 @@ function App() {
               )}
             </>
           ) : (
-            /* Scenario Builder Mode */
-            <div className="animate-fade-in">
-              <ScenarioBuilder baseInputs={currentInputs || getDefaultInputs()} />
-            </div>
+            /* Scenario Builder Mode — temporarily disabled */
+            <div className="animate-fade-in" />
           )}
         </div>
 
