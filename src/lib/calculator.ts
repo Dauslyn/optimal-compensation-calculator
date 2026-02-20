@@ -7,6 +7,7 @@ import type {
   RetirementIncome,
   EstateBreakdown,
 } from './types';
+import { aggregateDebts } from './types';
 import {
   getTaxYearData,
   getContributionLimitsForYear,
@@ -345,7 +346,21 @@ function calculateRequiredSalaryForYear(
 /**
  * Main calculation function to project compensation over multiple years
  */
-export function calculateProjection(inputs: UserInputs): ProjectionSummary {
+export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
+  // Debt array → scalar fields adapter (v3.4)
+  const inputs: UserInputs = rawInputs.debts?.length
+    ? (() => {
+        const agg = aggregateDebts(rawInputs.debts!);
+        return {
+          ...rawInputs,
+          payDownDebt: true,
+          debtPaydownAmount: agg.totalAnnualPayment,
+          totalDebtAmount: agg.totalBalance,
+          debtInterestRate: agg.weightedInterestRate,
+        };
+      })()
+    : rawInputs;
+
   const yearlyResults: YearlyResult[] = [];
 
   // Get starting year and inflation rate (with defaults for backward compatibility)
