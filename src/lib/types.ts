@@ -1,5 +1,42 @@
 import type { ProvinceCode } from './tax/provinces';
 
+export type PaymentFrequency = 'weekly' | 'biweekly' | 'semi-monthly' | 'monthly' | 'annually';
+
+export interface DebtEntry {
+  id: string;              // uuid for React keys
+  label: string;           // e.g. "Mortgage", "Clinic LOC"
+  balance: number;         // current outstanding balance
+  paymentAmount: number;   // amount per payment period
+  paymentFrequency: PaymentFrequency;
+  interestRate: number;    // decimal, e.g. 0.055 for 5.5%
+}
+
+export const PAYMENT_FREQUENCY_MULTIPLIERS: Record<PaymentFrequency, number> = {
+  weekly: 52,
+  biweekly: 26,
+  'semi-monthly': 24,
+  monthly: 12,
+  annually: 1,
+};
+
+export function aggregateDebts(debts: DebtEntry[]): {
+  totalBalance: number;
+  totalAnnualPayment: number;
+  weightedInterestRate: number;
+} {
+  if (debts.length === 0) return { totalBalance: 0, totalAnnualPayment: 0, weightedInterestRate: 0 };
+  const totalBalance = debts.reduce((s, d) => s + d.balance, 0);
+  const totalAnnualPayment = debts.reduce(
+    (s, d) => s + d.paymentAmount * PAYMENT_FREQUENCY_MULTIPLIERS[d.paymentFrequency],
+    0
+  );
+  const weightedInterestRate =
+    totalBalance > 0
+      ? debts.reduce((s, d) => s + d.interestRate * d.balance, 0) / totalBalance
+      : 0;
+  return { totalBalance, totalAnnualPayment, weightedInterestRate };
+}
+
 // User input types
 export interface UserInputs {
   // Province for tax calculations (default: ON)
@@ -58,6 +95,9 @@ export interface UserInputs {
   debtPaydownAmount?: number;
   totalDebtAmount?: number;
   debtInterestRate?: number;
+
+  // Multi-debt (v3.4+) — replaces scalar debt fields
+  debts?: DebtEntry[];
 
   // Salary strategy
   salaryStrategy: 'dynamic' | 'fixed' | 'dividends-only';

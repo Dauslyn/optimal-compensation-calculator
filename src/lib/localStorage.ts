@@ -154,6 +154,7 @@ export function getDefaultInputs(): UserInputs {
     debtPaydownAmount: 0,
     totalDebtAmount: 0,
     debtInterestRate: 0.05,
+    debts: [],
     considerIPP: false,
 
     // Lifetime model defaults
