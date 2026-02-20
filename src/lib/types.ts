@@ -38,6 +38,12 @@ export interface UserInputs {
   internationalEquityPercent: number;
   fixedIncomePercent: number;
 
+  // Per-asset-class return rate overrides (optional — defaults to ASSET_CLASS_DEFAULT_RETURNS)
+  canadianEquityReturnRate?: number;      // default 0.085
+  usEquityReturnRate?: number;            // default 0.095
+  internationalEquityReturnRate?: number; // default 0.070
+  fixedIncomeReturnRate?: number;         // default 0.040
+
   // Annual corporate retained earnings (additional cash to invest each year)
   annualCorporateRetainedEarnings: number;
 

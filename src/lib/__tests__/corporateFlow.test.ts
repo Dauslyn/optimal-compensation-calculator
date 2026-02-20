@@ -174,7 +174,7 @@ describe('Corporate Flow — Notional Account Generation', () => {
     expect(yr1.investmentReturns.eRDTOHIncrease).toBeGreaterThan(0);
   });
 
-  it('should generate nRDTOH = 30.67% of (foreign income + 50% of capital gains)', () => {
+  it('should generate nRDTOH = 30.67% of foreign income minus 15% withholding on foreign dividends', () => {
     const inputs = createInputs({
       corporateInvestmentBalance: 1000000,
       canadianEquityPercent: 0,
@@ -185,9 +185,13 @@ describe('Corporate Flow — Notional Account Generation', () => {
     const result = calculateProjection(inputs);
     const yr1 = result.yearlyResults[0];
 
+    // New model: nRDTOH = foreignIncome * 0.3067 - foreignDividends * 0.15
+    // For 50% US (1.5% yield) + 50% intl (3.0% yield) on $1M: foreignIncome = $22,500
+    // foreignDividends = $22,500 (all foreign income is dividends, no interest)
     const foreignIncome = yr1.investmentReturns.foreignIncome;
-    const taxableCapGain = yr1.investmentReturns.realizedCapitalGain * 0.5;
-    const expectedNRDTOH = (foreignIncome + taxableCapGain) * 0.3067;
+    const FOREIGN_DIVIDEND_RATE = 0.5 * 0.015 + 0.5 * 0.030; // 2.25%
+    const foreignDividends = 1000000 * FOREIGN_DIVIDEND_RATE;
+    const expectedNRDTOH = foreignIncome * 0.3067 - foreignDividends * 0.15;
     expect(yr1.investmentReturns.nRDTOHIncrease).toBeCloseTo(expectedNRDTOH, 0);
     expect(yr1.investmentReturns.nRDTOHIncrease).toBeGreaterThan(0);
   });

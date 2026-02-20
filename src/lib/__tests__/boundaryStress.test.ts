@@ -586,9 +586,10 @@ describe('Stress: dynamic strategy convergence', () => {
     const yr = result.yearlyResults[0];
     // Dynamic strategy targets requiredIncome after tax.
     // The after-tax income should be in the right ballpark. The dynamic strategy
-    // may overshoot slightly due to iterative salary estimation + dividend mix.
-    expect(yr.afterTaxIncome).toBeGreaterThanOrEqual(75000 - 1000);
-    expect(yr.afterTaxIncome).toBeLessThanOrEqual(75000 + 1000);
+    // may overshoot slightly due to iterative salary estimation + dividend mix,
+    // and RDTOH refunds from the investment return model can add a small boost.
+    expect(yr.afterTaxIncome).toBeGreaterThanOrEqual(75000 - 2000);
+    expect(yr.afterTaxIncome).toBeLessThanOrEqual(75000 + 2000);
   });
 });
 
