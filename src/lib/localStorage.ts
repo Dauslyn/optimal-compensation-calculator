@@ -76,6 +76,11 @@ export function loadInputsFromStorage(): UserInputs | null {
       data.inputs.investmentReturnRate = data.inputs.investmentReturnRate / 100;
     }
 
+    // Forward-migrate missing v3.4 fields
+    if (data.inputs.debts === undefined) data.inputs.debts = [];
+    if (data.inputs.ippMode === undefined) data.inputs.ippMode = 'considering';
+    if (data.inputs.spouseIPPMode === undefined) data.inputs.spouseIPPMode = 'considering';
+
     return data.inputs;
   } catch (error) {
     console.error('Failed to load inputs from localStorage:', error);
@@ -90,7 +95,7 @@ export function clearStoredInputs(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to clear stored inputs:', error);
+    console.warn('Failed to clear stored inputs:', error);
   }
 }
 
@@ -116,6 +121,7 @@ export function getLastSavedTime(): Date | null {
     }
 
     const data: StoredData = JSON.parse(stored);
+    if (!data.savedAt) return null;
     return new Date(data.savedAt);
   } catch {
     return null;

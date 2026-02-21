@@ -32,7 +32,7 @@ export function getAvailableWidgets(options?: { ippEnabled?: boolean }): WidgetD
   });
 }
 
-export const STRATEGY_IDS = ['salary-at-ympe', 'dividends-only', 'dynamic'] as const;
+export const STRATEGY_IDS = ['salary-at-ympe', 'dividends-only', 'dynamic', 'current-setup'] as const;
 export type StrategyId = typeof STRATEGY_IDS[number];
 
 let instanceCounter = 0;

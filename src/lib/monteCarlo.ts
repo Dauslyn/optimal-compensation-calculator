@@ -60,6 +60,7 @@ export function runMonteCarlo(
   if (!pilot.lifetime) return null;
 
   const years = inputs.planningHorizon;
+  if (years <= 0) return null;
 
   // wealthByYear[sim][year] = total wealth
   const wealthByYear: number[][] = Array.from({ length: simulationCount }, () =>
@@ -104,7 +105,7 @@ export function runMonteCarlo(
         const bal = yr.balances;
         wealthByYear[sim][y] = bal
           ? bal.rrspBalance + bal.tfsaBalance + Math.max(0, bal.corporateBalance) + (bal.ippFundBalance ?? 0)
-          : Math.max(0, yr.notionalAccounts?.corporateInvestments ?? 0);
+          : Math.max(0, yr.notionalAccounts.corporateInvestments);
       }
     }
 

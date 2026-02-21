@@ -48,6 +48,7 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
         annualRetirementIncome: retirementYears > 0
           ? lt.totalLifetimeSpending / retirementYears
           : lt.totalLifetimeSpending / 20,
+        // TODO: Wire this to actual Monte Carlo success rate once available on StrategyResult
         retirementSuccessRate: 0.85,
         objective: comparison.lifetimeWinner?.objective ?? 'balanced',
       } satisfies NarrativeInput)

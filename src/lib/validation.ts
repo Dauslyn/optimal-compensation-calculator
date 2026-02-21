@@ -217,6 +217,15 @@ export function validateInputs(inputs: UserInputs): ValidationError[] {
     });
   }
 
+  // Salary strategy validation
+  const validStrategies: UserInputs['salaryStrategy'][] = ['dynamic', 'fixed', 'dividends-only'];
+  if (!validStrategies.includes(inputs.salaryStrategy)) {
+    errors.push({
+      field: 'salaryStrategy',
+      message: `Unknown salary strategy: "${inputs.salaryStrategy}". Must be one of: ${validStrategies.join(', ')}`,
+    });
+  }
+
   // Fixed salary validation
   if (inputs.salaryStrategy === 'fixed') {
     if (!inputs.fixedSalaryAmount || inputs.fixedSalaryAmount <= 0) {

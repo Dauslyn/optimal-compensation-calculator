@@ -14,6 +14,9 @@ interface RecommendedTabProps {
 export const RecommendedTab = memo(function RecommendedTab({
   comparison,
 }: RecommendedTabProps) {
+  // NOTE: Winner is re-resolved here even though WinnerStrategyCard resolves it again internally.
+  // This is intentional — RecommendedTab needs `winner` for Zone 1 stats, and passing it as a prop
+  // to WinnerStrategyCard would change its public interface (it's also used standalone elsewhere).
   const lifetimeWinnerId = comparison.lifetimeWinner?.byObjective;
   const winner = comparison.strategies.find(
     s => s.id === (lifetimeWinnerId ?? comparison.winner.bestOverall)

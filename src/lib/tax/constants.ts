@@ -124,7 +124,7 @@ export function calculateTaxByBrackets(income: number, brackets: TaxBracket[]): 
  * Get tax rates for a specific year
  * Convenience function that converts TaxYearData to TaxRates format
  */
-export function getTaxRatesForYear(year: number, inflationRate?: number): TaxRates {
+function getTaxRatesForYear(year: number, inflationRate?: number): TaxRates {
   const yearData = getTaxYearData(year, inflationRate);
 
   return {

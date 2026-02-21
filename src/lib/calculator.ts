@@ -29,7 +29,8 @@ import {
   updateAccountsFromReturns,
   depleteAccountsWithRates,
   processSalaryPayment,
-} from './notionalAccounts';
+} from './accounts';
+import { CG_INCLUSION_RATE } from './accounts/investmentReturns';
 import {
   calculateIPPContribution,
   estimateIPPAdminCosts,
@@ -74,7 +75,7 @@ function calculateEffectiveDividendRate(
   const effectiveRate = grossedUpTax - federalCredit - provincialCredit;
 
   // Ensure non-negative (some low-bracket scenarios could have negative rates)
-  return Math.max(0, effectiveRate);
+  return Math.max(0, Math.min(0.99, effectiveRate));
 }
 
 /**
@@ -84,6 +85,7 @@ function getMarginalRateAtIncome(
   brackets: Array<{ threshold: number; rate: number }>,
   income: number
 ): number {
+  if (brackets.length === 0) return 0;
   let rate = brackets[0].rate;
   for (const bracket of brackets) {
     if (income > bracket.threshold) {
@@ -101,6 +103,10 @@ function getMarginalRateAtIncome(
  * government reduces their federal tax by 16.5% (the "Quebec abatement").
  */
 const QUEBEC_ABATEMENT_RATE = 0.165;
+
+// Combined federal+provincial passive investment tax rate
+// TODO: Should vary by province; currently hardcoded to Ontario rate
+const PASSIVE_INVESTMENT_TAX_RATE = 0.5017;
 
 /**
  * Calculate personal tax using year-specific rates
@@ -368,6 +374,8 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
   const inflationRate = inputs.expectedInflationRate ?? getDefaultInflationRate();
   const inflateSpending = inputs.inflateSpendingNeeds ?? true;
 
+  const investmentReturnRate = isFinite(inputs.investmentReturnRate) ? inputs.investmentReturnRate : 0;
+
   // Initialize notional accounts
   let currentAccounts: NotionalAccounts = {
     CDA: inputs.cdaBalance,
@@ -378,10 +386,10 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
   };
 
   // Track RRSP room - start with user's existing room
-  let availableRRSPRoom = inputs.rrspBalance || 0;
+  let availableRRSPRoom = inputs.rrspBalance ?? 0;
 
   // Track TFSA room - start with user's existing room
-  let availableTFSARoom = inputs.tfsaBalance || 0;
+  let availableTFSARoom = inputs.tfsaBalance ?? 0;
 
   // Spouse state tracking
   let spouseRRSPRoom = inputs.hasSpouse ? (inputs.spouseRRSPRoom || 0) : 0;
@@ -442,13 +450,13 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
 
     // Track running balances
     actualRRSPBalance += yearResult.rrspContribution;
-    actualRRSPBalance *= (1 + inputs.investmentReturnRate); // Growth on RRSP
+    actualRRSPBalance *= (1 + investmentReturnRate); // Growth on RRSP
     actualTFSABalance += yearResult.tfsaContribution;
-    actualTFSABalance *= (1 + inputs.investmentReturnRate); // Growth on TFSA
+    actualTFSABalance *= (1 + investmentReturnRate); // Growth on TFSA
 
     if (yearResult.ipp) {
       ippFundBalance += yearResult.ipp.contribution;
-      ippFundBalance *= (1 + inputs.investmentReturnRate);
+      ippFundBalance *= (1 + investmentReturnRate);
     }
 
     // Record salary for CPP earnings history
@@ -525,7 +533,7 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
 
     const spouseCPPResult = spouseHasRetirement
       ? projectCPPBenefit({
-          birthYear: startingYear - (inputs.spouseCurrentAge!),
+          birthYear: startingYear - Math.max(18, inputs.spouseCurrentAge ?? 45),
           salaryStartAge: inputs.spouseSalaryStartAge ?? 22,
           averageHistoricalSalary: inputs.spouseAverageHistoricalSalary ?? 60000,
           projectedSalaries: cppEarningsHistory.map(() => 0),
@@ -589,8 +597,8 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
         : 0;
 
       // Grow spouse RRSP and compute spouse RRIF minimum (must be before OAS for correct clawback)
-      retSpouseRRSPBalance *= (1 + inputs.investmentReturnRate);
-      if (spouseAge !== undefined && spouseAge >= 71 && !isSpouseRRIF) {
+      retSpouseRRSPBalance *= (1 + investmentReturnRate);
+      if (spouseAge !== undefined && mustConvertToRRIF(spouseAge) && !isSpouseRRIF) {
         isSpouseRRIF = true;
       }
       let spouseRRIFWithdrawal = 0;
@@ -1101,8 +1109,8 @@ function calculateYear(
   const totalDeductibleExpenses = totalSalaryCost + ippTotalDeductible;
 
   // Calculate passive income for SBD grind
-  // AAII = interest + foreign income + 50% of capital gains
-  const taxableCapitalGain = investmentReturns.realizedCapitalGain * 0.5;
+  // AAII = interest + foreign income + taxable portion of capital gains
+  const taxableCapitalGain = investmentReturns.realizedCapitalGain * CG_INCLUSION_RATE;
   const totalPassiveIncome = investmentReturns.foreignIncome + taxableCapitalGain;
 
   // Calculate the passive income grind and its impact on SBD
@@ -1128,7 +1136,7 @@ function calculateYear(
 
   // Investment income tax (passive income is taxed at higher rate with RDTOH refund mechanism)
   const taxableInvestmentIncome = investmentReturns.foreignIncome + taxableCapitalGain;
-  const corpTaxOnInvestments = taxableInvestmentIncome * 0.5017;
+  const corpTaxOnInvestments = taxableInvestmentIncome * PASSIVE_INVESTMENT_TAX_RATE;
 
   const corporateTax = corpTaxOnActiveIncome + corpTaxOnInvestments;
 
@@ -1327,8 +1335,9 @@ function calculateRetirementYear(
 
     // Priority 1: Corporate dividends (CDA first, then RDTOH, then GRIP, then retained)
     if (remaining > 0 && accounts.corporateInvestments > 0) {
-      const estimatedRate = calculateEffectiveDividendRate(taxData, 'eligible', 80000);
-      const nonEligRate = calculateEffectiveDividendRate(taxData, 'nonEligible', 80000);
+      const retirementIncomeEstimate = (inputs.retirementSpending ?? 70000) * 1.5;
+      const estimatedRate = calculateEffectiveDividendRate(taxData, 'eligible', retirementIncomeEstimate);
+      const nonEligRate = calculateEffectiveDividendRate(taxData, 'nonEligible', retirementIncomeEstimate);
 
       const divResult = depleteAccountsWithRates(
         remaining, accounts, taxData.rdtoh.refundRate,
@@ -1368,31 +1377,7 @@ function calculateRetirementYear(
   });
 
   // 7. Personal tax on all taxable income
-  const totalTaxableIncome = cppIncome + finalOAS.netOAS + ippPension + rrifWithdrawal + corporateDividends;
   // TFSA withdrawals are tax-free
-
-  // Split corporate dividends into eligible/non-eligible for tax calculation
-  // Simplified: assume all corporate dividends are non-eligible for conservative estimate
-  const taxResult = calculatePersonalTaxForYear(
-    0, // No salary in retirement
-    0, // eligible dividends (simplified)
-    corporateDividends, // non-eligible (conservative)
-    0, // No RRSP deduction in retirement
-    taxData,
-    province,
-  );
-
-  // Add CPP + RRIF + IPP income tax (taxed as regular income)
-  const otherIncomeTax = calculateTaxByBrackets(
-    Math.max(0, cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal - taxData.federal.basicPersonalAmount),
-    taxData.federal.brackets
-  ) + calculateTaxByBrackets(
-    Math.max(0, cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal - taxData.provincial.basicPersonalAmount),
-    taxData.provincial.brackets
-  );
-
-  // Total personal tax (simplified: sum of dividend tax + income tax, minus double-count)
-  // More accurate: unified calculation on all income
   const allTaxableIncome = cppIncome + finalOAS.grossOAS + ippPension + rrifWithdrawal;
   const unifiedTax = calculatePersonalTaxForYear(
     allTaxableIncome, // Treat as "salary" for bracket calculation
@@ -1427,9 +1412,9 @@ function calculateRetirementYear(
   };
 
   // Corporate tax on passive income
-  const taxableCapGain = investmentReturns.realizedCapitalGain * 0.5;
+  const taxableCapGain = investmentReturns.realizedCapitalGain * CG_INCLUSION_RATE;
   const taxableInvIncome = investmentReturns.foreignIncome + taxableCapGain;
-  const corpTaxOnInvestments = taxableInvIncome * 0.5017;
+  const corpTaxOnInvestments = taxableInvIncome * PASSIVE_INVESTMENT_TAX_RATE;
 
   const afterTaxIncome = totalRetirementIncome - personalTax;
 
@@ -1789,6 +1774,20 @@ function calculateSummary(
     ? netPassiveTax / totalPassiveIncome
     : 0;
 
+  if (yearlyResults.length === 0) {
+    return {
+      totalCompensation: 0, totalSalary: 0, totalDividends: 0,
+      totalPersonalTax: 0, totalCorporateTax: 0, totalCorporateTaxOnActive: 0,
+      totalCorporateTaxOnPassive: 0, totalRdtohRefund: 0, totalTax: 0,
+      effectiveTaxRate: 0, effectiveCompensationRate: 0, effectivePassiveRate: 0,
+      finalCorporateBalance: inputs.corporateInvestmentBalance,
+      totalRRSPRoomGenerated: 0, totalRRSPContributions: 0,
+      totalTFSAContributions: 0, averageAnnualIncome: 0,
+      yearlyResults: [],
+      lifetime: undefined,
+    };
+  }
+
   const finalCorporateBalance =
     yearlyResults[yearlyResults.length - 1].notionalAccounts.corporateInvestments;
   const averageAnnualIncome = totalCompensation / yearlyResults.length;
@@ -1834,37 +1833,6 @@ function calculateSummary(
       } : undefined,
     } : undefined,
     lifetime: buildLifetimeSummary(yearlyResults),
-  };
-}
-
-/**
- * Compare two strategies side-by-side
- */
-export function compareStrategies(
-  inputs1: UserInputs,
-  inputs2: UserInputs
-): {
-  strategy1: ProjectionSummary;
-  strategy2: ProjectionSummary;
-  comparison: {
-    taxSavings: number;
-    finalBalanceDifference: number;
-    rrspRoomDifference: number;
-  };
-} {
-  const strategy1 = calculateProjection(inputs1);
-  const strategy2 = calculateProjection(inputs2);
-
-  return {
-    strategy1,
-    strategy2,
-    comparison: {
-      taxSavings: strategy2.totalTax - strategy1.totalTax,
-      finalBalanceDifference:
-        strategy1.finalCorporateBalance - strategy2.finalCorporateBalance,
-      rrspRoomDifference:
-        strategy1.totalRRSPRoomGenerated - strategy2.totalRRSPRoomGenerated,
-    },
   };
 }
 

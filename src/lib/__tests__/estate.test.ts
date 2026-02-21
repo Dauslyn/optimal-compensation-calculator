@@ -34,7 +34,7 @@ function makeLifetimeInputs(overrides: Partial<ReturnType<typeof getDefaultInput
     requiredIncome: 100000,
     corporateInvestmentBalance: 500000,
     investmentReturnRate: 0.06,
-    inflationRate: 0.02,
+    expectedInflationRate: 0.02,
     province: 'ON',
     ...overrides,
   };
@@ -84,9 +84,10 @@ describe('Estate Calculation', () => {
       const result = calculateProjection(inputs);
       const estate = result.yearlyResults[result.yearlyResults.length - 1].estate!;
 
-      // Terminal RRIF tax should be positive (remaining RRIF balance taxed)
-      // After 25 years of retirement drawdowns, there may still be a balance
-      expect(estate.terminalRRIFTax).toBeGreaterThanOrEqual(0);
+      // Terminal RRIF tax should be positive (remaining RRIF balance taxed as income at death)
+      // With $500K starting RRSP + $100K annual corporate earnings over accumulation,
+      // the RRIF balance at death should be non-zero, producing positive terminal tax
+      expect(estate.terminalRRIFTax).toBeGreaterThan(0);
     });
 
     it('produces higher terminal tax with larger RRSP balances', () => {
@@ -125,6 +126,8 @@ describe('Estate Calculation', () => {
 
       // CDA should reduce effective wind-up tax
       // Net estate should reflect tax-free CDA portion
+      // TODO: Compare against a zero-CDA scenario to assert CDA actually reduces
+      // corporateWindUpTax, rather than only checking netEstateValue > 0
       expect(estate.netEstateValue).toBeGreaterThan(0);
     });
 

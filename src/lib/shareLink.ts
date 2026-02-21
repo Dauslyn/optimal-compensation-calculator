@@ -225,6 +225,14 @@ function compressInputs(inputs: UserInputs): CompactInputs {
     if (inputs.spouseOASStartAge !== undefined) compact.sosa = inputs.spouseOASStartAge;
     if (inputs.spouseActualRRSPBalance !== undefined) compact.sarb = inputs.spouseActualRRSPBalance;
     if (inputs.spouseActualTFSABalance !== undefined) compact.satb = inputs.spouseActualTFSABalance;
+    // Spouse IPP expanded (v3.4)
+    if (inputs.spouseIPPMode && inputs.spouseIPPMode !== 'considering') compact.sim = inputs.spouseIPPMode;
+    if (inputs.spouseIPPBest3AvgSalary !== undefined) compact.sib3 = inputs.spouseIPPBest3AvgSalary;
+    if (inputs.spouseIPPPastServiceYears !== undefined) compact.sips = inputs.spouseIPPPastServiceYears;
+    if (inputs.spouseIPPExistingFundBalance !== undefined) compact.sief = inputs.spouseIPPExistingFundBalance;
+    if (inputs.spouseIPPLastValuationYear !== undefined) compact.silvy = inputs.spouseIPPLastValuationYear;
+    if (inputs.spouseIPPLastValuationLiability !== undefined) compact.silvl = inputs.spouseIPPLastValuationLiability;
+    if (inputs.spouseIPPLastValuationAnnualContribution !== undefined) compact.silvc = inputs.spouseIPPLastValuationAnnualContribution;
   }
 
   // Multi-debt (v3.4)
@@ -239,23 +247,16 @@ function compressInputs(inputs: UserInputs): CompactInputs {
     }));
   }
 
-  // IPP expanded (v3.4)
-  if (inputs.ippMode && inputs.ippMode !== 'considering') compact.im = inputs.ippMode;
+  // IPP expanded (v3.4) — only serialize existing-mode fields when in 'existing' mode
+  if (inputs.ippMode && inputs.ippMode !== 'considering') {
+    compact.im = inputs.ippMode;
+    if (inputs.ippExistingFundBalance !== undefined) compact.ief = inputs.ippExistingFundBalance;
+    if (inputs.ippLastValuationYear !== undefined) compact.ilvy = inputs.ippLastValuationYear;
+    if (inputs.ippLastValuationLiability !== undefined) compact.ilvl = inputs.ippLastValuationLiability;
+    if (inputs.ippLastValuationAnnualContribution !== undefined) compact.ilvc = inputs.ippLastValuationAnnualContribution;
+  }
   if (inputs.ippBest3AvgSalary !== undefined) compact.ib3 = inputs.ippBest3AvgSalary;
   if (inputs.ippPastServiceYears !== undefined) compact.ips = inputs.ippPastServiceYears;
-  if (inputs.ippExistingFundBalance !== undefined) compact.ief = inputs.ippExistingFundBalance;
-  if (inputs.ippLastValuationYear !== undefined) compact.ilvy = inputs.ippLastValuationYear;
-  if (inputs.ippLastValuationLiability !== undefined) compact.ilvl = inputs.ippLastValuationLiability;
-  if (inputs.ippLastValuationAnnualContribution !== undefined) compact.ilvc = inputs.ippLastValuationAnnualContribution;
-
-  // Spouse IPP expanded (v3.4)
-  if (inputs.spouseIPPMode && inputs.spouseIPPMode !== 'considering') compact.sim = inputs.spouseIPPMode;
-  if (inputs.spouseIPPBest3AvgSalary !== undefined) compact.sib3 = inputs.spouseIPPBest3AvgSalary;
-  if (inputs.spouseIPPPastServiceYears !== undefined) compact.sips = inputs.spouseIPPPastServiceYears;
-  if (inputs.spouseIPPExistingFundBalance !== undefined) compact.sief = inputs.spouseIPPExistingFundBalance;
-  if (inputs.spouseIPPLastValuationYear !== undefined) compact.silvy = inputs.spouseIPPLastValuationYear;
-  if (inputs.spouseIPPLastValuationLiability !== undefined) compact.silvl = inputs.spouseIPPLastValuationLiability;
-  if (inputs.spouseIPPLastValuationAnnualContribution !== undefined) compact.silvc = inputs.spouseIPPLastValuationAnnualContribution;
 
   return compact;
 }
@@ -302,6 +303,25 @@ function validateLifetimeObjective(objective: string | undefined): 'maximize-spe
 }
 
 /**
+ * Validate payment frequency
+ */
+function validatePaymentFrequency(freq: string): PaymentFrequency {
+  const valid: PaymentFrequency[] = ['monthly', 'biweekly', 'weekly', 'annually'];
+  if (valid.includes(freq as PaymentFrequency)) {
+    return freq as PaymentFrequency;
+  }
+  return 'monthly';
+}
+
+/**
+ * Validate IPP mode
+ */
+function validateIPPMode(mode: string | undefined): 'considering' | 'existing' {
+  if (mode === 'existing') return 'existing';
+  return 'considering';
+}
+
+/**
  * Expand compact format back to UserInputs with validation
  */
 function expandInputs(compact: CompactInputs): UserInputs {
@@ -315,8 +335,8 @@ function expandInputs(compact: CompactInputs): UserInputs {
     province: validateProvinceCode(compact.pv || DEFAULT_PROVINCE),
     requiredIncome: clamp(compact.ri, 0, 10_000_000),
     planningHorizon: clamp(compact.ph, 1, 80),
-    startingYear: clamp(compact.sy, 2026, 2050),
-    expectedInflationRate: clamp(compact.ei, 0, 0.2),
+    startingYear: clamp(compact.sy, 2024, 2030),
+    expectedInflationRate: clamp(compact.ei, 0, 0.1),
     inflateSpendingNeeds: Boolean(compact.is),
     corporateInvestmentBalance: clamp(compact.cib, 0, 100_000_000),
     tfsaBalance: clamp(compact.tb, 0, 1_000_000),
@@ -325,7 +345,7 @@ function expandInputs(compact: CompactInputs): UserInputs {
     eRDTOHBalance: clamp(compact.erd, 0, 100_000_000),
     nRDTOHBalance: clamp(compact.nrd, 0, 100_000_000),
     gripBalance: clamp(compact.grp, 0, 100_000_000),
-    investmentReturnRate: clamp(investmentReturnRate, -0.5, 0.5),
+    investmentReturnRate: clamp(investmentReturnRate, 0, 0.2),
     canadianEquityPercent: clamp(compact.ce, 0, 100),
     usEquityPercent: clamp(compact.ue, 0, 100),
     internationalEquityPercent: clamp(compact.ie, 0, 100),
@@ -346,7 +366,7 @@ function expandInputs(compact: CompactInputs): UserInputs {
     ippYearsOfService: compact.iys,
     // Lifetime model fields (v3) — use defaults for v1/v2 links
     currentAge: compact.ca !== undefined ? clamp(compact.ca, 18, 80) : 45,
-    retirementAge: compact.ra !== undefined ? clamp(compact.ra, 30, 80) : 65,
+    retirementAge: compact.ra !== undefined ? clamp(compact.ra, 40, 80) : 65,
     planningEndAge: compact.pea !== undefined ? clamp(compact.pea, 50, 100) : 90,
     retirementSpending: compact.rs !== undefined ? clamp(compact.rs, 0, 10_000_000) : 70000,
     lifetimeObjective: validateLifetimeObjective(compact.lo),
@@ -364,12 +384,12 @@ function expandInputs(compact: CompactInputs): UserInputs {
           label: d.lb,
           balance: d.bl,
           paymentAmount: d.pa,
-          paymentFrequency: d.pf as PaymentFrequency,
+          paymentFrequency: validatePaymentFrequency(d.pf),
           interestRate: d.ir,
         }))
       : [],
     // IPP expanded (v3.4)
-    ippMode: (compact.im as 'considering' | 'existing') ?? 'considering',
+    ippMode: validateIPPMode(compact.im),
     ippBest3AvgSalary: compact.ib3,
     ippPastServiceYears: compact.ips,
     ippExistingFundBalance: compact.ief,
@@ -377,7 +397,7 @@ function expandInputs(compact: CompactInputs): UserInputs {
     ippLastValuationLiability: compact.ilvl,
     ippLastValuationAnnualContribution: compact.ilvc,
     // Spouse IPP expanded (v3.4)
-    spouseIPPMode: (compact.sim as 'considering' | 'existing') ?? 'considering',
+    spouseIPPMode: validateIPPMode(compact.sim),
     spouseIPPBest3AvgSalary: compact.sib3,
     spouseIPPPastServiceYears: compact.sips,
     spouseIPPExistingFundBalance: compact.sief,
@@ -449,6 +469,7 @@ export function decodeShareLink(encoded: string): UserInputs | null {
     // Version check - accept v1 (no spouse), v2 (with spouse), v3 (lifetime)
     if (![1, 2, 3].includes(shareData.v)) {
       console.warn(`Unknown share link version: ${shareData.v}`);
+      return null;
     }
 
     return expandInputs(shareData.d);

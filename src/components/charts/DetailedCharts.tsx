@@ -23,6 +23,7 @@ const STRATEGY_COLORS: Record<string, string> = {
   'salary-at-ympe': '#10b981',
   'dividends-only': '#d4a017',
   'dynamic': '#6ee7b7',
+  'current-setup': '#a78bfa',
 };
 
 const TAX_COLORS = {

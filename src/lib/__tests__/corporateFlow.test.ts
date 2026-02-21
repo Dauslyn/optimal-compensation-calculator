@@ -82,13 +82,15 @@ describe('Corporate Flow — SBD vs General Rate Split', () => {
     // Tax should be ~$112K * 0.122 = ~$13,664
     // taxableApprox ≈ 200000 - 80000 = $120K (rough lower bound, ignoring employer cost)
     expect(yr1.corporateTaxOnActive).toBeGreaterThan(0);
-    // Effective rate on active income should be ~12.2%
-    if (yr1.corporateTaxOnActive > 0) {
-      const taxableBusinessIncome = yr1.corporateTaxOnActive / SBD_RATE;
-      // All income should be at SBD rate since < $500K
-      const effectiveRate = yr1.corporateTaxOnActive / taxableBusinessIncome;
-      expect(effectiveRate).toBeCloseTo(SBD_RATE, 2);
-    }
+    // Derive expected taxable income from known inputs:
+    // grossRevenue ($200K) - salary ($80K) - employer payroll (~$5.5-6K for ON 2026)
+    // Employer payroll for $80K in ON ≈ CPP($3,867) + CPP2($396) + EI_employer($1,469) ≈ $5,732
+    // EHT = $0 (payroll below $1M ON exemption)
+    // expectedTaxableIncome ≈ $200K - $80K - ~$5,732 ≈ ~$114,268
+    const grossRevenue = 200000;
+    const expectedTaxableIncome = grossRevenue - yr1.salary - yr1.cpp - yr1.cpp2 - (yr1.ei * 1.4);
+    // All income under SBD limit, so tax = taxableIncome * 12.2%
+    expect(yr1.corporateTaxOnActive).toBeCloseTo(expectedTaxableIncome * SBD_RATE, -2);
   });
 
   it('should split between SBD and general rates when active income exceeds $500K', () => {
@@ -430,6 +432,8 @@ describe('Corporate Flow — Passive Income Grind', () => {
   });
 
   it('should compute AAII as foreignIncome + 50% of realized capital gains', () => {
+    // TODO: Use independently calculated expected AAII from known asset allocation and balance
+    // instead of re-deriving from yr1.investmentReturns fields
     const inputs = createInputs({
       corporateInvestmentBalance: 2000000,
       investmentReturnRate: 0.05,
@@ -675,7 +679,9 @@ describe('Corporate Flow — Multi-Year Account Conservation', () => {
     const result = calculateProjection(inputs);
 
     // eRDTOH should track: starting + increases - refunds on eligible divs - cascade refunds
-    // This is a softer test — verify the ending balance is non-negative and plausible
+    // TODO: Assert a specific expected eRDTOH value computed from starting balance (30000)
+    // plus cumulative eRDTOH increases minus cumulative RDTOH refunds across all 3 years,
+    // similar to the CDA conservation test above
     const finalERDTOH = result.yearlyResults[2].notionalAccounts.eRDTOH;
     expect(finalERDTOH).toBeGreaterThanOrEqual(0);
   });
@@ -758,6 +764,9 @@ describe('Corporate Flow — Investment Returns Impact on Balance', () => {
   });
 
   it('should correctly split passive tax into refundable and non-refundable portions', () => {
+    // TODO: Derive taxableInvestmentIncome from independently calculated expected values
+    // (based on known $1M balance and 25/25/25/25 asset allocation) instead of
+    // re-deriving from yr1.investmentReturns fields
     const inputs = createInputs({
       corporateInvestmentBalance: 1000000,
       investmentReturnRate: 0.05,

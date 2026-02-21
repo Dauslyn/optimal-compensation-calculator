@@ -48,6 +48,9 @@ const ON_EHT = {
   maxRate: 0.0195,
 };
 
+// Each bracket's `rate` applies when payroll is AT OR BELOW its `threshold`.
+// When payroll exceeds threshold[i], the applicable rate is brackets[i+1].rate.
+// If payroll exceeds the last threshold (index 7), brackets[8] is undefined → maxRate.
 function getOntarioEHTRate(totalPayroll: number): number {
   for (let i = ON_EHT.brackets.length - 1; i >= 0; i--) {
     if (totalPayroll > ON_EHT.brackets[i].threshold) {

@@ -66,7 +66,7 @@ export interface UserInputs {
   nRDTOHBalance: number;
   gripBalance: number;
 
-  // Investment return rate (default 4.31%)
+  // Investment return rate (default 7.25%, computed from blended portfolio allocation)
   investmentReturnRate: number;
 
   // Portfolio composition (percentages that should sum to 100)

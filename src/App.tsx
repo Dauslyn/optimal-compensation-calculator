@@ -9,7 +9,6 @@ import { ThemeToggle, useTheme } from './components/ThemeToggle';
 import { LoadingSpinner, CardSkeleton } from './components/LoadingSpinner';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp';
-// import { ScenarioBuilder } from './components/ScenarioBuilder'; // disabled — stale monteCarlo imports
 import { YearEndAlert } from './components/YearEndAlert';
 import { HowItWorks } from './components/HowItWorks';
 import type { ProjectionSummary, UserInputs } from './lib/types';
@@ -21,8 +20,6 @@ import { SetupWizard } from './components/wizard/SetupWizard';
 import { PROVINCES, DEFAULT_PROVINCE } from './lib/tax/provinces';
 import { getStartingYear } from './lib/tax/indexation';
 
-type ViewMode = 'calculator' | 'scenarios';
-
 const DISCLAIMER_ACCEPTED_KEY = 'ccpc-calculator-disclaimer-accepted';
 
 function App() {
@@ -33,7 +30,6 @@ function App() {
   const [sharedLinkLoaded, setSharedLinkLoaded] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('calculator');
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [showWizard, setShowWizard] = useState<boolean>(() => {
     // Show wizard if: no wizard completion in localStorage AND no URL share link
@@ -100,15 +96,20 @@ function App() {
     setShowDisclaimerModal(false);
   };
 
-  const handleCalculate = async (inputs: UserInputs) => {
+  const handleCalculate = (inputs: UserInputs) => {
     setIsCalculating(true);
-    setResults(null); // Clear previous results to show loading state
+    setResults(null);
     setComparisonResult(null);
 
-    const projection = calculateProjection(inputs);
-    setResults(projection);
-    setCurrentInputs(inputs);
-    setIsCalculating(false);
+    try {
+      const projection = calculateProjection(inputs);
+      setResults(projection);
+      setCurrentInputs(inputs);
+    } catch (error) {
+      console.error('Calculation failed:', error);
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   return (
@@ -184,52 +185,6 @@ function App() {
               <ExportButton disabled={!results} />
             </div>
           </div>
-          {/* View Mode Toggle */}
-          <div className="flex items-center justify-end gap-4 flex-wrap">
-            {/* Mode Switcher */}
-            <div
-              className="flex items-center p-1 rounded-lg"
-              style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}
-            >
-              <button
-                onClick={() => setViewMode('calculator')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'calculator' ? 'shadow-sm' : ''
-                }`}
-                style={{
-                  background: viewMode === 'calculator' ? 'var(--bg-elevated)' : 'transparent',
-                  color: viewMode === 'calculator' ? 'var(--text-primary)' : 'var(--text-muted)',
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                Calculator
-              </button>
-              <button
-                onClick={() => setViewMode('scenarios')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'scenarios' ? 'shadow-sm' : ''
-                }`}
-                style={{
-                  background: viewMode === 'scenarios' ? 'var(--bg-elevated)' : 'transparent',
-                  color: viewMode === 'scenarios' ? 'var(--text-primary)' : 'var(--text-muted)',
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Scenarios
-                <span
-                  className="px-1.5 py-0.5 rounded text-xs font-bold"
-                  style={{ background: 'var(--accent-primary)', color: 'white' }}
-                >
-                  NEW
-                </span>
-              </button>
-            </div>
-          </div>
-
           {/* Keyboard shortcuts help panel */}
           {showKeyboardHelp && (
             <div className="mt-4 animate-scale-in">
@@ -240,74 +195,68 @@ function App() {
 
         {/* Main Content */}
         <div className="space-y-6">
-          {viewMode === 'calculator' ? (
-            <>
-              {/* Shared Link Notification */}
-              {sharedLinkLoaded && (
-                <div
-                  className="p-4 rounded-lg mb-4"
-                  style={{
-                    background: 'var(--accent-primary-glow)',
-                    border: '1px solid var(--accent-primary)',
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span style={{ color: 'var(--text-primary)' }}>
-                      Loaded shared configuration. Click "Calculate" to see results.
-                    </span>
-                  </div>
-                </div>
-              )}
+          {/* Shared Link Notification */}
+          {sharedLinkLoaded && (
+            <div
+              className="p-4 rounded-lg mb-4"
+              style={{
+                background: 'var(--accent-primary-glow)',
+                border: '1px solid var(--accent-primary)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" style={{ color: 'var(--accent-primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span style={{ color: 'var(--text-primary)' }}>
+                  Loaded shared configuration. Click "Calculate" to see results.
+                </span>
+              </div>
+            </div>
+          )}
 
-              {/* Year-End Planning Alert */}
-              <YearEndAlert
-                startingYear={currentInputs?.startingYear ?? getStartingYear()}
-                province={currentInputs?.province ?? DEFAULT_PROVINCE}
-              />
+          {/* Year-End Planning Alert */}
+          <YearEndAlert
+            startingYear={currentInputs?.startingYear ?? getStartingYear()}
+            province={currentInputs?.province ?? DEFAULT_PROVINCE}
+          />
 
-              {/* Input Form / Setup Wizard */}
-              {showWizard ? (
-                <SetupWizard
-                  onComplete={(wizardInputs) => {
-                    saveInputsToStorage(wizardInputs);
-                    markWizardComplete();
-                    setShowWizard(false);
-                    handleCalculate(wizardInputs);
-                  }}
-                />
-              ) : (
-                <section className="glass-card p-6">
-                  <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
-                </section>
-              )}
-
-              {/* How It Works - Educational Content */}
-              <HowItWorks />
-
-              {/* Loading State */}
-              {isCalculating && (
-                <div className="space-y-6 animate-fade-in">
-                  <LoadingSpinner size="lg" text="Calculating optimal compensation..." />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                </div>
-              )}
-
-              {/* Results */}
-              {!isCalculating && results && currentInputs && (
-                <div className="space-y-6">
-                  <div className="animate-slide-up">
-                    <Summary summary={results} inputs={currentInputs} comparison={comparisonResult} onCompare={setComparisonResult} />
-                  </div>
-                </div>
-              )}
-            </>
+          {/* Input Form / Setup Wizard */}
+          {showWizard ? (
+            <SetupWizard
+              onComplete={(wizardInputs) => {
+                markWizardComplete();
+                setShowWizard(false);
+                setInitialInputs(wizardInputs);
+                saveInputsToStorage(wizardInputs);
+                handleCalculate(wizardInputs);
+              }}
+            />
           ) : (
-            /* Scenario Builder Mode — temporarily disabled */
-            <div className="animate-fade-in" />
+            <section className="glass-card p-6">
+              <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
+            </section>
+          )}
+
+          {/* How It Works - Educational Content */}
+          <HowItWorks />
+
+          {/* Loading State */}
+          {isCalculating && (
+            <div className="space-y-6 animate-fade-in">
+              <LoadingSpinner size="lg" text="Calculating optimal compensation..." />
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+          )}
+
+          {/* Results */}
+          {!isCalculating && results && currentInputs && (
+            <div className="space-y-6">
+              <div className="animate-slide-up">
+                <Summary summary={results} inputs={currentInputs} comparison={comparisonResult} onCompare={setComparisonResult} />
+              </div>
+            </div>
           )}
         </div>
 

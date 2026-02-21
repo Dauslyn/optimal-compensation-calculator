@@ -35,7 +35,7 @@ const ERDTOH_RATE = 0.3833;
 
 // Capital gains inclusion rate (50% — confirmed current law, proposed 66.67% increase
 // was cancelled by the Canadian government on March 21, 2025)
-const CG_INCLUSION_RATE = 0.50;
+export const CG_INCLUSION_RATE = 0.50;
 
 /**
  * Compute the blended investment return rate from per-class allocations and default returns.

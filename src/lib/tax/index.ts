@@ -10,7 +10,6 @@ export {
     PASSIVE_INCOME_THRESHOLD,
     PASSIVE_INCOME_GRIND_RATE,
     calculateTaxByBrackets,
-    getTaxRatesForYear,
     getContributionLimitsForYear,
 } from './constants';
 
@@ -26,16 +25,6 @@ export {
     type TaxYearData,
 } from './indexation';
 
-export {
-    calculateSalaryTax,
-    calculateSalaryTaxDetailed,
-    calculateCombinedPersonalTax,
-    calculateEligibleDividendTax,
-    calculateNonEligibleDividendTax,
-    calculateOntarioSurtax,
-    calculateOntarioHealthPremium,
-    calculateRequiredSalary,
-} from './personalTax';
 
 export {
     calculateCPP,
@@ -44,10 +33,6 @@ export {
     calculateEI,
 } from './payrollTax';
 
-export {
-    calculateCorporateTax,
-    calculateRDTOHRefund,
-} from './corporateTax';
 
 export {
     calculateQuebecPayrollDeductions,

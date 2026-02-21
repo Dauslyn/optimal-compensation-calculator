@@ -40,6 +40,7 @@ export function loadDashboardLayout(): DashboardLayout | null {
       console.warn('Invalid dashboard layout structure');
       return null;
     }
+    // TODO: Validate widget types against widgetRegistry and filter out unrecognized types
     return data.layout;
   } catch (error) {
     console.error('Failed to load dashboard layout:', error);

@@ -363,19 +363,19 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
           />
 
           <div className="animate-fade-in" key={activeTab}>
-            {activeTab === 'recommended' && (
+            {comparison && activeTab === 'recommended' && (
               <RecommendedTab comparison={comparison} />
             )}
-            {activeTab === 'compare' && (
+            {comparison && activeTab === 'compare' && (
               <CompareAllTab comparison={comparison} />
             )}
-            {activeTab === 'details' && (
+            {comparison && activeTab === 'details' && (
               <DetailsTab comparison={comparison} inputs={inputs} />
             )}
-            {activeTab === 'dashboard' && (
+            {comparison && activeTab === 'dashboard' && (
               <DashboardTab comparison={comparison} inputs={inputs} />
             )}
-            {activeTab === 'export' && (
+            {comparison && activeTab === 'export' && (
               <ExportTab
                 summary={summary}
                 inputs={inputs}

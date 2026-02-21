@@ -32,18 +32,24 @@ export const DetailsTab = memo(function DetailsTab({
       setMonteCarloResult(null);
       return;
     }
+    let cancelled = false;
     const worker = new Worker(
       new URL('../../workers/monteCarlo.worker.ts', import.meta.url),
       { type: 'module' }
     );
     worker.onmessage = (event: MessageEvent<MonteCarloResult | null>) => {
+      if (cancelled) return;
       setMonteCarloResult(event.data);
     };
     worker.onerror = () => {
+      if (cancelled) return;
       setMonteCarloResult(null);
     };
     worker.postMessage({ inputs, options: { simulationCount: 500 } });
-    return () => worker.terminate();
+    return () => {
+      cancelled = true;
+      worker.terminate();
+    };
   }, [hasLifetime, inputs]);
 
   return (
@@ -94,7 +100,7 @@ export const DetailsTab = memo(function DetailsTab({
             {monteCarloResult && (
               <MonteCarloChart
                 result={monteCarloResult}
-                years={comparison.yearlyData[0].years.map(y => y.calendarYear ?? y.year)}
+                years={comparison.yearlyData[0]?.years.map(y => y.calendarYear ?? y.year) ?? []}
               />
             )}
             {!monteCarloResult && hasLifetime && (

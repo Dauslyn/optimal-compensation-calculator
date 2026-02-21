@@ -72,6 +72,7 @@ const InputField = memo(function InputField({
 }: InputFieldProps) {
   // Local string state so the user has full text-editing control (delete, select+type, etc.)
   const [localValue, setLocalValue] = useState(() => formatDisplayValue(value));
+  // NOTE: Potential race between onBlur and parent sync; benign in practice
   const isFocused = useRef(false);
 
   // Sync from parent when not focused (e.g., reset, share link load)
@@ -234,6 +235,8 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     }
 
     const timeoutId = setTimeout(() => {
+      // TODO: Skip auto-save when loaded from share link to preserve user's own saved config
+      // NOTE: Uses formData at time of debounce scheduling; may capture pre-effect value
       saveInputsToStorage(formData);
     }, 500); // Debounce 500ms
 
@@ -259,6 +262,7 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
   });
 
   // Keep investmentReturnRate in sync with allocation and per-class return overrides
+  // TODO: This overrides custom rates from share links on first render
   useEffect(() => {
     const blended = computeBlendedReturnRate(
       formData.canadianEquityPercent,
