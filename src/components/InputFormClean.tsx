@@ -32,6 +32,7 @@ import {
 interface InputFormProps {
   onCalculate: (inputs: UserInputs) => void;
   initialInputs?: UserInputs | null;
+  fromShareLink?: boolean;
 }
 
 // InputField component moved OUTSIDE the main component to prevent re-creation on render
@@ -215,9 +216,10 @@ const getInitialFormData = (initialInputs?: UserInputs | null): UserInputs => {
   return getDefaultInputs();
 };
 
-export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
+export function InputFormClean({ onCalculate, initialInputs, fromShareLink }: InputFormProps) {
   const [formData, setFormData] = useState<UserInputs>(() => getInitialFormData(initialInputs));
   const isFirstRender = useRef(true);
+  const isShareLinkLoad = useRef(!!fromShareLink);
 
   // Update form data when initialInputs changes (e.g., from shared link)
   useEffect(() => {
@@ -234,9 +236,15 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
       return;
     }
 
+    // Skip auto-save when the form was just populated from a share link —
+    // we don't want to overwrite the user's own saved config with shared data.
+    // Once the user makes any subsequent edit, saves resume normally.
+    if (isShareLinkLoad.current) {
+      isShareLinkLoad.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
-      // TODO: Skip auto-save when loaded from share link to preserve user's own saved config
-      // NOTE: Uses formData at time of debounce scheduling; may capture pre-effect value
       saveInputsToStorage(formData);
     }, 500); // Debounce 500ms
 
@@ -261,9 +269,15 @@ export function InputFormClean({ onCalculate, initialInputs }: InputFormProps) {
     portfolio: false,
   });
 
-  // Keep investmentReturnRate in sync with allocation and per-class return overrides
-  // TODO: This overrides custom rates from share links on first render
+  // Keep investmentReturnRate in sync with allocation and per-class return overrides.
+  // Skip the first run when form was populated from external source (share link / wizard)
+  // to preserve any custom investmentReturnRate that was explicitly set.
+  const blendedSyncFirstRun = useRef(true);
   useEffect(() => {
+    if (blendedSyncFirstRun.current) {
+      blendedSyncFirstRun.current = false;
+      return;
+    }
     const blended = computeBlendedReturnRate(
       formData.canadianEquityPercent,
       formData.usEquityPercent,

@@ -39,6 +39,7 @@ import {
 import { projectCPPBenefit, type CPPBenefitResult } from './tax/cpp';
 import { calculateOAS } from './tax/oas';
 import { calculateRRIFYear, mustConvertToRRIF, getRRIFMinimumRate } from './tax/rrif';
+import { getPassiveInvestmentTaxRate } from './tax/provinces';
 
 /**
  * Calculate effective dividend tax rate at a given income level
@@ -104,9 +105,8 @@ function getMarginalRateAtIncome(
  */
 const QUEBEC_ABATEMENT_RATE = 0.165;
 
-// Combined federal+provincial passive investment tax rate
-// TODO: Should vary by province; currently hardcoded to Ontario rate
-const PASSIVE_INVESTMENT_TAX_RATE = 0.5017;
+// Combined federal+provincial passive investment tax rate (province-specific)
+// Lookup via getPassiveInvestmentTaxRate(province) — see provinces.ts
 
 /**
  * Calculate personal tax using year-specific rates
@@ -1136,7 +1136,7 @@ function calculateYear(
 
   // Investment income tax (passive income is taxed at higher rate with RDTOH refund mechanism)
   const taxableInvestmentIncome = investmentReturns.foreignIncome + taxableCapitalGain;
-  const corpTaxOnInvestments = taxableInvestmentIncome * PASSIVE_INVESTMENT_TAX_RATE;
+  const corpTaxOnInvestments = taxableInvestmentIncome * getPassiveInvestmentTaxRate(inputs.province);
 
   const corporateTax = corpTaxOnActiveIncome + corpTaxOnInvestments;
 
@@ -1414,7 +1414,7 @@ function calculateRetirementYear(
   // Corporate tax on passive income
   const taxableCapGain = investmentReturns.realizedCapitalGain * CG_INCLUSION_RATE;
   const taxableInvIncome = investmentReturns.foreignIncome + taxableCapGain;
-  const corpTaxOnInvestments = taxableInvIncome * PASSIVE_INVESTMENT_TAX_RATE;
+  const corpTaxOnInvestments = taxableInvIncome * getPassiveInvestmentTaxRate(inputs.province);
 
   const afterTaxIncome = totalRetirementIncome - personalTax;
 

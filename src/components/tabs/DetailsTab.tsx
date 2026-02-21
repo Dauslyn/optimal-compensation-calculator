@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState } from 'react';
 import type { ComparisonResult } from '../../lib/strategyComparison';
 import type { UserInputs } from '../../lib/types';
 import { YearlyProjection } from '../YearlyProjection';
@@ -9,11 +9,13 @@ import type { MonteCarloResult } from '../../lib/monteCarlo';
 interface DetailsTabProps {
   comparison: ComparisonResult;
   inputs: UserInputs;
+  monteCarloResult?: MonteCarloResult | null;
 }
 
 export const DetailsTab = memo(function DetailsTab({
   comparison,
   inputs,
+  monteCarloResult,
 }: DetailsTabProps) {
   const [selectedStrategy, setSelectedStrategy] = useState(comparison.winner.bestOverall);
 
@@ -24,33 +26,6 @@ export const DetailsTab = memo(function DetailsTab({
   const winner = comparison.strategies.find(s => s.id === comparison.winner.bestOverall)
     || comparison.strategies[0];
   const hasLifetime = comparison.yearlyData[0]?.years.some(y => y.phase === 'retirement');
-
-  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
-
-  useEffect(() => {
-    if (!hasLifetime) {
-      setMonteCarloResult(null);
-      return;
-    }
-    let cancelled = false;
-    const worker = new Worker(
-      new URL('../../workers/monteCarlo.worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-    worker.onmessage = (event: MessageEvent<MonteCarloResult | null>) => {
-      if (cancelled) return;
-      setMonteCarloResult(event.data);
-    };
-    worker.onerror = () => {
-      if (cancelled) return;
-      setMonteCarloResult(null);
-    };
-    worker.postMessage({ inputs, options: { simulationCount: 500 } });
-    return () => {
-      cancelled = true;
-      worker.terminate();
-    };
-  }, [hasLifetime, inputs]);
 
   return (
     <div className="space-y-6">

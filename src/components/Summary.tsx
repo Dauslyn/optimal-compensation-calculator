@@ -15,6 +15,7 @@ import { CompareAllTab } from './tabs/CompareAllTab';
 import { DetailsTab } from './tabs/DetailsTab';
 import { ExportTab } from './tabs/ExportTab';
 import { DashboardTab } from './tabs/DashboardTab';
+import type { MonteCarloResult } from '../lib/monteCarlo';
 
 interface SummaryProps {
   summary: ProjectionSummary;
@@ -38,6 +39,34 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
       onCompare(result);
     }
   }, [inputs, comparison, onCompare]);
+
+  // Run Monte Carlo simulation via web worker (shared across tabs)
+  const hasLifetime = comparison?.yearlyData[0]?.years.some(y => y.phase === 'retirement') ?? false;
+  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
+  useEffect(() => {
+    if (!hasLifetime) {
+      setMonteCarloResult(null);
+      return;
+    }
+    let cancelled = false;
+    const worker = new Worker(
+      new URL('../workers/monteCarlo.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    worker.onmessage = (event: MessageEvent<MonteCarloResult | null>) => {
+      if (cancelled) return;
+      setMonteCarloResult(event.data);
+    };
+    worker.onerror = () => {
+      if (cancelled) return;
+      setMonteCarloResult(null);
+    };
+    worker.postMessage({ inputs, options: { simulationCount: 500 } });
+    return () => {
+      cancelled = true;
+      worker.terminate();
+    };
+  }, [hasLifetime, inputs]);
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -364,13 +393,13 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
 
           <div className="animate-fade-in" key={activeTab}>
             {comparison && activeTab === 'recommended' && (
-              <RecommendedTab comparison={comparison} />
+              <RecommendedTab comparison={comparison} monteCarloSuccessRate={monteCarloResult?.successRate} />
             )}
             {comparison && activeTab === 'compare' && (
               <CompareAllTab comparison={comparison} />
             )}
             {comparison && activeTab === 'details' && (
-              <DetailsTab comparison={comparison} inputs={inputs} />
+              <DetailsTab comparison={comparison} inputs={inputs} monteCarloResult={monteCarloResult} />
             )}
             {comparison && activeTab === 'dashboard' && (
               <DashboardTab comparison={comparison} inputs={inputs} />

@@ -9,10 +9,12 @@ import { formatCurrency, formatPercent } from '../../lib/formatters';
 
 interface RecommendedTabProps {
   comparison: ComparisonResult;
+  monteCarloSuccessRate?: number;
 }
 
 export const RecommendedTab = memo(function RecommendedTab({
   comparison,
+  monteCarloSuccessRate,
 }: RecommendedTabProps) {
   // NOTE: Winner is re-resolved here even though WinnerStrategyCard resolves it again internally.
   // This is intentional — RecommendedTab needs `winner` for Zone 1 stats, and passing it as a prop
@@ -89,7 +91,7 @@ export const RecommendedTab = memo(function RecommendedTab({
           Accumulation Phase Details
         </h4>
         <div className="space-y-6">
-          <WinnerStrategyCard comparison={comparison} />
+          <WinnerStrategyCard comparison={comparison} monteCarloSuccessRate={monteCarloSuccessRate} />
           <ActionPlanTable yearlyResults={winner.summary.yearlyResults} />
 
           <div>

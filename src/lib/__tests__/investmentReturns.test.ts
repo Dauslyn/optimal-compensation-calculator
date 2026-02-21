@@ -23,15 +23,17 @@ describe('calculateInvestmentReturns', () => {
     });
 
     it('eRDTOH increases by 38.33% of Canadian dividends', () => {
-      // TODO: Use independently calculated expected values instead of cross-referencing result fields
+      // 100% Canadian equity, $1M balance: dividends = $1M * 2.8% = $28,000
+      // eRDTOH = $28,000 * 0.3833 = $10,732.40
       const result = calculateInvestmentReturns(BALANCE, 0.085, 100, 0, 0, 0);
-      expect(result.eRDTOHIncrease).toBeCloseTo(result.canadianDividends * 0.3833, 0);
+      expect(result.eRDTOHIncrease).toBeCloseTo(10732.40, 0);
     });
 
     it('CDA increases by 50% of realized capital gains', () => {
-      // TODO: Use independently calculated expected values instead of cross-referencing result fields
+      // 100% Canadian equity, $1M balance: realized CG = $1M * 0.3% turnover = $3,000
+      // CDA = $3,000 * (1 - 0.50 inclusion rate) = $1,500
       const result = calculateInvestmentReturns(BALANCE, 0.085, 100, 0, 0, 0);
-      expect(result.CDAIncrease).toBeCloseTo(result.realizedCapitalGain * 0.5, 0);
+      expect(result.CDAIncrease).toBeCloseTo(1500, 0);
     });
   });
 
@@ -66,14 +68,14 @@ describe('calculateInvestmentReturns', () => {
     });
 
     it('nRDTOH includes taxable capital gains and is reduced by 15% withholding on foreign dividends', () => {
-      // TODO: Replace result.foreignIncome and result.realizedCapitalGain with hardcoded expected values
+      // 100% US equity, $1M balance:
+      //   foreignIncome (US dividends) = $1M * 1.5% = $15,000
+      //   realizedCG = $1M * 0.3% turnover = $3,000
+      //   taxableCapGain = $3,000 * 0.50 = $1,500
+      //   nRDTOH = ($15,000 + $1,500) * 0.3067 - $15,000 * 0.15
+      //          = $16,500 * 0.3067 - $2,250 = $5,060.55 - $2,250 = $2,810.55
       const result = calculateInvestmentReturns(BALANCE, 0.095, 0, 100, 0, 0);
-      // Per ITA s.129(3): nRDTOH = (foreignIncome + taxableCapGain) * 0.3067 - foreignDividends * 0.15
-      // foreignDividends = 1.5% of balance = 15000
-      // taxableCapGain = realizedCG * 0.50 (50% inclusion rate)
-      const taxableCapGain = result.realizedCapitalGain * 0.50;
-      const expectedNRDTOH = ((result.foreignIncome + taxableCapGain) * 0.3067) - (15000 * 0.15);
-      expect(result.nRDTOHIncrease).toBeCloseTo(expectedNRDTOH, 0);
+      expect(result.nRDTOHIncrease).toBeCloseTo(2810.55, 0);
     });
   });
 

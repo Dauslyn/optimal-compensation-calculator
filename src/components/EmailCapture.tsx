@@ -21,22 +21,12 @@ export function EmailCapture({ source = 'calculator' }: EmailCaptureProps) {
 
     setStatus('loading');
 
-    // TODO: Replace with Beehiiv endpoint
-    // Beehiiv embed form action: https://embeds.beehiiv.com/subscribe
-    // For now, store in localStorage as a placeholder
+    // Stores subscription locally until a newsletter provider (e.g. Beehiiv) is configured.
+    // To connect Beehiiv: POST to https://api.beehiiv.com/v2/publications/{PUB_ID}/subscriptions
+    // with Authorization: Bearer {API_KEY} and body { email, utm_source: source }.
     try {
-      // Placeholder: In production, this would POST to Beehiiv
-      // Example Beehiiv integration:
-      // const response = await fetch('https://api.beehiiv.com/v2/publications/YOUR_PUB_ID/subscriptions', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer YOUR_API_KEY' },
-      //   body: JSON.stringify({ email, utm_source: source })
-      // });
-
-      // Simulate API call for now
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Store locally until Beehiiv is connected
       let subscribers: Array<{ email: string; source: string; timestamp: string }> = [];
       try {
         subscribers = JSON.parse(localStorage.getItem('newsletter_subscribers') || '[]');

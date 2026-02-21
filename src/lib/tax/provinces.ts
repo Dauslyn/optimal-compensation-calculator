@@ -209,3 +209,31 @@ const TOP_COMBINED_RATES: Record<ProvinceCode, number> = {
 export function getTopProvincialRate(province: ProvinceCode): number {
   return TOP_COMBINED_RATES[province];
 }
+
+/**
+ * Combined federal + provincial corporate passive investment income tax rates (2025).
+ * Federal rate: 38.67% (28% base + 10.67% additional refundable tax).
+ * Provincial rates sourced from TaxTips.ca corporate investment income table (2025).
+ */
+const PASSIVE_INVESTMENT_TAX_RATES: Record<ProvinceCode, number> = {
+  AB: 0.4667,  // 38.67% + 8%
+  BC: 0.5067,  // 38.67% + 12%
+  MB: 0.5067,  // 38.67% + 12%
+  NB: 0.5267,  // 38.67% + 14%
+  NL: 0.5367,  // 38.67% + 15%
+  NS: 0.5267,  // 38.67% + 14%
+  NT: 0.5017,  // 38.67% + 11.5%
+  NU: 0.5067,  // 38.67% + 12%
+  ON: 0.5017,  // 38.67% + 11.5%
+  PE: 0.5467,  // 38.67% + 16%
+  QC: 0.5017,  // 38.67% + 11.5%
+  SK: 0.5067,  // 38.67% + 12%
+  YT: 0.5067,  // 38.67% + 12%
+};
+
+/**
+ * Get the combined federal + provincial corporate passive investment income tax rate.
+ */
+export function getPassiveInvestmentTaxRate(province: ProvinceCode | string): number {
+  return PASSIVE_INVESTMENT_TAX_RATES[province as ProvinceCode] ?? PASSIVE_INVESTMENT_TAX_RATES.ON;
+}

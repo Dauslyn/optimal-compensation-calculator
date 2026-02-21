@@ -6,6 +6,7 @@ import type { NarrativeInput } from '../../lib/narrativeSynthesis';
 
 interface WinnerStrategyCardProps {
   comparison: ComparisonResult;
+  monteCarloSuccessRate?: number;
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
@@ -16,6 +17,7 @@ const STRATEGY_COLORS: Record<string, string> = {
 
 export const WinnerStrategyCard = memo(function WinnerStrategyCard({
   comparison,
+  monteCarloSuccessRate,
 }: WinnerStrategyCardProps) {
   const lifetimeWinnerId = comparison.lifetimeWinner?.byObjective;
   const winner = comparison.strategies.find(
@@ -48,8 +50,7 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
         annualRetirementIncome: retirementYears > 0
           ? lt.totalLifetimeSpending / retirementYears
           : lt.totalLifetimeSpending / 20,
-        // TODO: Wire this to actual Monte Carlo success rate once available on StrategyResult
-        retirementSuccessRate: 0.85,
+        retirementSuccessRate: monteCarloSuccessRate ?? 0.85,
         objective: comparison.lifetimeWinner?.objective ?? 'balanced',
       } satisfies NarrativeInput)
     : null;
