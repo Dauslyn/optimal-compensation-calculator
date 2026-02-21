@@ -117,18 +117,25 @@ describe('Estate Calculation', () => {
 
   describe('corporate wind-up', () => {
     it('includes CDA as tax-free pass-through', () => {
-      const inputs = makeLifetimeInputs({
+      const withCDA = makeLifetimeInputs({
         cdaBalance: 100000,
         corporateInvestmentBalance: 500000,
       });
-      const result = calculateProjection(inputs);
-      const estate = result.yearlyResults[result.yearlyResults.length - 1].estate!;
+      const noCDA = makeLifetimeInputs({
+        cdaBalance: 0,
+        corporateInvestmentBalance: 500000,
+      });
 
-      // CDA should reduce effective wind-up tax
-      // Net estate should reflect tax-free CDA portion
-      // TODO: Compare against a zero-CDA scenario to assert CDA actually reduces
-      // corporateWindUpTax, rather than only checking netEstateValue > 0
-      expect(estate.netEstateValue).toBeGreaterThan(0);
+      const withCDAResult = calculateProjection(withCDA);
+      const noCDAResult = calculateProjection(noCDA);
+
+      const withCDAEstate = withCDAResult.yearlyResults[withCDAResult.yearlyResults.length - 1].estate!;
+      const noCDAEstate = noCDAResult.yearlyResults[noCDAResult.yearlyResults.length - 1].estate!;
+
+      // CDA allows tax-free capital dividend distribution at wind-up,
+      // so starting with CDA should result in lower wind-up tax
+      expect(withCDAEstate.corporateWindUpTax).toBeLessThanOrEqual(noCDAEstate.corporateWindUpTax);
+      expect(withCDAEstate.netEstateValue).toBeGreaterThan(0);
     });
 
     it('higher CDA balance reduces corporate wind-up tax burden', () => {

@@ -3,6 +3,7 @@
  */
 
 import type { DashboardLayout } from './types';
+import { WIDGET_REGISTRY } from './widgetRegistry';
 
 export const DASHBOARD_STORAGE_KEY = 'ccpc-dashboard-v1';
 
@@ -40,7 +41,8 @@ export function loadDashboardLayout(): DashboardLayout | null {
       console.warn('Invalid dashboard layout structure');
       return null;
     }
-    // TODO: Validate widget types against widgetRegistry and filter out unrecognized types
+    // Filter out widgets whose type is no longer in the registry (e.g. after a version upgrade)
+    data.layout.widgets = data.layout.widgets.filter(w => w.widgetType in WIDGET_REGISTRY);
     return data.layout;
   } catch (error) {
     console.error('Failed to load dashboard layout:', error);
