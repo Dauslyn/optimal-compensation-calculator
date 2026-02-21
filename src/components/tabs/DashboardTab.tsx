@@ -129,8 +129,8 @@ export const DashboardTab = memo(function DashboardTab({
   }, []);
 
   const handleReset = useCallback(() => {
-    setWidgets([]);
     clearDashboardLayout();
+    setWidgets([]);
   }, []);
 
   return (

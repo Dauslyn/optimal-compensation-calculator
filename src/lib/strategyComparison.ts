@@ -113,7 +113,7 @@ export function calculateAfterTaxWealth(
  * are preserved — only the salary strategy changes.
  */
 export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
-  const ympe = getTaxYearData(inputs.startingYear).cpp.ympe;
+  const ympe = getTaxYearData(inputs.startingYear ?? new Date().getFullYear()).cpp.ympe;
 
   // Define the 3 strategy variants
   const strategyDefs: Array<{
@@ -150,13 +150,18 @@ export function runStrategyComparison(inputs: UserInputs): ComparisonResult {
     },
   ];
 
-  // If the user has a fixed salary set, add their current setup as a 4th strategy
-  const hasCustomSetup = inputs.salaryStrategy === 'fixed' && (inputs.fixedSalaryAmount ?? 0) > 0;
+  // If the user has a fixed salary or dividends-only set, add their current setup as a 4th strategy
+  const hasCustomSetup =
+    (inputs.salaryStrategy === 'fixed' && inputs.fixedSalaryAmount && inputs.fixedSalaryAmount > 0) ||
+    inputs.salaryStrategy === 'dividends-only';
+  const currentSetupDescription = inputs.salaryStrategy === 'dividends-only'
+    ? 'Your current dividends-only setup — compare against the optimized strategies'
+    : `Your current fixed salary of ${formatCurrency(inputs.fixedSalaryAmount ?? 0)} — compare against the optimized strategies`;
   const strategyDefsWithCurrent = hasCustomSetup ? [
     {
       id: 'current-setup',
       label: 'My Current Setup',
-      description: `Your current fixed salary of ${formatCurrency(inputs.fixedSalaryAmount ?? 0)} — compare against the optimized strategies`,
+      description: currentSetupDescription,
       inputOverrides: {} as Partial<UserInputs>,
       isCurrentSetup: true as const,
     },

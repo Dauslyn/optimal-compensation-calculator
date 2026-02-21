@@ -17,7 +17,11 @@ interface WorkerRequest {
 }
 
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
-  const { inputs, options } = event.data;
-  const result = runMonteCarlo(inputs, options);
-  self.postMessage(result);
+  try {
+    const { inputs, options } = event.data;
+    const result = runMonteCarlo(inputs, options);
+    self.postMessage(result);
+  } catch (error) {
+    self.postMessage({ error: String(error) });
+  }
 };

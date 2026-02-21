@@ -23,11 +23,13 @@ describe('calculateInvestmentReturns', () => {
     });
 
     it('eRDTOH increases by 38.33% of Canadian dividends', () => {
+      // TODO: Use independently calculated expected values instead of cross-referencing result fields
       const result = calculateInvestmentReturns(BALANCE, 0.085, 100, 0, 0, 0);
       expect(result.eRDTOHIncrease).toBeCloseTo(result.canadianDividends * 0.3833, 0);
     });
 
     it('CDA increases by 50% of realized capital gains', () => {
+      // TODO: Use independently calculated expected values instead of cross-referencing result fields
       const result = calculateInvestmentReturns(BALANCE, 0.085, 100, 0, 0, 0);
       expect(result.CDAIncrease).toBeCloseTo(result.realizedCapitalGain * 0.5, 0);
     });
@@ -64,6 +66,7 @@ describe('calculateInvestmentReturns', () => {
     });
 
     it('nRDTOH includes taxable capital gains and is reduced by 15% withholding on foreign dividends', () => {
+      // TODO: Replace result.foreignIncome and result.realizedCapitalGain with hardcoded expected values
       const result = calculateInvestmentReturns(BALANCE, 0.095, 0, 100, 0, 0);
       // Per ITA s.129(3): nRDTOH = (foreignIncome + taxableCapGain) * 0.3067 - foreignDividends * 0.15
       // foreignDividends = 1.5% of balance = 15000

@@ -6,7 +6,7 @@ import { calculateCPP, calculateEI } from './payrollTax';
  * 20% on provincial tax over $5,554
  * 36% on provincial tax over $7,108
  */
-export function calculateOntarioSurtax(provincialTax: number): number {
+function calculateOntarioSurtax(provincialTax: number): number {
     if (provincialTax <= TAX_RATES.ontarioSurtax.firstThreshold) return 0;
 
     let surtax = 0;
@@ -28,7 +28,7 @@ export function calculateOntarioSurtax(provincialTax: number): number {
  * Calculate Ontario Health Premium based on taxable income
  * Graduated premium from $0 to $900 depending on income
  */
-export function calculateOntarioHealthPremium(taxableIncome: number): number {
+function calculateOntarioHealthPremium(taxableIncome: number): number {
     const brackets = TAX_RATES.ontarioHealthPremium.brackets;
 
     // Find the applicable bracket
@@ -55,7 +55,7 @@ export function calculateOntarioHealthPremium(taxableIncome: number): number {
  * Calculate personal income tax on salary (simple version)
  * Includes federal, provincial, Ontario surtax, and health premium
  */
-export function calculateSalaryTax(salary: number, rrspDeduction: number = 0): number {
+function calculateSalaryTax(salary: number, rrspDeduction: number = 0): number {
     const breakdown = calculateSalaryTaxDetailed(salary, rrspDeduction);
     return breakdown.totalTax;
 }
@@ -66,7 +66,7 @@ export function calculateSalaryTax(salary: number, rrspDeduction: number = 0): n
  * @param rrspDeduction - RRSP contribution to deduct from taxable income
  * @returns Detailed tax breakdown
  */
-export function calculateSalaryTaxDetailed(salary: number, rrspDeduction: number = 0): {
+function calculateSalaryTaxDetailed(salary: number, rrspDeduction: number = 0): {
     federalTax: number;
     provincialTax: number;
     ontarioSurtax: number;
@@ -127,7 +127,7 @@ export function calculateSalaryTaxDetailed(salary: number, rrspDeduction: number
  * - Ontario surtax on total provincial tax
  * - Ontario health premium on total taxable income
  */
-export function calculateCombinedPersonalTax(
+function calculateCombinedPersonalTax(
     salary: number,
     eligibleDividends: number = 0,
     nonEligibleDividends: number = 0,
@@ -214,7 +214,7 @@ export function calculateCombinedPersonalTax(
 /**
  * Calculate tax on eligible dividends ONLY (standalone - for backwards compatibility)
  */
-export function calculateEligibleDividendTax(dividends: number): number {
+function calculateEligibleDividendTax(dividends: number): number {
     if (dividends <= 0) return 0;
     const result = calculateCombinedPersonalTax(0, dividends, 0, 0);
     return result.totalTax;
@@ -223,7 +223,7 @@ export function calculateEligibleDividendTax(dividends: number): number {
 /**
  * Calculate tax on non-eligible dividends ONLY (standalone - for backwards compatibility)
  */
-export function calculateNonEligibleDividendTax(dividends: number): number {
+function calculateNonEligibleDividendTax(dividends: number): number {
     if (dividends <= 0) return 0;
     const result = calculateCombinedPersonalTax(0, 0, dividends, 0);
     return result.totalTax;
@@ -232,7 +232,7 @@ export function calculateNonEligibleDividendTax(dividends: number): number {
 /**
  * Calculate required gross salary to achieve a target after-tax amount
  */
-export function calculateRequiredSalary(
+function calculateRequiredSalary(
     targetAfterTax: number,
     maxIterations: number = 10
 ): number {

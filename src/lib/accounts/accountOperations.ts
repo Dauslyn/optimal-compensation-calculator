@@ -1,5 +1,4 @@
 import type { NotionalAccounts, DividendFunding, InvestmentReturns } from '../types';
-import { TAX_RATES } from '../taxRates';
 
 /**
  * Update notional accounts based on investment returns
@@ -212,81 +211,3 @@ export function processSalaryPayment(
     };
 }
 
-/**
- * Add a capital gain to the CDA
- */
-export function addCapitalGainToCDA(
-    accounts: NotionalAccounts,
-    capitalGain: number
-): NotionalAccounts {
-    return {
-        ...accounts,
-        CDA: accounts.CDA + capitalGain * 0.5, // 50% of capital gain
-    };
-}
-
-/**
- * Add RDTOH from investment income
- */
-export function addRDTOH(
-    accounts: NotionalAccounts,
-    investmentIncome: number,
-    canadianDividends: number
-): NotionalAccounts {
-    // nRDTOH: 30.67% of investment income (except Canadian dividends)
-    const nRDTOHIncrease = investmentIncome * 0.3067;
-
-    // eRDTOH: 38.33% of Canadian dividends
-    const eRDTOHIncrease = canadianDividends * 0.3833;
-
-    return {
-        ...accounts,
-        nRDTOH: accounts.nRDTOH + nRDTOHIncrease,
-        eRDTOH: accounts.eRDTOH + eRDTOHIncrease,
-    };
-}
-
-/**
- * Add income to GRIP
- */
-export function addToGRIP(
-    accounts: NotionalAccounts,
-    generalRateIncome: number
-): NotionalAccounts {
-    return {
-        ...accounts,
-        GRIP: accounts.GRIP + generalRateIncome,
-    };
-}
-
-/**
- * @deprecated Uses hardcoded TAX_RATES. The RDTOH refund rate (38.33%) is
- * federal and doesn't vary by province, but this function should accept
- * the rate as a parameter for consistency.
- *
- * Calculate total available dividend capacity
- */
-export function calculateDividendCapacity(accounts: NotionalAccounts): {
-    capitalDividendCapacity: number;
-    eligibleDividendCapacity: number;
-    nonEligibleDividendCapacity: number;
-    totalCapacity: number;
-} {
-    const capitalDividendCapacity = accounts.CDA;
-
-    const eligibleFromRDTOH = accounts.eRDTOH / TAX_RATES.rdtoh.refundRate;
-    const eligibleFromGRIP = accounts.GRIP;
-    const eligibleDividendCapacity = eligibleFromRDTOH + eligibleFromGRIP;
-
-    const nonEligibleDividendCapacity = accounts.nRDTOH / TAX_RATES.rdtoh.refundRate;
-
-    const totalCapacity =
-        capitalDividendCapacity + eligibleDividendCapacity + nonEligibleDividendCapacity;
-
-    return {
-        capitalDividendCapacity,
-        eligibleDividendCapacity,
-        nonEligibleDividendCapacity,
-        totalCapacity,
-    };
-}

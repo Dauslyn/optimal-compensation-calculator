@@ -7,8 +7,4 @@ export {
     updateAccountsFromReturns,
     depleteAccountsWithRates,
     processSalaryPayment,
-    addCapitalGainToCDA,
-    addRDTOH,
-    addToGRIP,
-    calculateDividendCapacity,
 } from './accountOperations';

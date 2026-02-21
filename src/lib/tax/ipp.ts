@@ -57,7 +57,7 @@ interface IPPMemberInfo {
  * Calculate maximum pension benefit per year of service
  */
 function getMaxBenefitPerYear(year: number): number {
-  const limits = IPP_LIMITS[year] || IPP_LIMITS[2026];
+  const limits = IPP_LIMITS[year] ?? IPP_LIMITS[2026];
   return limits.maxPensionableBenefit;
 }
 
@@ -101,6 +101,7 @@ function calculatePresentValueFactor(
   const annuityYears = 25; // Average life expectancy from age 65
 
   // Present value of annuity at retirement
+  if (discountRate === 0) return annuityYears;
   const pvAnnuity = (1 - Math.pow(1 + discountRate, -annuityYears)) / discountRate;
 
   // Discount back to current age

@@ -240,7 +240,7 @@ describe('lifetime winner determination', () => {
       annualCorporateRetainedEarnings: 200000,
       corporateInvestmentBalance: 500000,
       investmentReturnRate: 0.06,
-      inflationRate: 0.02,
+      expectedInflationRate: 0.02,
       currentAge: 55,
       retirementAge: 65,
       planningEndAge: 80,

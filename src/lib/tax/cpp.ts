@@ -337,6 +337,11 @@ export function applyEarlyLateAdjustment(
   annualBenefitAt65: number,
   startAge: number,
 ): number {
+  // Age is clamped to [60, 70] per CRA rules. The three branches handle:
+  //   < 65: early reduction at 0.6%/month (max 36% at age 60)
+  //   = 65: no adjustment (factor = 1)
+  //   > 65: late increase at 0.7%/month (max 42% at age 70)
+  // These rates are asymmetric by design (CRA incentivizes deferral).
   const clampedAge = Math.max(MIN_CPP_START_AGE, Math.min(MAX_CPP_START_AGE, startAge));
   const monthsFromNormal = (clampedAge - NORMAL_CPP_AGE) * 12;
 

@@ -77,6 +77,7 @@ export interface RRIFYearResult {
 export function getRRIFMinimumRate(age: number): number {
   if (age < 55) return 0;
   if (age >= RRIF_MAX_RATE_AGE) return RRIF_MAX_RATE;
+  // Ages beyond table get 0% rate — effectively no minimum withdrawal required
   return RRIF_MINIMUM_RATES[age] ?? 0;
 }
 
