@@ -234,7 +234,7 @@ function App() {
             />
           ) : (
             <section className="glass-card p-6">
-              <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} />
+              <InputFormClean onCalculate={handleCalculate} initialInputs={initialInputs} fromShareLink={sharedLinkLoaded} />
             </section>
           )}
 
