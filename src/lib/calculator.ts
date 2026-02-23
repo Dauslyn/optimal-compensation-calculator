@@ -739,8 +739,8 @@ function calculateYear(
     inputs.fixedIncomePercent
   );
 
-  // Update accounts with investment returns
-  accounts = updateAccountsFromReturns(accounts, investmentReturns);
+  // Update accounts with investment returns (province-specific passive tax rate)
+  accounts = updateAccountsFromReturns(accounts, investmentReturns, getPassiveInvestmentTaxRate(inputs.province));
 
   // Calculate required income (base + optional contributions)
   let requiredIncome = inflatedRequiredIncome;
@@ -1285,7 +1285,7 @@ function calculateRetirementYear(
     inputs.internationalEquityPercent,
     inputs.fixedIncomePercent,
   );
-  accounts = updateAccountsFromReturns(accounts, investmentReturns);
+  accounts = updateAccountsFromReturns(accounts, investmentReturns, getPassiveInvestmentTaxRate(inputs.province));
 
   // 2. RRSP → RRIF conversion check
   let isRRIF = inputs.isRRIF;

@@ -2,24 +2,37 @@ import type { NotionalAccounts, DividendFunding, InvestmentReturns } from '../ty
 
 /**
  * Update notional accounts based on investment returns
+ *
+ * @param accounts Current notional account balances
+ * @param returns Investment return decomposition for the year
+ * @param passiveInvestmentTaxRate Combined federal + provincial passive investment income
+ *   tax rate (e.g., 0.5017 for Ontario). Sourced from getPassiveInvestmentTaxRate(province).
  */
 export function updateAccountsFromReturns(
     accounts: NotionalAccounts,
-    returns: InvestmentReturns
+    returns: InvestmentReturns,
+    passiveInvestmentTaxRate: number
 ): NotionalAccounts {
     // Calculate corporate tax on investment income
-    // Canadian dividends: Already taxed at corporate level, generates eRDTOH (38.33% refundable)
-    // Foreign income + Capital gains: Taxed at 50.17% total (26.5% non-refundable + 30.67% refundable via nRDTOH)
+    // Canadian dividends: Part IV tax (38.33%) is FULLY refundable via eRDTOH — no net cash impact
+    // Foreign income + Capital gains: Taxed at province-specific passive rate
+    //   → Refundable portion tracked in nRDTOH (recovered when paying dividends)
+    //   → Non-refundable portion permanently reduces corporate balance
 
     const taxableCapitalGain = returns.realizedCapitalGain * 0.5;
     const taxableInvestmentIncome = returns.foreignIncome + taxableCapitalGain;
 
-    // Only deduct non-refundable portion (26.5%) from corporate investments
-    // The refundable portion (30.67%) is already tracked in nRDTOH and will be recovered when paying dividends
-    const nonRefundableTax = taxableInvestmentIncome * 0.265;
+    // Total passive tax on non-dividend investment income
+    const totalPassiveTax = taxableInvestmentIncome * passiveInvestmentTaxRate;
 
-    // Canadian dividends are already after-tax, no additional deduction needed
-    // They just generate eRDTOH which will be refunded when paying eligible dividends
+    // Non-refundable = total tax minus the refundable nRDTOH portion
+    // nRDTOH already accounts for foreign withholding tax credit (reduces refundable amount),
+    // so the non-refundable portion implicitly includes the foreign WHT impact
+    const nonRefundableTax = Math.max(0, totalPassiveTax - returns.nRDTOHIncrease);
+
+    // Canadian dividends: Part IV tax (38.33%) is fully refundable via eRDTOH.
+    // In a steady-state model with annual dividend payments, this is approximately a wash.
+    // We track eRDTOH separately and recover it when paying eligible dividends.
 
     // Net increase to corporate investments:
     // Total return minus only the non-refundable tax

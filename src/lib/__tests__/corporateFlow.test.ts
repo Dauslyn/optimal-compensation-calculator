@@ -690,8 +690,9 @@ describe('Corporate Flow — Multi-Year Account Conservation', () => {
     // Upper bound: no refunds came from eRDTOH
     expect(finalERDTOH).toBeLessThanOrEqual(30000 + cumulativeERDTOHIncrease + 1);
     // Lower bound: all refunds came from eRDTOH (conservative)
+    // Use -0.01 tolerance for floating-point rounding in tax calculations
     expect(finalERDTOH).toBeGreaterThanOrEqual(
-      Math.max(0, 30000 + cumulativeERDTOHIncrease - cumulativeRDTOHRefunds));
+      Math.max(-0.01, 30000 + cumulativeERDTOHIncrease - cumulativeRDTOHRefunds));
     // eRDTOH increases should be positive (investments generate Canadian dividends)
     expect(cumulativeERDTOHIncrease).toBeGreaterThan(0);
   });
