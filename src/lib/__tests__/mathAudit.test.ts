@@ -1047,7 +1047,7 @@ describe('Corporate Passive Income Tax Split — Province-Specific Non-Refundabl
     const expectedNonRefundable = totalPassiveTax - returns.nRDTOHIncrease;
 
     const accounts: NotionalAccounts = {
-      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance,
+      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance, corporateACB: balance,
     };
     const updated = updateAccountsFromReturns(accounts, returns, passiveRate);
 
@@ -1068,7 +1068,7 @@ describe('Corporate Passive Income Tax Split — Province-Specific Non-Refundabl
     const expectedNonRefundable = totalPassiveTax - returns.nRDTOHIncrease;
 
     const accounts: NotionalAccounts = {
-      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance,
+      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance, corporateACB: balance,
     };
     const updated = updateAccountsFromReturns(accounts, returns, passiveRate);
     const balanceIncrease = updated.corporateInvestments - balance;
@@ -1087,7 +1087,7 @@ describe('Corporate Passive Income Tax Split — Province-Specific Non-Refundabl
     const expectedNonRefundable = totalPassiveTax - returns.nRDTOHIncrease;
 
     const accounts: NotionalAccounts = {
-      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance,
+      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance, corporateACB: balance,
     };
     const updated = updateAccountsFromReturns(accounts, returns, passiveRate);
     const balanceIncrease = updated.corporateInvestments - balance;
@@ -1101,7 +1101,7 @@ describe('Corporate Passive Income Tax Split — Province-Specific Non-Refundabl
     // the total passive tax (passiveRate * taxableInvestmentIncome).
     // The old 0.265 rate violated this invariant by missing the foreign WHT component.
     const accounts: NotionalAccounts = {
-      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance,
+      CDA: 0, eRDTOH: 0, nRDTOH: 0, GRIP: 0, corporateInvestments: balance, corporateACB: balance,
     };
 
     const passiveRate = getPassiveInvestmentTaxRate('ON');

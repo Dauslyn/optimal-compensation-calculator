@@ -30,7 +30,7 @@ import {
   depleteAccountsWithRates,
   processSalaryPayment,
 } from './accounts';
-import { CG_INCLUSION_RATE } from './accounts/investmentReturns';
+import { CG_INCLUSION_RATE, NERDTOH_RATE } from './accounts/investmentReturns';
 import {
   calculateIPPContribution,
   estimateIPPAdminCosts,
@@ -383,6 +383,7 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
     nRDTOH: inputs.nRDTOHBalance,
     GRIP: inputs.gripBalance,
     corporateInvestments: inputs.corporateInvestmentBalance,
+    corporateACB: inputs.corporateInvestmentBalance, // Assume no embedded gains at projection start
   };
 
   // Track RRSP room - start with user's existing room
@@ -687,6 +688,7 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
       age: lastAge,
       province: inputs.province,
       inflationRate,
+      hasSpouse: inputs.hasSpouse ?? false,
       rrspBalance: actualRRSPBalance,
       tfsaBalance: actualTFSABalance,
       corporateAccounts: currentAccounts,
@@ -1132,7 +1134,17 @@ function calculateYear(
                           (generalIncome * taxData.corporate.general);
 
   const afterTaxBusinessIncome = taxableBusinessIncome - corpTaxOnActiveIncome;
+  // When salary pushed corp negative (timing deficit), part of business income
+  // repays that deficit rather than adding new investment capital.
+  // Only the portion that creates real retained earnings increases ACB.
+  const priorCorpBalance = accounts.corporateInvestments;
   accounts.corporateInvestments += afterTaxBusinessIncome;
+  if (priorCorpBalance < 0) {
+    // Only the amount above zero is true new capital
+    accounts.corporateACB += Math.max(0, afterTaxBusinessIncome + priorCorpBalance);
+  } else {
+    accounts.corporateACB += afterTaxBusinessIncome;
+  }
 
   // Investment income tax (passive income is taxed at higher rate with RDTOH refund mechanism)
   const taxableInvestmentIncome = investmentReturns.foreignIncome + taxableCapitalGain;
@@ -1487,6 +1499,7 @@ interface EstateInputs {
   age: number;
   province: string;
   inflationRate: number;
+  hasSpouse: boolean;
 
   // Final balances at time of death
   rrspBalance: number;    // or RRIF balance
@@ -1499,13 +1512,15 @@ interface EstateInputs {
  * Calculate estate value at death (terminal year deemed dispositions).
  *
  * CRA rules at death:
- * 1. RRSP/RRIF — deemed disposed, full balance taxed as income (unless rolled to spouse)
- * 2. Corporate wind-up — deemed dividend on surplus:
- *    - CDA portion: tax-free capital dividend to estate
- *    - Remainder: taxed as non-eligible dividend
+ * 1. RRSP/RRIF — deemed disposed, full balance taxed as income
+ *    - ITA s.70(6): if spouse is beneficiary, rolls over tax-deferred
+ * 2. Corporate wind-up:
+ *    a. Deemed disposition of assets at FMV (ITA s.69(1)(b)) — corporate CG tax
+ *    b. Surplus distributed as dividends: CDA (tax-free), GRIP (eligible), remainder (non-eligible)
  * 3. TFSA — passes to beneficiary tax-free (no deemed disposition)
  * 4. CPP death benefit — flat $2,500 lump sum
  * 5. IPP — remaining fund taxed similar to RRSP (commuted value is income)
+ *    - ITA 60(l)(v): if spouse exists, rolls to spouse's RRSP tax-deferred
  */
 function calculateEstateYear(
   inputs: EstateInputs,
@@ -1513,12 +1528,25 @@ function calculateEstateYear(
 ): EstateBreakdown {
   const { province } = inputs;
 
-  // 1. Deemed RRSP/RRIF disposition — full balance is income in terminal year
+  // === 1. RRSP/RRIF + IPP deemed disposition ===
   const rrifBalance = inputs.rrspBalance;
   const ippBalance = inputs.ippFundBalance;
-  const totalDeemedIncome = rrifBalance + ippBalance;
+  const spouseRolloverApplied = inputs.hasSpouse === true;
 
-  // Tax on deemed income (RRSP/RRIF + IPP treated as regular income)
+  let totalDeemedIncome: number;
+  let spouseRolloverAmount: number;
+
+  if (spouseRolloverApplied) {
+    // ITA s.70(6): RRSP/RRIF rolls to spouse tax-deferred
+    // ITA 60(l)(v): IPP commuted value rolls to spouse's RRSP
+    totalDeemedIncome = 0;
+    spouseRolloverAmount = rrifBalance + ippBalance;
+  } else {
+    totalDeemedIncome = rrifBalance + ippBalance;
+    spouseRolloverAmount = 0;
+  }
+
+  // Tax on deemed income (only if no spousal rollover)
   const terminalIncomeTax = totalDeemedIncome > 0
     ? calculatePersonalTaxForYear(
         totalDeemedIncome, // treated as ordinary income
@@ -1527,24 +1555,38 @@ function calculateEstateYear(
       ).totalTax
     : 0;
 
-  // 2. Corporate wind-up — deemed dividend on all remaining corporate value
-  // Only positive corporate balances create a wind-up liability
+  // === 2a. Corporate deemed disposition — unrealized CG tax (ITA s.69(1)(b)) ===
   const corpTotal = Math.max(0, inputs.corporateAccounts.corporateInvestments);
-  const cdaBalance = Math.max(0, inputs.corporateAccounts.CDA);
+  const corporateACB = Math.max(0, inputs.corporateAccounts.corporateACB);
+  const unrealizedGain = Math.max(0, corpTotal - corporateACB);
+
+  // Corporate-level capital gains tax on unrealized appreciation at death
+  const taxableCG = unrealizedGain * CG_INCLUSION_RATE; // 50% inclusion rate
+  const passiveRate = getPassiveInvestmentTaxRate(province);
+  const totalCGTax = taxableCG * passiveRate;
+
+  // Refundable portion goes to nRDTOH (will be recovered when paying wind-up dividends)
+  // No foreign WHT credit on unrealized gains — these are embedded portfolio appreciation
+  const nRDTOHFromCG = taxableCG * NERDTOH_RATE;
+  const nonRefundableCGTax = Math.max(0, totalCGTax - nRDTOHFromCG);
+
+  // Adjust notional accounts for wind-up after CG tax
+  const adjustedCorpTotal = corpTotal - nonRefundableCGTax;
+  const adjustedCDA = Math.max(0, inputs.corporateAccounts.CDA) + unrealizedGain * (1 - CG_INCLUSION_RATE); // non-taxable half → CDA
+  const adjustedNRDTOH = Math.max(0, inputs.corporateAccounts.nRDTOH) + nRDTOHFromCG;
   const eRDTOH = Math.max(0, inputs.corporateAccounts.eRDTOH);
-  const nRDTOH = Math.max(0, inputs.corporateAccounts.nRDTOH);
   const gripBalance = Math.max(0, inputs.corporateAccounts.GRIP);
 
+  // === 2b. Corporate wind-up — distribute remaining value as dividends ===
   // CDA portion passes tax-free as capital dividend
-  const capitalDividendPortion = Math.min(cdaBalance, corpTotal);
-  const remainingCorpAfterCDA = Math.max(0, corpTotal - capitalDividendPortion);
+  const capitalDividendPortion = Math.min(adjustedCDA, adjustedCorpTotal);
+  const remainingCorpAfterCDA = Math.max(0, adjustedCorpTotal - capitalDividendPortion);
 
-  // GRIP portion pays eligible dividends (lower tax rate)
+  // GRIP portion pays eligible dividends (lower personal tax rate)
   const eligibleDividendPortion = Math.min(gripBalance, remainingCorpAfterCDA);
   const nonEligibleDividendPortion = Math.max(0, remainingCorpAfterCDA - eligibleDividendPortion);
 
-  // Tax on corporate wind-up dividends
-  // RDTOH refunds reduce corporate tax, not personal — but at wind-up, the personal tax matters
+  // Personal tax on corporate wind-up dividends
   const corpWindUpTax = (eligibleDividendPortion > 0 || nonEligibleDividendPortion > 0)
     ? calculatePersonalTaxForYear(
         0,
@@ -1556,22 +1598,26 @@ function calculateEstateYear(
     : 0;
 
   // RDTOH refunds at wind-up (corporation gets refund on dividend payment)
+  const totalRDTOH = eRDTOH + adjustedNRDTOH;
   const rdtohRefund = Math.min(
-    eRDTOH + nRDTOH,
+    totalRDTOH,
     (eligibleDividendPortion + nonEligibleDividendPortion) * taxData.rdtoh.refundRate,
   );
 
-  // 3. TFSA passes tax-free
+  // === 3. TFSA passes tax-free ===
   const tfsaPassThrough = inputs.tfsaBalance;
 
-  // 4. CPP death benefit (flat $2,500)
+  // === 4. CPP death benefit (flat $2,500) ===
   const cppDeathBenefit = 2500;
 
-  // 5. Net estate value
-  // After-tax registered accounts: total balance minus tax on deemed disposition
-  const afterTaxRegistered = Math.max(0, totalDeemedIncome - terminalIncomeTax);
+  // === 5. Net estate value ===
+  // Registered accounts: if spousal rollover, full balance retained (tax-deferred);
+  // otherwise, balance minus deemed disposition tax
+  const afterTaxRegistered = spouseRolloverApplied
+    ? spouseRolloverAmount  // Full balance retained by spouse (tax deferred, not eliminated)
+    : Math.max(0, totalDeemedIncome - terminalIncomeTax);
 
-  // After-tax corporate: CDA (tax-free) + taxable dividends minus tax + RDTOH refund
+  // Corporate: CDA (tax-free) + taxable dividends minus personal tax + RDTOH refund
   const afterTaxCorp = capitalDividendPortion + Math.max(0,
     eligibleDividendPortion + nonEligibleDividendPortion - corpWindUpTax
   ) + rdtohRefund;
@@ -1580,9 +1626,12 @@ function calculateEstateYear(
 
   return {
     terminalRRIFTax: terminalIncomeTax,
+    corporateCapitalGainsTax: nonRefundableCGTax,
     corporateWindUpTax: corpWindUpTax,
     tfsaPassThrough,
     netEstateValue,
+    spouseRolloverApplied,
+    spouseRolloverAmount,
   };
 }
 

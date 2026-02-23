@@ -38,12 +38,17 @@ export function updateAccountsFromReturns(
     // Total return minus only the non-refundable tax
     const afterTaxReturn = returns.totalReturn - nonRefundableTax;
 
+    // ACB increases by the tax-paid portion of the return (income minus tax).
+    // Unrealized capital appreciation does NOT increase ACB — it's the embedded gain we track.
+    const acbIncrease = afterTaxReturn - returns.unrealizedCapitalGain;
+
     return {
         CDA: accounts.CDA + returns.CDAIncrease,
         eRDTOH: accounts.eRDTOH + returns.eRDTOHIncrease,
         nRDTOH: accounts.nRDTOH + returns.nRDTOHIncrease,
         GRIP: accounts.GRIP + returns.GRIPIncrease,
         corporateInvestments: accounts.corporateInvestments + afterTaxReturn,
+        corporateACB: accounts.corporateACB + acbIncrease,
     };
 }
 
@@ -196,6 +201,15 @@ export function depleteAccountsWithRates(
         funding.eligibleDividends +
         funding.nonEligibleDividends;
 
+    // Proportional ACB reduction (CRA average-cost method, ITA s.47)
+    // When corporate investments decrease from dividend payments, ACB decreases proportionally
+    // to maintain the same gain-to-value ratio across the remaining portfolio.
+    const totalReduction = accounts.corporateInvestments - updatedAccounts.corporateInvestments;
+    if (accounts.corporateInvestments > 0 && totalReduction > 0) {
+        const retainedRatio = 1 - totalReduction / accounts.corporateInvestments;
+        updatedAccounts.corporateACB = accounts.corporateACB * Math.max(0, retainedRatio);
+    }
+
     return { funding, updatedAccounts, rdtohRefund: totalRdtohRefund };
 }
 
@@ -217,10 +231,20 @@ export function processSalaryPayment(
     employerCPP: number
 ): NotionalAccounts {
     const totalCost = salary + employerCPP + employerEI;
+    const oldBalance = accounts.corporateInvestments;
+
+    // Proportional ACB reduction when balance is positive.
+    // When corporateInvestments goes negative (drawing from current-year earnings
+    // before year-end retained earnings are added back), ACB stays unchanged —
+    // the negative balance represents a timing difference, not asset liquidation.
+    const newACB = oldBalance > 0
+        ? accounts.corporateACB * Math.max(0, (oldBalance - totalCost) / oldBalance)
+        : accounts.corporateACB;
 
     return {
         ...accounts,
-        corporateInvestments: accounts.corporateInvestments - totalCost,
+        corporateInvestments: oldBalance - totalCost,
+        corporateACB: newACB,
     };
 }
 

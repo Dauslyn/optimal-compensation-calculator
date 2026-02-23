@@ -181,6 +181,10 @@ export interface NotionalAccounts {
   nRDTOH: number;
   GRIP: number;
   corporateInvestments: number;
+  /** Adjusted cost base of corporate investments.
+   *  Tracks the tax-paid capital — unrealizedGain = corporateInvestments - corporateACB.
+   *  Used at estate wind-up to compute deemed disposition CG tax (ITA s.69(1)(b)). */
+  corporateACB: number;
 }
 
 // Dividend funding breakdown
@@ -258,9 +262,12 @@ export interface BalanceTracking {
 // Estate liquidation breakdown (terminal year)
 export interface EstateBreakdown {
   terminalRRIFTax: number;
-  corporateWindUpTax: number;
+  corporateCapitalGainsTax: number;  // Corporate-level CG tax on unrealized gains at death (ITA s.69(1)(b))
+  corporateWindUpTax: number;         // Personal tax on wind-up dividends
   tfsaPassThrough: number;
   netEstateValue: number;
+  spouseRolloverApplied: boolean;     // Whether ITA s.70(6) spousal rollover was applied
+  spouseRolloverAmount: number;       // RRSP/RRIF + IPP rolled to spouse (tax-deferred)
 }
 
 // Yearly result

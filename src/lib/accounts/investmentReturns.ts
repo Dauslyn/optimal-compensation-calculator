@@ -28,7 +28,7 @@ const FIXED_INCOME_TURNOVER_CG    = 0.000;  // bonds: zero realized CG over full
 const FOREIGN_WITHHOLDING_RATE = 0.15;
 
 // nRDTOH refundable rate on passive investment income (Part I.3 tax)
-const NERDTOH_RATE = 0.3067;
+export const NERDTOH_RATE = 0.3067;
 
 // eRDTOH: Part IV tax on Canadian eligible dividends received (s.186)
 const ERDTOH_RATE = 0.3833;

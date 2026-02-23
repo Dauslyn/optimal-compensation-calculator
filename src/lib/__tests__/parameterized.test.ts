@@ -74,7 +74,7 @@ const FP_EPSILON = -1e-6;
  *     only check they are finite numbers.
  *   - corporateInvestments is finite.
  */
-function expectValidNotionalAccounts(yearlyResults: { notionalAccounts: { CDA: number; eRDTOH: number; nRDTOH: number; GRIP: number; corporateInvestments: number } }[]) {
+function expectValidNotionalAccounts(yearlyResults: { notionalAccounts: { CDA: number; eRDTOH: number; nRDTOH: number; GRIP: number; corporateInvestments: number; corporateACB: number } }[]) {
   for (const yr of yearlyResults) {
     expect(yr.notionalAccounts.CDA).not.toBeNaN();
     expect(Number.isFinite(yr.notionalAccounts.CDA)).toBe(true);
@@ -84,6 +84,8 @@ function expectValidNotionalAccounts(yearlyResults: { notionalAccounts: { CDA: n
     expect(Number.isFinite(yr.notionalAccounts.GRIP)).toBe(true);
     expect(yr.notionalAccounts.corporateInvestments).not.toBeNaN();
     expect(Number.isFinite(yr.notionalAccounts.corporateInvestments)).toBe(true);
+    expect(yr.notionalAccounts.corporateACB).not.toBeNaN();
+    expect(Number.isFinite(yr.notionalAccounts.corporateACB)).toBe(true);
   }
 }
 

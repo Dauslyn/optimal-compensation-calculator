@@ -368,6 +368,7 @@ describe('Corporate Cash Floor - Dividend Capping', () => {
       nRDTOH: 50000,
       GRIP: 100000,
       corporateInvestments: 10000, // Only $10k cash
+      corporateACB: 10000,
     };
     const result = depleteAccountsWithRates(
       200000, // Want $200k after-tax but only $10k in corp
@@ -391,6 +392,7 @@ describe('Corporate Cash Floor - Dividend Capping', () => {
       nRDTOH: 50000,
       GRIP: 100000,
       corporateInvestments: 0,
+      corporateACB: 0,
     };
     const result = depleteAccountsWithRates(
       100000,
