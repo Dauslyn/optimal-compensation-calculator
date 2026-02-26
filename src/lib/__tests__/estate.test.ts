@@ -117,13 +117,22 @@ describe('Estate Calculation', () => {
 
   describe('corporate wind-up', () => {
     it('includes CDA as tax-free pass-through', () => {
+      // Use fixed salary (> required income after-tax) so that no dividends are paid
+      // during accumulation.  This preserves the starting CDA difference all the way
+      // to the estate year, making the assertion predictable.
+      // (With dynamic strategy, the extra CDA is efficiently consumed early via capital
+      // dividends; both scenarios then converge to similar CDA at death.)
       const withCDA = makeLifetimeInputs({
         cdaBalance: 100000,
         corporateInvestmentBalance: 500000,
+        salaryStrategy: 'fixed' as const,
+        fixedSalaryAmount: 200000, // after-tax well exceeds requiredIncome → no dividends
       });
       const noCDA = makeLifetimeInputs({
         cdaBalance: 0,
         corporateInvestmentBalance: 500000,
+        salaryStrategy: 'fixed' as const,
+        fixedSalaryAmount: 200000,
       });
 
       const withCDAResult = calculateProjection(withCDA);
@@ -139,12 +148,18 @@ describe('Estate Calculation', () => {
     });
 
     it('higher CDA balance reduces corporate wind-up tax burden', () => {
+      // Same rationale: use fixed salary so CDA accumulates but is not consumed.
+      // With no RDTOH pools and no dividends paid during accumulation, the only
+      // CDA source is realized capital gains from ETF turnover — both scenarios
+      // generate the same incremental CDA, so the starting $200K difference persists.
       const lowCDA = makeLifetimeInputs({
         cdaBalance: 0,
         corporateInvestmentBalance: 500000,
         eRDTOHBalance: 0,
         nRDTOHBalance: 0,
         gripBalance: 0,
+        salaryStrategy: 'fixed' as const,
+        fixedSalaryAmount: 200000,
       });
       const highCDA = makeLifetimeInputs({
         cdaBalance: 200000,
@@ -152,6 +167,8 @@ describe('Estate Calculation', () => {
         eRDTOHBalance: 0,
         nRDTOHBalance: 0,
         gripBalance: 0,
+        salaryStrategy: 'fixed' as const,
+        fixedSalaryAmount: 200000,
       });
 
       const lowResult = calculateProjection(lowCDA);

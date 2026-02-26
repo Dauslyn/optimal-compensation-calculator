@@ -956,3 +956,86 @@ describe('Corporate Flow — ACB Tracking', () => {
     expect(Number.isFinite(yr1.notionalAccounts.corporateACB)).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGRESSION: Bug 1 — dynamic strategy double-deducted salary from corp balance
+//
+// Root cause: processSalaryPayment() deducted salary from corporateInvestments,
+// THEN line 1151 added afterTaxBusinessIncome (which was already NET of salary).
+// This caused a double-deduction of ~$300K/yr, sending corp to -$5M by retirement.
+//
+// Fix: line 1151 now adds (activeBusinessIncome - corpTaxOnActiveIncome - employerHealthTax)
+// instead of afterTaxBusinessIncome.  Net effect on corp = afterTaxBusinessIncome ✓
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Corporate Flow — Dynamic Strategy Double-Deduction Regression (Bug 1)', () => {
+  it('corp balance should be POSITIVE after year 1 with income > spending', () => {
+    // Scenario: $500K corporate income, $180K after-tax target, $0 starting corp balance.
+    // Dynamic strategy: dividends = $0 (empty corp), salary covers the full $180K.
+    // Corp must retain roughly $180-220K after paying salary and corporate tax.
+    //
+    // Before fix: corp went to ~ -$121K in year 1 (salary double-deducted).
+    // After fix:  corp should be > $0.
+    const inputs = createInputs({
+      corporateInvestmentBalance: 0,
+      annualCorporateRetainedEarnings: 500000,
+      requiredIncome: 180000,
+      salaryStrategy: 'dynamic',
+      investmentReturnRate: 0,   // isolate active income; no investment noise
+      planningHorizon: 5,
+    });
+    const result = calculateProjection(inputs);
+    const yr1 = result.yearlyResults[0];
+
+    // Corp must be positive (retained earnings from $500K income after salary + tax)
+    expect(yr1.notionalAccounts.corporateInvestments).toBeGreaterThan(0);
+  });
+
+  it('corp balance should grow monotonically when income exceeds spending', () => {
+    // With $500K income and $180K target, every year the corp should accumulate
+    // retained earnings.  Before the fix, the balance collapsed to -$5M by retirement.
+    const inputs = createInputs({
+      corporateInvestmentBalance: 0,
+      annualCorporateRetainedEarnings: 500000,
+      requiredIncome: 180000,
+      salaryStrategy: 'dynamic',
+      investmentReturnRate: 0,
+      planningHorizon: 5,
+    });
+    const result = calculateProjection(inputs);
+
+    let prevBalance = 0;
+    for (const yr of result.yearlyResults) {
+      // Balance must grow each year (with zero investment return and income > spending)
+      expect(yr.notionalAccounts.corporateInvestments).toBeGreaterThan(prevBalance - 1);
+      prevBalance = yr.notionalAccounts.corporateInvestments;
+    }
+
+    // After 5 years with $500K income and $180K spending, corp should hold
+    // roughly 5 × ~$180K-$220K retained earnings.  Conservative check: > $500K.
+    expect(result.finalCorporateBalance).toBeGreaterThan(500000);
+  });
+
+  it('dynamic and dividends-only should produce similar total wealth over 5 years', () => {
+    // Both strategies draw the same after-tax amount from the same income source.
+    // Total accumulated corporate balance should be in the same ballpark
+    // (within 50% of each other) — they differ due to tax efficiency, not by orders of magnitude.
+    const base = {
+      corporateInvestmentBalance: 0,
+      annualCorporateRetainedEarnings: 500000,
+      requiredIncome: 180000,
+      investmentReturnRate: 0,
+      planningHorizon: 5,
+    };
+    const dynResult  = calculateProjection(createInputs({ ...base, salaryStrategy: 'dynamic' }));
+    const divResult  = calculateProjection(createInputs({ ...base, salaryStrategy: 'dividends-only' }));
+
+    // Neither strategy should produce catastrophically different outcomes
+    const dynBal = dynResult.finalCorporateBalance;
+    const divBal = divResult.finalCorporateBalance;
+    expect(dynBal).toBeGreaterThan(0);
+    expect(divBal).toBeGreaterThan(0);
+    // The two balances should be within 50% of each other
+    const ratio = Math.max(dynBal, divBal) / Math.min(dynBal, divBal);
+    expect(ratio).toBeLessThan(1.5);
+  });
+});

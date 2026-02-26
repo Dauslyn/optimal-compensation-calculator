@@ -1144,17 +1144,27 @@ function calculateYear(
                           (generalIncome * taxData.corporate.general);
 
   const afterTaxBusinessIncome = taxableBusinessIncome - corpTaxOnActiveIncome;
-  // When salary pushed corp negative (timing deficit), part of business income
-  // repays that deficit rather than adding new investment capital.
-  // Only the portion that creates real retained earnings increases ACB.
-  const priorCorpBalance = accounts.corporateInvestments;
-  accounts.corporateInvestments += afterTaxBusinessIncome;
-  if (priorCorpBalance < 0) {
-    // Only the amount above zero is true new capital
-    accounts.corporateACB += Math.max(0, afterTaxBusinessIncome + priorCorpBalance);
-  } else {
-    accounts.corporateACB += afterTaxBusinessIncome;
-  }
+
+  // Add retained earnings to corporate balance.
+  //
+  // processSalaryPayment() (called above for primary and spouse) already deducted
+  // salary + employer payroll costs from corporateInvestments.
+  // IPP contributions were also deducted directly from corporateInvestments above.
+  //
+  // afterTaxBusinessIncome = activeBusinessIncome - totalSalaryCost - ippDeductible - corpTax,
+  // so it is already NET of salary.  Adding it would double-deduct salary costs.
+  //
+  // Correct formula: add (activeIncome − corpTax − EHT).
+  //   Combined with processSalaryPayment deductions and IPP deductions, the net
+  //   change to corporateInvestments equals afterTaxBusinessIncome (true retained earnings). ✓
+  //
+  // EHT is a real cash cost not handled by processSalaryPayment, so deduct it here.
+  // (It does reduce taxableBusinessIncome via totalSalaryCost, but has no separate cash deduction.)
+  accounts.corporateInvestments += activeBusinessIncome - corpTaxOnActiveIncome - employerHealthTax;
+
+  // ACB tracks the tax-paid capital base.  afterTaxBusinessIncome is the true
+  // retained earnings (net of salary, IPP, EHT, and corporate tax).
+  accounts.corporateACB += afterTaxBusinessIncome;
 
   // Investment income tax (passive income is taxed at higher rate with RDTOH refund mechanism)
   const taxableInvestmentIncome = investmentReturns.foreignIncome + taxableCapitalGain;
