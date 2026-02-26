@@ -408,6 +408,12 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
   let ippFundBalance = 0;
   const cppEarningsHistory: number[] = [];
 
+  // Initialise running debt balance from debts array (v3.4 multi-debt) or legacy scalar
+  const initialDebtBalance = inputs.debts && inputs.debts.length > 0
+    ? inputs.debts.reduce((sum, d) => sum + (d.balance ?? 0), 0)
+    : (inputs.totalDebtAmount ?? 0);
+  let runningDebtBalance = initialDebtBalance;
+
   // Calculate each accumulation year (up to retirement age or planningHorizon, whichever is less)
   const accumYearsToRun = Math.min(accumulationYears, inputs.planningHorizon);
   for (let yearIndex = 0; yearIndex < accumYearsToRun; yearIndex++) {
@@ -476,6 +482,10 @@ export function calculateProjection(rawInputs: UserInputs): ProjectionSummary {
       corporateBalance: yearResult.notionalAccounts.corporateInvestments,
       ippFundBalance,
     };
+
+    // Update running debt balance and stamp on result
+    runningDebtBalance = Math.max(0, runningDebtBalance - yearResult.debtPaydown);
+    yearResult.outstandingDebt = runningDebtBalance;
 
     yearlyResults.push(yearResult);
 
@@ -1218,6 +1228,7 @@ function calculateYear(
     tfsaContribution,
     respContribution,
     debtPaydown,
+    outstandingDebt: 0,  // Placeholder — overwritten by calculateProjection after deducting paydown
     notionalAccounts: accounts,
     investmentReturns,
     passiveIncomeGrind,
@@ -1459,6 +1470,7 @@ function calculateRetirementYear(
     tfsaContribution: 0,
     respContribution: 0,
     debtPaydown: 0,
+    outstandingDebt: 0,
     notionalAccounts: accounts,
     investmentReturns,
     passiveIncomeGrind: {
@@ -1751,6 +1763,16 @@ function calculateSummary(
   let accumPersonalTax = 0;
   let accumCompensation = 0;
 
+  // Retirement phase accumulators
+  let retirementPersonalTax = 0;
+  let retirementTotalIncome = 0;
+
+  // RRSP balance at start of first retirement year
+  let rrspBalanceAtRetirement = 0;
+
+  // Lifetime OAS clawback
+  let totalOASClawback = 0;
+
   for (const year of yearlyResults) {
     totalSalary += year.salary;
     totalDividends += year.dividends.grossDividends;
@@ -1775,6 +1797,22 @@ function calculateSummary(
     if (year.phase === 'accumulation') {
       accumPersonalTax += year.personalTax;
       accumCompensation += year.salary + year.dividends.grossDividends;
+    }
+
+    // Retirement phase accumulators
+    if (year.phase === 'retirement') {
+      retirementPersonalTax += year.personalTax;
+      retirementTotalIncome += year.retirement?.totalRetirementIncome ?? 0;
+    }
+
+    // RRSP balance at start of first retirement year
+    if (year.phase === 'retirement' && rrspBalanceAtRetirement === 0 && year.balances) {
+      rrspBalanceAtRetirement = year.balances.rrspBalance;
+    }
+
+    // OAS clawback accumulation
+    if (year.phase === 'retirement' && year.retirement) {
+      totalOASClawback += year.retirement.oasClawback ?? 0;
     }
 
     // Spouse: add to family-level totals AND track spouse-specific breakdown
@@ -1829,8 +1867,18 @@ function calculateSummary(
   // Uses only working-years data so retirement income taxes (RRIF/CPP/OAS) don't
   // inflate the numerator while the denominator (salary + dividends) stays near zero.
   // Corporate tax on active income is already accumulation-only (retirement sets it to 0).
-  const effectiveCompensationRate = accumCompensation > 0
-    ? (accumPersonalTax + totalCorporateTaxOnActive) / accumCompensation
+  // Denominator = salary + gross dividends + corp active tax = pre-tax income extracted.
+  // Adding corp tax to denominator normalises to same base regardless of salary/dividend mix:
+  //   Salary $500 → corp deducts it, pays $0 active tax → denom contribution = $500
+  //   Dividend $878 from $1,000 corp income at 12.2% SBD → denom = $878 + $122 = $1,000
+  // Reference: RSM Canada integration tables, TaxTips.ca
+  const accumPreTaxExtracted = accumCompensation + totalCorporateTaxOnActive;
+  const effectiveCompensationRate = accumPreTaxExtracted > 0
+    ? (accumPersonalTax + totalCorporateTaxOnActive) / accumPreTaxExtracted
+    : 0;
+
+  const retirementEffectiveRate = retirementTotalIncome > 0
+    ? retirementPersonalTax / retirementTotalIncome
     : 0;
 
   // Net effective rate on passive investment income (gross tax - RDTOH refund)
@@ -1845,6 +1893,7 @@ function calculateSummary(
       totalPersonalTax: 0, totalCorporateTax: 0, totalCorporateTaxOnActive: 0,
       totalCorporateTaxOnPassive: 0, totalRdtohRefund: 0, totalTax: 0,
       effectiveTaxRate: 0, effectiveCompensationRate: 0, effectivePassiveRate: 0,
+      retirementEffectiveRate: 0, rrspBalanceAtRetirement: 0, totalOASClawback: 0,
       finalCorporateBalance: inputs.corporateInvestmentBalance,
       totalRRSPRoomGenerated: 0, totalRRSPContributions: 0,
       totalTFSAContributions: 0, averageAnnualIncome: 0,
@@ -1870,6 +1919,9 @@ function calculateSummary(
     effectiveTaxRate,
     effectiveCompensationRate,
     effectivePassiveRate,
+    retirementEffectiveRate,
+    rrspBalanceAtRetirement,
+    totalOASClawback,
     finalCorporateBalance,
     totalRRSPRoomGenerated,
     totalRRSPContributions,

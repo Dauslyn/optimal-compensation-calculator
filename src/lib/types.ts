@@ -296,6 +296,7 @@ export interface YearlyResult {
   tfsaContribution: number;
   respContribution: number;
   debtPaydown: number;
+  outstandingDebt: number;   // total outstanding debt balance at end of this year (0 when fully paid)
   notionalAccounts: NotionalAccounts;
   investmentReturns: InvestmentReturns;
   passiveIncomeGrind: PassiveIncomeGrindInfo;  // SBD clawback details
@@ -363,6 +364,9 @@ export interface ProjectionSummary {
   effectiveTaxRate: number;
   effectiveCompensationRate: number;   // Tax rate on compensation (personal + payroll)
   effectivePassiveRate: number;        // Net tax rate on passive income (after RDTOH)
+  retirementEffectiveRate: number;     // personal income tax / total retirement income (retirement years only)
+  rrspBalanceAtRetirement: number;     // RRSP balance at start of first retirement year
+  totalOASClawback: number;            // lifetime OAS clawback across all retirement years
   finalCorporateBalance: number;
   totalRRSPRoomGenerated: number;
   totalRRSPContributions: number;
