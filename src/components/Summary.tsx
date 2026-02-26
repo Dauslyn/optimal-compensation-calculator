@@ -149,9 +149,10 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
           )}
         </div>
         <div className="stat-card">
-          <div className="stat-label">RRSP Room Generated</div>
-          <div className="stat-value accent" style={{ fontSize: '1.25rem' }}>
-            {formatCurrency(summary.totalRRSPRoomGenerated)}
+          <div className="stat-label">RRSP at Retirement</div>
+          <div className="stat-value positive">{formatCurrency(summary.rrspBalanceAtRetirement)}</div>
+          <div className="stat-hint" style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+            Estimated balance at retirement
           </div>
         </div>
       </div>
@@ -196,6 +197,15 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
               <div className="stat-label">OAS Received</div>
               <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.oasTotalReceived)}</div>
             </div>
+            {summary.totalOASClawback > 0 && (
+              <div className="stat-card">
+                <div className="stat-label">OAS Clawback</div>
+                <div className="stat-value" style={{ color: 'var(--color-warning, #f59e0b)' }}>
+                  {formatCurrency(summary.totalOASClawback)}
+                </div>
+                <div className="stat-hint" style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Lifetime clawback recovered</div>
+              </div>
+            )}
             <div className="stat-card">
               <div className="stat-label">RRIF Withdrawn</div>
               <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.lifetime.rrifTotalWithdrawn)}</div>
@@ -214,12 +224,19 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
         style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}
       >
         <div className="text-sm font-semibold mb-4">Average Effective Tax Rates ({summary.yearlyResults.length}-Year)</div>
-        <div className="flex items-center justify-center">
-          <div className="text-center p-5 rounded-lg" style={{ background: 'rgba(5, 150, 105, 0.08)', backdropFilter: 'blur(8px)', minWidth: '220px' }}>
-            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Avg Integrated Tax Rate</div>
+        <div className="flex gap-4 justify-center flex-wrap">
+          <div className="text-center p-5 rounded-lg" style={{ background: 'rgba(5, 150, 105, 0.08)', backdropFilter: 'blur(8px)', minWidth: '200px' }}>
+            <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Tax Rate — Working Years</div>
             <div className="text-3xl font-bold" style={{ color: '#6ee7b7' }}>{formatPercent(summary.effectiveCompensationRate)}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Corporate + personal tax on compensation</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Income tax + corp tax on compensation</div>
           </div>
+          {summary.retirementEffectiveRate > 0 && (
+            <div className="text-center p-5 rounded-lg" style={{ background: 'rgba(5, 150, 105, 0.08)', backdropFilter: 'blur(8px)', minWidth: '200px' }}>
+              <div className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Tax Rate — Retirement</div>
+              <div className="text-3xl font-bold" style={{ color: '#6ee7b7' }}>{formatPercent(summary.retirementEffectiveRate)}</div>
+              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Personal income tax on retirement income</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -330,10 +347,6 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
             <div className="stat-card">
               <div className="stat-label">Corp Tax Savings</div>
               <div className="stat-value positive" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary.ipp.totalCorporateTaxSavings)}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">RRSP Room Reduced (PA)</div>
-              <div className="stat-value negative" style={{ fontSize: '1.25rem' }}>{formatCurrency(summary.ipp.totalPensionAdjustments)}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Projected Annual Pension</div>

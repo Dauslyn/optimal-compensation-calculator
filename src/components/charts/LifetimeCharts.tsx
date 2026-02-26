@@ -168,9 +168,11 @@ export const BalanceDepletionChart = memo(function BalanceDepletionChart({
       const y = sd.years[idx];
       if (s && y) {
         const bal = y.balances;
-        dp[s.label] = bal
+        const totalAssets = bal
           ? (bal.rrspBalance + bal.tfsaBalance + Math.max(0, bal.corporateBalance) + (bal.ippFundBalance ?? 0))
           : y.notionalAccounts.corporateInvestments;
+        const netWorth = Math.max(0, totalAssets - (y.outstandingDebt ?? 0));
+        dp[s.label] = netWorth;
       }
     });
     return dp;
@@ -179,10 +181,10 @@ export const BalanceDepletionChart = memo(function BalanceDepletionChart({
   return (
     <div className="glass-card p-5">
       <h3 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-        Total Wealth Over Lifetime
+        Net Worth Over Lifetime
       </h3>
       <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-        RRSP + TFSA + Corporate + IPP Fund across all phases
+        Total assets minus outstanding debt (RRSP + TFSA + Corporate + IPP)
       </p>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>

@@ -181,7 +181,7 @@ export const DashboardTab = memo(function DashboardTab({
             items={widgets.map(w => w.instanceId)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div ref={setDropzoneRef} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {widgets.map(widget => (
                 <WidgetCard
                   key={widget.instanceId}
