@@ -56,33 +56,49 @@ function calculateEffectiveDividendRate(
   dividendType: 'eligible' | 'nonEligible',
   estimatedGrossDividend: number,
   province: string,
+  existingOtherIncome: number = 0,   // ordinary income already received (CPP, OAS, RRIF, salary)
 ): number {
   if (estimatedGrossDividend <= 0) return 0;
   const eligibleDivs    = dividendType === 'eligible'    ? estimatedGrossDividend : 0;
   const nonEligibleDivs = dividendType === 'nonEligible' ? estimatedGrossDividend : 0;
-  const { totalTax } = calculatePersonalTaxForYear(
-    0, eligibleDivs, nonEligibleDivs, 0, taxData, province,
+  if (existingOtherIncome <= 0) {
+    // Fast path: dividends only — avoids second tax call
+    const { totalTax } = calculatePersonalTaxForYear(
+      0, eligibleDivs, nonEligibleDivs, 0, taxData, province,
+    );
+    return Math.max(0, Math.min(0.99, totalTax / estimatedGrossDividend));
+  }
+  // Marginal rate: tax WITH dividends minus tax WITHOUT dividends.
+  // This correctly accounts for bracket stacking when CPP/OAS/RRIF is already present.
+  const { totalTax: taxWithout } = calculatePersonalTaxForYear(
+    existingOtherIncome, 0, 0, 0, taxData, province,
   );
-  return Math.max(0, Math.min(0.99, totalTax / estimatedGrossDividend));
+  const { totalTax: taxWith } = calculatePersonalTaxForYear(
+    existingOtherIncome, eligibleDivs, nonEligibleDivs, 0, taxData, province,
+  );
+  const marginalTax = taxWith - taxWithout;
+  return Math.max(0, Math.min(0.99, marginalTax / estimatedGrossDividend));
 }
 
 /**
- * Iteratively solve for the gross dividend needed to deliver targetAfterTax.
+ * Iteratively solve for the gross dividend needed to deliver targetAfterTax,
+ * accounting for any ordinary income (CPP, OAS, RRIF, salary) already in the
+ * taxpayer's return. existingOtherIncome shifts dividends into higher brackets.
  *
- * Fixed-point iteration: estGross = targetAfterTax / (1 − rate(estGross))
- * Converges in 4–5 steps for all typical income levels and provinces.
- * Starting guess of 1.6× is fine — convergence is fast regardless.
+ * Fixed-point iteration: estGross = targetAfterTax / (1 − marginalRate(estGross))
+ * Converges in 4–5 steps for all income levels and provinces.
  */
 function solveGrossDividendForTarget(
   targetAfterTax: number,
   dividendType: 'eligible' | 'nonEligible',
   taxData: TaxYearData,
   province: string,
+  existingOtherIncome: number = 0,
 ): number {
   if (targetAfterTax <= 0) return 0;
   let estGross = targetAfterTax * 1.6;
   for (let i = 0; i < 5; i++) {
-    const rate     = calculateEffectiveDividendRate(taxData, dividendType, estGross, province);
+    const rate     = calculateEffectiveDividendRate(taxData, dividendType, estGross, province, existingOtherIncome);
     const newGross = rate < 0.99 ? targetAfterTax / (1 - rate) : targetAfterTax * 5;
     if (Math.abs(newGross - estGross) < 1) break;
     estGross = newGross;
@@ -1348,7 +1364,19 @@ function calculateRetirementYear(
   }
 
   // 4. Calculate gap
-  const mandatoryAfterTaxEstimate = cppIncome + oasResult.netOAS + ippPension + rrifWithdrawal;
+  //
+  // mandatoryGross: the ordinary income (CPP + OAS + IPP pension + RRIF) that will appear
+  // on the T1. These are taxable and will consume BPA and lower bracket room, pushing any
+  // corporate dividends into higher marginal brackets.
+  //
+  // mandatoryAfterTaxEstimate: the actual after-tax value of mandatory income, computed by
+  // running calculatePersonalTaxForYear on mandatory income alone. Previously this treated
+  // gross amounts as after-tax, understating the gap by the tax on mandatory income.
+  const mandatoryGross = cppIncome + oasResult.netOAS + ippPension + rrifWithdrawal;
+  const { totalTax: mandatoryTaxAlone } = mandatoryGross > 0
+    ? calculatePersonalTaxForYear(mandatoryGross, 0, 0, 0, taxData, province)
+    : { totalTax: 0 };
+  const mandatoryAfterTaxEstimate = mandatoryGross - mandatoryTaxAlone;
   const spendingGap = Math.max(0, inputs.retirementSpending - mandatoryAfterTaxEstimate - inputs.householdExtraIncome);
 
   // 5. Fill gap using drawdown priority
@@ -1361,9 +1389,12 @@ function calculateRetirementYear(
 
     // Priority 1: Corporate dividends (CDA first, then RDTOH, then GRIP, then retained)
     if (remaining > 0 && accounts.corporateInvestments > 0) {
-      const solvedRetirementGross = solveGrossDividendForTarget(remaining, 'nonEligible', taxData, province);
-      const estimatedRate = calculateEffectiveDividendRate(taxData, 'eligible',    solvedRetirementGross, province);
-      const nonEligRate   = calculateEffectiveDividendRate(taxData, 'nonEligible', solvedRetirementGross, province);
+      // Pass mandatoryGross so the solver accounts for bracket stacking: dividends are
+      // taxed at the MARGINAL rate on top of existing mandatory income, not at the
+      // average rate of a dividends-only return.
+      const solvedRetirementGross = solveGrossDividendForTarget(remaining, 'nonEligible', taxData, province, mandatoryGross);
+      const estimatedRate = calculateEffectiveDividendRate(taxData, 'eligible',    solvedRetirementGross, province, mandatoryGross);
+      const nonEligRate   = calculateEffectiveDividendRate(taxData, 'nonEligible', solvedRetirementGross, province, mandatoryGross);
 
       const divResult = depleteAccountsWithRates(
         remaining, accounts, taxData.rdtoh.refundRate,
