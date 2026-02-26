@@ -208,19 +208,20 @@ describe('IPP Calculations', () => {
   });
 
   describe('estimateIPPAdminCosts', () => {
-    it('returns all cost components', () => {
+    it('returns flat $2,500 annual fee with no setup or triennial costs', () => {
       const costs = estimateIPPAdminCosts();
 
-      expect(costs.setup).toBeGreaterThan(0);
-      expect(costs.annualActuarial).toBeGreaterThan(0);
-      expect(costs.annualAdmin).toBeGreaterThan(0);
-      expect(costs.triennialValuation).toBeGreaterThan(0);
+      expect(costs.setup).toBe(0);
+      expect(costs.annualActuarial).toBe(2500);
+      expect(costs.annualAdmin).toBe(0);
+      expect(costs.triennialValuation).toBe(0);
     });
 
-    it('setup cost is higher than annual costs', () => {
+    it('total annual cost is $2,500', () => {
       const costs = estimateIPPAdminCosts();
+      const annualTotal = costs.annualActuarial + costs.annualAdmin;
 
-      expect(costs.setup).toBeGreaterThan(costs.annualAdmin);
+      expect(annualTotal).toBe(2500);
     });
   });
 

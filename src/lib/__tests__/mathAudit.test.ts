@@ -406,9 +406,9 @@ describe('Investment Returns — Dollar Trace on $1M Portfolio', () => {
   it('should calculate foreign income correctly', () => {
     // US dividends = $1M * 25% * 1.5% = $3,750
     // Intl dividends = $1M * 25% * 3.0% = $7,500
-    // Fixed income interest = $1M * 25% * 4.0% = $10,000
-    // Total foreign = $3,750 + $7,500 + $10,000 = $21,250
-    expect(result.foreignIncome).toBeCloseTo(21250, 0);
+    // Fixed income interest = $1M * 25% * 4.05% = $10,125  (FP Canada 2025 rate)
+    // Total foreign = $3,750 + $7,500 + $10,125 = $21,375
+    expect(result.foreignIncome).toBeCloseTo(21375, 0);
   });
 
   it('should calculate realized capital gains (turnover-based) correctly', () => {
@@ -422,9 +422,9 @@ describe('Investment Returns — Dollar Trace on $1M Portfolio', () => {
 
   it('should calculate unrealized capital gains correctly', () => {
     // Total price appreciation = totalReturn - Canadian divs - foreign income
-    // = $72,500 - $7,000 - $21,250 = $44,250
-    // Unrealized = $44,250 - $2,500 realized = $41,750
-    expect(result.unrealizedCapitalGain).toBeCloseTo(41750, 0);
+    // = $72,500 - $7,000 - $21,375 = $44,125  (FI income is $125 higher at 4.05%)
+    // Unrealized = $44,125 - $2,500 realized = $41,625
+    expect(result.unrealizedCapitalGain).toBeCloseTo(41625, 0);
   });
 
   it('should calculate CDA increase correctly', () => {
@@ -440,11 +440,11 @@ describe('Investment Returns — Dollar Trace on $1M Portfolio', () => {
   it('should calculate nRDTOH correctly', () => {
     // Taxable CG = $2,500 * 50% = $1,250
     // Gross nRDTOH = (foreign income + taxable CG) * 30.67%
-    // = ($21,250 + $1,250) * 0.3067 = $22,500 * 0.3067 = $6,900.75
+    // = ($21,375 + $1,250) * 0.3067 = $22,625 * 0.3067 = $6,939.09  (FI rate is 4.05%)
     // Foreign withholding = foreign dividends * 15%
     // = ($3,750 + $7,500) * 0.15 = $11,250 * 0.15 = $1,687.50
-    // Net nRDTOH = max(0, $6,900.75 - $1,687.50) = $5,213.25
-    expect(result.nRDTOHIncrease).toBeCloseTo(5213.25, 0);
+    // Net nRDTOH = max(0, $6,939.09 - $1,687.50) = $5,251.59
+    expect(result.nRDTOHIncrease).toBeCloseTo(5251.59, 0);
   });
 
   it('should calculate GRIP correctly', () => {
@@ -459,25 +459,26 @@ describe('Investment Returns — Dollar Trace on $1M Portfolio', () => {
 
 describe('Blended Return Rate Calculation', () => {
   it('should compute correct blended rate from default asset class returns', () => {
-    // 25/25/25/25 allocation
-    // CA: 8.5%, US: 9.5%, Intl: 7.0%, FI: 4.0%
-    // Blended = 0.25 * 0.085 + 0.25 * 0.095 + 0.25 * 0.07 + 0.25 * 0.04
-    // = 0.02125 + 0.02375 + 0.0175 + 0.01 = 0.0725 = 7.25%
+    // 25/25/25/25 allocation — FP Canada 2025 rates
+    // CA: 6.3%, US: 6.3%, Intl: 6.3%, FI: 4.05%
+    // Blended = 0.25 * 0.063 + 0.25 * 0.063 + 0.25 * 0.063 + 0.25 * 0.0405
+    // = 0.01575 * 3 + 0.010125 = 0.057375 ≈ 5.74%
     const rate = computeBlendedReturnRate(25, 25, 25, 25);
-    expect(rate).toBeCloseTo(0.0725, 4);
+    expect(rate).toBeCloseTo(0.057375, 4);
   });
 
   it('should compute correct rate for 100% Canadian equity', () => {
+    // FP Canada 2025: Canadian equity = 6.30%
     const rate = computeBlendedReturnRate(100, 0, 0, 0);
-    expect(rate).toBeCloseTo(0.085, 4);
+    expect(rate).toBeCloseTo(0.063, 4);
   });
 
   it('should compute correct rate for 60/40 equity/bond split', () => {
-    // 20/20/20/40 allocation
-    // = 0.20*0.085 + 0.20*0.095 + 0.20*0.07 + 0.40*0.04
-    // = 0.017 + 0.019 + 0.014 + 0.016 = 0.066 = 6.6%
+    // 20/20/20/40 allocation — FP Canada 2025 rates
+    // = 0.20*0.063 + 0.20*0.063 + 0.20*0.063 + 0.40*0.0405
+    // = 0.0126 * 3 + 0.0162 = 0.0378 + 0.0162 = 0.0540 = 5.40%
     const rate = computeBlendedReturnRate(20, 20, 20, 40);
-    expect(rate).toBeCloseTo(0.066, 4);
+    expect(rate).toBeCloseTo(0.054, 4);
   });
 });
 

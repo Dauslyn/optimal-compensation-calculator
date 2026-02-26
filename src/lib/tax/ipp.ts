@@ -276,10 +276,10 @@ export function estimateIPPAdminCosts(): {
   triennialValuation: number;
 } {
   return {
-    setup: 2500,           // Initial setup fee
-    annualActuarial: 1500, // Annual actuarial certificate
-    annualAdmin: 500,      // Trust administration
-    triennialValuation: 3000, // Full valuation every 3 years
+    setup: 0,              // No setup fee
+    annualActuarial: 2500, // Flat annual fee (actuarial + trust administration combined)
+    annualAdmin: 0,
+    triennialValuation: 0, // No separate triennial review fee (included in flat rate)
   };
 }
 

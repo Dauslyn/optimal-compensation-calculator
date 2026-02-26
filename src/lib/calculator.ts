@@ -1745,6 +1745,12 @@ function calculateSummary(
   let spouseTotalRRSP = 0;
   let spouseTotalTFSA = 0;
 
+  // Accumulators for effectiveCompensationRate — accumulation phase only.
+  // Retirement years have significant personal tax (RRIF/CPP/OAS) but near-zero
+  // salary/dividends, which would grossly inflate the integrated rate if included.
+  let accumPersonalTax = 0;
+  let accumCompensation = 0;
+
   for (const year of yearlyResults) {
     totalSalary += year.salary;
     totalDividends += year.dividends.grossDividends;
@@ -1764,12 +1770,22 @@ function calculateSummary(
       (year.investmentReturns.realizedCapitalGain * 0.5);
     totalPassiveIncome += taxablePassive;
 
+    // Integrated rate accumulators — accumulation phase only
+    if (year.phase === 'accumulation') {
+      accumPersonalTax += year.personalTax;
+      accumCompensation += year.salary + year.dividends.grossDividends;
+    }
+
     // Spouse: add to family-level totals AND track spouse-specific breakdown
     if (year.spouse) {
       const spGrossDivs = year.spouse.dividends.grossDividends;
       totalSalary += year.spouse.salary;
       totalDividends += spGrossDivs;
       totalPersonalTax += year.spouse.personalTax;
+      if (year.phase === 'accumulation') {
+        accumPersonalTax += year.spouse.personalTax;
+        accumCompensation += year.spouse.salary + spGrossDivs;
+      }
       totalRRSPRoomGenerated += year.spouse.rrspRoomGenerated;
       totalRRSPContributions += year.spouse.rrspContribution;
       totalTFSAContributions += year.spouse.tfsaContribution;
@@ -1808,13 +1824,12 @@ function calculateSummary(
   // when corporate investments are large. For a compensation-only rate, see effectiveCompensationRate.
   const effectiveTaxRate = totalCompensation > 0 ? totalTax / totalCompensation : 0;
 
-  // Effective INTEGRATED tax rate on compensation
-  // This includes:
-  // - Personal tax on salary and dividends (both primary and spouse)
-  // - Corporate tax on active income (since dividends are paid from after-tax corp funds)
-  // NOTE: CPP/EI are NOT included - they're contributions, not taxes
-  const effectiveCompensationRate = totalCompensation > 0
-    ? (totalPersonalTax + totalCorporateTaxOnActive) / totalCompensation
+  // Effective INTEGRATED tax rate on compensation — accumulation phase only.
+  // Uses only working-years data so retirement income taxes (RRIF/CPP/OAS) don't
+  // inflate the numerator while the denominator (salary + dividends) stays near zero.
+  // Corporate tax on active income is already accumulation-only (retirement sets it to 0).
+  const effectiveCompensationRate = accumCompensation > 0
+    ? (accumPersonalTax + totalCorporateTaxOnActive) / accumCompensation
     : 0;
 
   // Net effective rate on passive investment income (gross tax - RDTOH refund)

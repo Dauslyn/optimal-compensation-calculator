@@ -139,9 +139,14 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
         </div>
         <div className="stat-card">
           <div className="stat-label">Final Corp Balance</div>
-          <div className={`stat-value ${summary.finalCorporateBalance > 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(summary.finalCorporateBalance)}
+          <div className={`stat-value ${summary.finalCorporateBalance > 0 ? 'positive' : ''}`}>
+            {formatCurrency(Math.max(0, summary.finalCorporateBalance))}
           </div>
+          {summary.finalCorporateBalance < 0 && (
+            <div className="text-xs mt-0.5" style={{ color: 'var(--color-warning, #f59e0b)' }}>
+              Corp depleted — income exceeded corp earnings
+            </div>
+          )}
         </div>
         <div className="stat-card">
           <div className="stat-label">RRSP Room Generated</div>

@@ -153,9 +153,11 @@ interface PercentInputProps {
   step?: string;
   min?: string;
   max?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-function PercentInput({ id, decimalValue, onDecimalChange, placeholder, step, min, max }: PercentInputProps) {
+function PercentInput({ id, decimalValue, onDecimalChange, placeholder, step, min, max, className, style }: PercentInputProps) {
   const [localValue, setLocalValue] = useState(() => {
     if (!decimalValue) return '';
     return formatDisplayValue(parseFloat((decimalValue * 100).toPrecision(12)));
@@ -197,6 +199,8 @@ function PercentInput({ id, decimalValue, onDecimalChange, placeholder, step, mi
         setLocalValue(formatDisplayValue(localValue));
       }}
       placeholder={placeholder}
+      className={className}
+      style={style}
     />
   );
 }
@@ -712,8 +716,24 @@ export function InputFormClean({ onCalculate, initialInputs, fromShareLink }: In
               />
             </div>
 
+            {/* Allocation total — must sum to 100% */}
+            {(() => {
+              const total = (formData.canadianEquityPercent ?? 0)
+                + (formData.usEquityPercent ?? 0)
+                + (formData.internationalEquityPercent ?? 0)
+                + (formData.fixedIncomePercent ?? 0);
+              const off = Math.abs(total - 100) > 0.01;
+              return (
+                <div className="flex items-center gap-2 text-xs" style={{ color: off ? 'var(--color-error, #f87171)' : 'var(--text-muted)' }}>
+                  <span>Total allocation: <span style={{ fontWeight: 600 }}>{total.toFixed(0)}%</span></span>
+                  {off && <span>(must equal 100%)</span>}
+                  {!off && <span style={{ color: 'var(--color-success, #4ade80)' }}>✓</span>}
+                </div>
+              );
+            })()}
+
             {/* Computed blended return — read-only */}
-            <div className="text-xs pt-2" style={{ color: 'var(--text-muted)' }}>
+            <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Blended expected return:{' '}
               <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
                 {(computeBlendedReturnRate(
@@ -735,7 +755,16 @@ export function InputFormClean({ onCalculate, initialInputs, fromShareLink }: In
             {advancedOpen.portfolio && (
               <div className="space-y-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Override per-class expected returns. Defaults: CA {(ASSET_CLASS_DEFAULT_RETURNS.canadianEquity * 100).toFixed(1)}%, US {(ASSET_CLASS_DEFAULT_RETURNS.usEquity * 100).toFixed(1)}%, Intl {(ASSET_CLASS_DEFAULT_RETURNS.internationalEquity * 100).toFixed(1)}%, Fixed {(ASSET_CLASS_DEFAULT_RETURNS.fixedIncome * 100).toFixed(1)}%.
+                  Override per-class expected returns. Defaults align with the{' '}
+                  <a
+                    href="https://www.fpcanada.ca/projection-assumption-guidelines"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}
+                  >
+                    FP Canada Financial Planning Guidelines
+                  </a>
+                  : CA {(ASSET_CLASS_DEFAULT_RETURNS.canadianEquity * 100).toFixed(1)}%, US {(ASSET_CLASS_DEFAULT_RETURNS.usEquity * 100).toFixed(1)}%, Intl {(ASSET_CLASS_DEFAULT_RETURNS.internationalEquity * 100).toFixed(1)}%, Fixed {(ASSET_CLASS_DEFAULT_RETURNS.fixedIncome * 100).toFixed(1)}%.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
@@ -1072,14 +1101,10 @@ export function InputFormClean({ onCalculate, initialInputs, fromShareLink }: In
                   <div>
                     <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Interest Rate</label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={debt.interestRate === 0 ? '' : (debt.interestRate * 100).toPrecision(4).replace(/\.?0+$/, '')}
-                        onChange={e => {
-                          const v = parseFloat(e.target.value);
-                          setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, interestRate: isNaN(v) ? 0 : v / 100 } : d) });
-                        }}
+                      <PercentInput
+                        id={`debt-interest-${debt.id}`}
+                        decimalValue={debt.interestRate}
+                        onDecimalChange={v => setFormData({ ...formData, debts: (formData.debts ?? []).map(d => d.id === debt.id ? { ...d, interestRate: v } : d) })}
                         placeholder="5.5"
                         className="w-full pr-8 pl-3 py-2 rounded-lg text-sm"
                         style={{ background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}

@@ -432,10 +432,10 @@ describe('Corporate Flow — Passive Income Grind', () => {
   });
 
   it('should compute AAII as foreignIncome + 50% of realized capital gains', () => {
-    // $2M balance, 25/25/25/25 allocation:
-    //   foreignIncome = $2M * (0.25*0.015 + 0.25*0.030 + 0.25*0.040) = $42,500
+    // $2M balance, 25/25/25/25 allocation — FP Canada 2025 rates:
+    //   foreignIncome = $2M * (0.25*0.015 + 0.25*0.030 + 0.25*0.0405) = $42,750
     //   realizedCG    = $2M * (0.25*0.003 + 0.25*0.003 + 0.25*0.004 + 0) = $5,000
-    //   AAII = $42,500 + $5,000 * 0.50 = $45,000
+    //   AAII = $42,750 + $5,000 * 0.50 = $45,250
     const inputs = createInputs({
       corporateInvestmentBalance: 2000000,
       investmentReturnRate: 0.05,
@@ -443,7 +443,7 @@ describe('Corporate Flow — Passive Income Grind', () => {
     const result = calculateProjection(inputs);
     const yr1 = result.yearlyResults[0];
 
-    expect(yr1.passiveIncomeGrind.totalPassiveIncome).toBeCloseTo(45000, -2);
+    expect(yr1.passiveIncomeGrind.totalPassiveIncome).toBeCloseTo(45250, -2);
   });
 });
 
@@ -775,12 +775,12 @@ describe('Corporate Flow — Investment Returns Impact on Balance', () => {
   });
 
   it('should correctly split passive tax into refundable and non-refundable portions', () => {
-    // $1M balance, 25/25/25/25 allocation (Ontario):
-    //   foreignIncome = $1M * (0.25*0.015 + 0.25*0.030 + 0.25*0.040) = $21,250
+    // $1M balance, 25/25/25/25 allocation (Ontario) — FP Canada 2025 rates:
+    //   foreignIncome = $1M * (0.25*0.015 + 0.25*0.030 + 0.25*0.0405) = $21,375
     //   realizedCG    = $1M * (0.25*0.003 + 0.25*0.003 + 0.25*0.004 + 0) = $2,500
     //   taxableCapGain = $2,500 * 0.50 = $1,250
-    //   taxableInvestmentIncome = $21,250 + $1,250 = $22,500
-    //   passiveTax = $22,500 * 0.5017 (Ontario rate) = $11,288.25
+    //   taxableInvestmentIncome = $21,375 + $1,250 = $22,625
+    //   passiveTax = $22,625 * 0.5017 (Ontario rate) = $11,351.04
     const inputs = createInputs({
       corporateInvestmentBalance: 1000000,
       investmentReturnRate: 0.05,
@@ -788,7 +788,7 @@ describe('Corporate Flow — Investment Returns Impact on Balance', () => {
     const result = calculateProjection(inputs);
     const yr1 = result.yearlyResults[0];
 
-    expect(yr1.corporateTaxOnPassive).toBeCloseTo(11288.25, -1);
+    expect(yr1.corporateTaxOnPassive).toBeCloseTo(11351, -1);
   });
 });
 

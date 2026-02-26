@@ -157,7 +157,7 @@ export function getDefaultInputs(): UserInputs {
     startingYear: getStartingYear(),
     expectedInflationRate: getDefaultInflationRate(),
     inflateSpendingNeeds: true,
-    investmentReturnRate: 0.0725,
+    investmentReturnRate: 0.0574, // FP Canada 2025: blended 25/25/25/25 allocation
     canadianEquityPercent: 25,
     usEquityPercent: 25,
     internationalEquityPercent: 25,

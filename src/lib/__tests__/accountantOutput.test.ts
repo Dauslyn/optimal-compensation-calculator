@@ -39,7 +39,7 @@ describe('INPUT_TOOLTIPS', () => {
   });
 
   it('should mention key concepts in specific tooltips', () => {
-    expect(INPUT_TOOLTIPS.annualCorporateRetainedEarnings).toContain('BEFORE');
+    expect(INPUT_TOOLTIPS.annualCorporateRetainedEarnings).toContain('before');
     expect(INPUT_TOOLTIPS.inflationRate).toContain('bracket');
     expect(INPUT_TOOLTIPS.salaryStrategy).toContain('Dynamic');
     expect(INPUT_TOOLTIPS.rrspRoom).toContain('salary');

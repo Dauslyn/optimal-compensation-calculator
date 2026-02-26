@@ -1,15 +1,17 @@
 import type { InvestmentReturns } from '../types';
 
 // ─── Per-Asset-Class Constants ────────────────────────────────────────────────
-// Empirically grounded from historical index data (XIC, VFV/S&P500, XEF/MSCI EAFE, XBB).
-// Sources: iShares Canada, Vanguard Canada, PWL Capital, FTSE Russell (2025).
+// FP Canada / IQPF Projection Assumption Guidelines (2025 edition).
+// These are forward-looking long-term projections used by Certified Financial Planners
+// across Canada — the CFP-equivalent standard for retirement planning.
+// Source: https://www.fpcanada.ca/projection-assumption-guidelines
 
 /** Default expected total return per asset class (used to compute blended investmentReturnRate) */
 export const ASSET_CLASS_DEFAULT_RETURNS = {
-  canadianEquity:      0.085,  // TSX Composite long-run total return
-  usEquity:            0.095,  // S&P 500 long-run total return
-  internationalEquity: 0.070,  // MSCI EAFE long-run total return
-  fixedIncome:         0.040,  // Canadian bond index (yield-based)
+  canadianEquity:      0.063,  // FP Canada 2025: Canadian equity (6.30%)
+  usEquity:            0.063,  // FP Canada 2025: Foreign developed equity (6.30%)
+  internationalEquity: 0.063,  // FP Canada 2025: Foreign developed equity (6.30%)
+  fixedIncome:         0.0405, // FP Canada 2025: Fixed income / bonds (4.05%)
 } as const;
 
 // Annual income rates as fraction of balance (not of return)

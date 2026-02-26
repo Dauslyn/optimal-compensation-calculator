@@ -302,14 +302,11 @@ describe('IPP Integration - Admin Costs', () => {
 
     if (yr1.ipp && yr2.ipp) {
       const ippCosts = estimateIPPAdminCosts();
-      const year1Expected = ippCosts.setup + ippCosts.annualActuarial + ippCosts.annualAdmin;
-      const year2Expected = ippCosts.annualActuarial + ippCosts.annualAdmin;
+      const expectedAnnual = ippCosts.annualActuarial + ippCosts.annualAdmin; // flat $2,500
 
-      expect(yr1.ipp.adminCosts).toBe(year1Expected); // 2500 + 1500 + 500 = 4500
-      expect(yr2.ipp.adminCosts).toBe(year2Expected); // 1500 + 500 = 2000
-
-      // Year 1 should have higher admin costs than year 2
-      expect(yr1.ipp.adminCosts).toBeGreaterThan(yr2.ipp.adminCosts);
+      // Flat $2,500/year — no setup fee, no triennial review
+      expect(yr1.ipp.adminCosts).toBe(expectedAnnual);
+      expect(yr2.ipp.adminCosts).toBe(expectedAnnual);
     }
   });
 
@@ -439,11 +436,10 @@ describe('IPP Integration - Spouse IPP', () => {
 
     if (yr1.spouse?.ipp && yr2.spouse?.ipp) {
       const ippCosts = estimateIPPAdminCosts();
-      const year1Expected = ippCosts.setup + ippCosts.annualActuarial + ippCosts.annualAdmin;
-      const year2Expected = ippCosts.annualActuarial + ippCosts.annualAdmin;
+      const expectedAnnual = ippCosts.annualActuarial + ippCosts.annualAdmin; // flat $2,500
 
-      expect(yr1.spouse.ipp.adminCosts).toBe(year1Expected);
-      expect(yr2.spouse.ipp.adminCosts).toBe(year2Expected);
+      expect(yr1.spouse.ipp.adminCosts).toBe(expectedAnnual);
+      expect(yr2.spouse.ipp.adminCosts).toBe(expectedAnnual);
     }
   });
 });
