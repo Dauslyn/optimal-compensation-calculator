@@ -407,7 +407,7 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
 
           <div className="animate-fade-in" key={activeTab}>
             {comparison && activeTab === 'recommended' && (
-              <RecommendedTab comparison={comparison} monteCarloSuccessRate={monteCarloResult?.successRate} />
+              <RecommendedTab comparison={comparison} monteCarloSuccessRate={monteCarloResult?.successRate} hasSpouse={inputs.hasSpouse} />
             )}
             {comparison && activeTab === 'compare' && (
               <CompareAllTab comparison={comparison} />

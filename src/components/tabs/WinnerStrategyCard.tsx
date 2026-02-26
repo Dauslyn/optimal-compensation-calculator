@@ -7,6 +7,7 @@ import type { NarrativeInput } from '../../lib/narrativeSynthesis';
 interface WinnerStrategyCardProps {
   comparison: ComparisonResult;
   monteCarloSuccessRate?: number;
+  hasSpouse?: boolean;
 }
 
 const STRATEGY_COLORS: Record<string, string> = {
@@ -18,6 +19,7 @@ const STRATEGY_COLORS: Record<string, string> = {
 export const WinnerStrategyCard = memo(function WinnerStrategyCard({
   comparison,
   monteCarloSuccessRate,
+  hasSpouse,
 }: WinnerStrategyCardProps) {
   const lifetimeWinnerId = comparison.lifetimeWinner?.byObjective;
   const winner = comparison.strategies.find(
@@ -52,6 +54,7 @@ export const WinnerStrategyCard = memo(function WinnerStrategyCard({
           : lt.totalLifetimeSpending / 20,
         retirementSuccessRate: monteCarloSuccessRate ?? 0.85,
         objective: comparison.lifetimeWinner?.objective ?? 'balanced',
+        hasSpouse,
       } satisfies NarrativeInput)
     : null;
 

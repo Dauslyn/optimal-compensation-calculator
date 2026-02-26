@@ -68,4 +68,25 @@ describe('buildRecommendationNarrative', () => {
     expect(result).not.toContain('NaN');
     expect(result).not.toContain('undefined');
   });
+
+  it('appends spousal rollover note when hasSpouse is true', () => {
+    const result = buildRecommendationNarrative(makeNarrativeInput({ hasSpouse: true }));
+    expect(result.toLowerCase()).toMatch(/spouse|rrsp.*transfer|tax.deferred/);
+    expect(result).toContain('tax-deferred');
+  });
+
+  it('omits spousal rollover note when hasSpouse is false or absent', () => {
+    const withFalse = buildRecommendationNarrative(makeNarrativeInput({ hasSpouse: false }));
+    const withAbsent = buildRecommendationNarrative(makeNarrativeInput());
+    expect(withFalse).not.toContain('tax-deferred');
+    expect(withAbsent).not.toContain('tax-deferred');
+  });
+
+  it('spousal rollover note appears for all strategy winner types', () => {
+    const strategies = ['dynamic', 'dividends-only', 'salary-at-ympe', 'custom'] as const;
+    for (const winnerId of strategies) {
+      const result = buildRecommendationNarrative(makeNarrativeInput({ winnerId, hasSpouse: true }));
+      expect(result).toContain('tax-deferred');
+    }
+  });
 });
