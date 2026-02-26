@@ -1225,3 +1225,101 @@ describe('Estate ACB Invariants', () => {
     }
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 17: DIVIDEND GROSS-UP SOLVER ACCURACY (Bug 3 Regression)
+//
+// The old calculateEffectiveDividendRate used getAverageRateAtIncome on raw
+// bracket tables, ignoring the Basic Personal Amount (~$16K federal, ~$12K ON).
+// This caused systematic errors of +6.78% at $80K and -9% at $1M.
+//
+// The new solver (solveGrossDividendForTarget) uses calculatePersonalTaxForYear
+// (with BPA, gross-up, DTC) and iterates to convergence (<$1 precision). In a
+// pure dividends-only scenario with no salary, it should deliver the target
+// after-tax income within ±1.5% across all typical income levels.
+//
+// Setup: zero allocation (no per-asset-class income, no CDA noise), zero return,
+// no notional accounts — so 100% of income flows through retained earnings
+// as non-eligible dividends. This isolates the solver's accuracy.
+// ══════════════════════════════════════════════════════════════════════════════
+describe('Dividend Gross-Up Solver Accuracy — Bug 3 Regression', () => {
+  function makeCleanDividendsInputs(requiredIncome: number, province = 'ON'): UserInputs {
+    return {
+      annualCorporateRetainedEarnings: 0,      // no active income this year
+      requiredIncome,
+      salaryStrategy: 'dividends-only',
+      planningHorizon: 1,
+      province,
+      investmentReturnRate: 0,
+      corporateInvestmentBalance: requiredIncome * 15, // ample for gross dividends
+      cdaBalance: 0,
+      eRDTOHBalance: 0,
+      nRDTOHBalance: 0,
+      gripBalance: 0,
+      currentAge: 45,
+      retirementAge: 65,
+      planningEndAge: 90,
+      expectedInflationRate: 0,
+      contributeToRRSP: false,
+      maximizeTFSA: false,
+      payDownDebt: false,
+      contributeToRESP: false,
+      considerIPP: false,
+      hasSpouse: false,
+      inflateSpendingNeeds: false,
+      // Zero allocation → zero per-asset-class income → no CDA/RDTOH noise
+      canadianEquityPercent: 0,
+      usEquityPercent: 0,
+      internationalEquityPercent: 0,
+      fixedIncomePercent: 0,
+    };
+  }
+
+  const TOLERANCE = 0.015; // ±1.5% — solver design target in dividends-only scenarios
+
+  it('delivers within ±1.5% of $80K target (ON)', () => {
+    const yr1 = calculateProjection(makeCleanDividendsInputs(80_000)).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(80_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(80_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $150K target (ON)', () => {
+    const yr1 = calculateProjection(makeCleanDividendsInputs(150_000)).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(150_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(150_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $250K target (ON)', () => {
+    const yr1 = calculateProjection(makeCleanDividendsInputs(250_000)).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(250_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(250_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $400K target (ON)', () => {
+    const yr1 = calculateProjection(makeCleanDividendsInputs(400_000)).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(400_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(400_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $600K target (ON) — high-income stress test', () => {
+    const yr1 = calculateProjection(makeCleanDividendsInputs(600_000)).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(600_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(600_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $200K target (AB) — province parameter used', () => {
+    // Alberta: 10% flat provincial rate, no surtax — significantly different from ON.
+    // Verifies the province parameter flows correctly through the solver.
+    const yr1 = calculateProjection(makeCleanDividendsInputs(200_000, 'AB')).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(200_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(200_000 * (1 + TOLERANCE));
+  });
+
+  it('delivers within ±1.5% of $200K target (QC) — Quebec with abatement', () => {
+    // Quebec: highest combined rates + federal abatement (16.5%).
+    // Verifies the province parameter flows correctly through the solver.
+    const yr1 = calculateProjection(makeCleanDividendsInputs(200_000, 'QC')).yearlyResults[0];
+    expect(yr1.afterTaxIncome).toBeGreaterThan(200_000 * (1 - TOLERANCE));
+    expect(yr1.afterTaxIncome).toBeLessThan(200_000 * (1 + TOLERANCE));
+  });
+});
