@@ -472,8 +472,9 @@ describe('Estate Calculation', () => {
         spouseRetirementAge: 65,
         spouseRequiredIncome: 0,
         actualRRSPBalance: 500000,
-        hasIPP: true,
-        ippExistingBalance: 200000,
+        considerIPP: true,
+        ippMode: 'existing' as const,
+        ippExistingFundBalance: 200000,
       });
       const result = calculateProjection(inputs);
       const estate = result.yearlyResults[result.yearlyResults.length - 1].estate!;
