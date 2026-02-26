@@ -1771,10 +1771,9 @@ function calculateSummary(
     totalPassiveIncome += taxablePassive;
 
     // Integrated rate accumulators — accumulation phase only.
-    // personalTax is income tax only; add CPP/EI/QPIP since they are mandatory
-    // levies on compensation and belong in the integrated rate numerator.
+    // personalTax is income tax only (federal + provincial). CPP/EI are contributions, not taxes.
     if (year.phase === 'accumulation') {
-      accumPersonalTax += year.personalTax + year.cpp + year.cpp2 + year.ei + year.qpip;
+      accumPersonalTax += year.personalTax;
       accumCompensation += year.salary + year.dividends.grossDividends;
     }
 
@@ -1785,7 +1784,7 @@ function calculateSummary(
       totalDividends += spGrossDivs;
       totalPersonalTax += year.spouse.personalTax;
       if (year.phase === 'accumulation') {
-        accumPersonalTax += year.spouse.personalTax + year.spouse.cpp + year.spouse.cpp2 + year.spouse.ei + year.spouse.qpip;
+        accumPersonalTax += year.spouse.personalTax;
         accumCompensation += year.spouse.salary + spGrossDivs;
       }
       totalRRSPRoomGenerated += year.spouse.rrspRoomGenerated;
