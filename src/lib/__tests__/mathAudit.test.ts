@@ -1323,3 +1323,100 @@ describe('Dividend Gross-Up Solver Accuracy — Bug 3 Regression', () => {
     expect(yr1.afterTaxIncome).toBeLessThan(200_000 * (1 + TOLERANCE));
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 18: RETIREMENT PHASE INCOME ACCURACY (Bracket-Stacking Regression)
+//
+// The old retirement gap calculation treated mandatory income (CPP + OAS + RRIF)
+// as if it were already after-tax, and the dividend solver ignored that these
+// amounts fill the lower brackets before dividends are taxed. Together this
+// caused a systematic 6–8% shortfall in after-tax income in scenarios with
+// mandatory income.
+//
+// The fix:
+//   1. mandatoryAfterTaxEstimate now uses calculatePersonalTaxForYear on the
+//      mandatory gross — accounts for actual tax on CPP/OAS/RRIF.
+//   2. solveGrossDividendForTarget accepts existingOtherIncome and computes the
+//      MARGINAL rate on dividends stacked on top of mandatory income.
+//
+// Note: A residual ~3% error remains when OAS clawback is triggered (circular
+// dependency: corporate income → higher clawback → less OAS → more corporate
+// needed). This is a documented known limitation.
+// ══════════════════════════════════════════════════════════════════════════════
+describe('Retirement Phase Income Accuracy — Bracket-Stacking Regression', () => {
+  function makeRetirementOnlyInputs(retirementSpending: number, overrides: Partial<UserInputs> = {}): UserInputs {
+    return {
+      ...getDefaultInputs(),
+      currentAge: 65,
+      retirementAge: 65,
+      planningEndAge: 75,
+      planningHorizon: 10,
+      province: 'ON',
+      investmentReturnRate: 0.0,
+      expectedInflationRate: 0.0,
+      annualCorporateRetainedEarnings: 0,
+      corporateInvestmentBalance: retirementSpending * 15,  // ample
+      cdaBalance: 0, eRDTOHBalance: 0, nRDTOHBalance: 0, gripBalance: 0,
+      actualRRSPBalance: 0,
+      actualTFSABalance: 0,
+      oasEligible: false,
+      averageHistoricalSalary: 0,
+      considerIPP: false,
+      hasSpouse: false,
+      inflateSpendingNeeds: false,
+      // Zero allocation → no per-asset-class income noise
+      canadianEquityPercent: 0, usEquityPercent: 0,
+      internationalEquityPercent: 0, fixedIncomePercent: 0,
+      retirementSpending,
+      ...overrides,
+    };
+  }
+
+  it('pure-corporate retirement: $80K target delivered exactly (no mandatory income)', () => {
+    const yr = calculateProjection(makeRetirementOnlyInputs(80_000))
+      .yearlyResults.find(y => y.phase === 'retirement')!;
+    expect(yr.afterTaxIncome).toBeGreaterThan(80_000 * 0.985);
+    expect(yr.afterTaxIncome).toBeLessThan(80_000 * 1.015);
+  });
+
+  it('pure-corporate retirement: $150K target delivered exactly', () => {
+    const yr = calculateProjection(makeRetirementOnlyInputs(150_000))
+      .yearlyResults.find(y => y.phase === 'retirement')!;
+    expect(yr.afterTaxIncome).toBeGreaterThan(150_000 * 0.985);
+    expect(yr.afterTaxIncome).toBeLessThan(150_000 * 1.015);
+  });
+
+  it('OAS only: $70K target delivered within ±2% (OAS fills lower brackets)', () => {
+    // OAS ~$8.7K sits in the return before dividends — stacking fix needed.
+    // Without the fix: afterTax was ~$67.4K (−3.7%).
+    const yr = calculateProjection(makeRetirementOnlyInputs(70_000, {
+      oasEligible: true,
+      oasStartAge: 65,
+    })).yearlyResults.find(y => y.phase === 'retirement')!;
+    expect(yr.afterTaxIncome).toBeGreaterThan(70_000 * 0.98);
+    expect(yr.afterTaxIncome).toBeLessThan(70_000 * 1.02);
+  });
+
+  it('CPP + OAS: $70K target delivered within ±2%', () => {
+    // CPP ~$10.5K + OAS ~$8.7K = ~$19K mandatory before dividends.
+    // Without the fix: afterTax was ~$65.5K (−6.5%).
+    const yr = calculateProjection(makeRetirementOnlyInputs(70_000, {
+      oasEligible: true,
+      oasStartAge: 65,
+      averageHistoricalSalary: 60_000,
+    })).yearlyResults.find(y => y.phase === 'retirement')!;
+    expect(yr.afterTaxIncome).toBeGreaterThan(70_000 * 0.98);
+    expect(yr.afterTaxIncome).toBeLessThan(70_000 * 1.02);
+  });
+
+  it('CPP only, no OAS: $100K target delivered within ±2%', () => {
+    // CPP ~$10.5K fills lower brackets. No OAS clawback complication.
+    // Without the fix: afterTax was ~$92.3K (−7.7%).
+    const yr = calculateProjection(makeRetirementOnlyInputs(100_000, {
+      oasEligible: false,
+      averageHistoricalSalary: 60_000,
+    })).yearlyResults.find(y => y.phase === 'retirement')!;
+    expect(yr.afterTaxIncome).toBeGreaterThan(100_000 * 0.98);
+    expect(yr.afterTaxIncome).toBeLessThan(100_000 * 1.02);
+  });
+});
