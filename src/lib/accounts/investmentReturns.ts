@@ -8,10 +8,10 @@ import type { InvestmentReturns } from '../types';
 
 /** Default expected total return per asset class (used to compute blended investmentReturnRate) */
 export const ASSET_CLASS_DEFAULT_RETURNS = {
-  canadianEquity:      0.063,  // FP Canada 2025: Canadian equity (6.30%)
-  usEquity:            0.063,  // FP Canada 2025: Foreign developed equity (6.30%)
-  internationalEquity: 0.063,  // FP Canada 2025: Foreign developed equity (6.30%)
-  fixedIncome:         0.0405, // FP Canada 2025: Fixed income / bonds (4.05%)
+  canadianEquity:      0.066,  // FP Canada 2025: Canadian equity (6.60%)
+  usEquity:            0.066,  // FP Canada 2025: Foreign developed equity (6.60%)
+  internationalEquity: 0.069,  // FP Canada 2025: International equity (6.90%)
+  fixedIncome:         0.034,  // FP Canada 2025: Fixed income / bonds (3.40%)
 } as const;
 
 // Annual income rates as fraction of balance (not of return)

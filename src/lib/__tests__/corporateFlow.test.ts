@@ -433,9 +433,9 @@ describe('Corporate Flow — Passive Income Grind', () => {
 
   it('should compute AAII as foreignIncome + 50% of realized capital gains', () => {
     // $2M balance, 25/25/25/25 allocation — FP Canada 2025 rates:
-    //   foreignIncome = $2M * (0.25*0.015 + 0.25*0.030 + 0.25*0.0405) = $42,750
+    //   foreignIncome = $2M * (0.25*0.015 + 0.25*0.030 + 0.25*0.034) = $39,500
     //   realizedCG    = $2M * (0.25*0.003 + 0.25*0.003 + 0.25*0.004 + 0) = $5,000
-    //   AAII = $42,750 + $5,000 * 0.50 = $45,250
+    //   AAII = $39,500 + $5,000 * 0.50 = $42,000
     const inputs = createInputs({
       corporateInvestmentBalance: 2000000,
       investmentReturnRate: 0.05,
@@ -443,7 +443,7 @@ describe('Corporate Flow — Passive Income Grind', () => {
     const result = calculateProjection(inputs);
     const yr1 = result.yearlyResults[0];
 
-    expect(yr1.passiveIncomeGrind.totalPassiveIncome).toBeCloseTo(45250, -2);
+    expect(yr1.passiveIncomeGrind.totalPassiveIncome).toBeCloseTo(42000, -2);
   });
 });
 
@@ -776,11 +776,11 @@ describe('Corporate Flow — Investment Returns Impact on Balance', () => {
 
   it('should correctly split passive tax into refundable and non-refundable portions', () => {
     // $1M balance, 25/25/25/25 allocation (Ontario) — FP Canada 2025 rates:
-    //   foreignIncome = $1M * (0.25*0.015 + 0.25*0.030 + 0.25*0.0405) = $21,375
+    //   foreignIncome = $1M * (0.25*0.015 + 0.25*0.030 + 0.25*0.034) = $19,750
     //   realizedCG    = $1M * (0.25*0.003 + 0.25*0.003 + 0.25*0.004 + 0) = $2,500
     //   taxableCapGain = $2,500 * 0.50 = $1,250
-    //   taxableInvestmentIncome = $21,375 + $1,250 = $22,625
-    //   passiveTax = $22,625 * 0.5017 (Ontario rate) = $11,351.04
+    //   taxableInvestmentIncome = $19,750 + $1,250 = $21,000
+    //   passiveTax = $21,000 * 0.5017 (Ontario rate) = $10,535.70
     const inputs = createInputs({
       corporateInvestmentBalance: 1000000,
       investmentReturnRate: 0.05,
@@ -788,7 +788,7 @@ describe('Corporate Flow — Investment Returns Impact on Balance', () => {
     const result = calculateProjection(inputs);
     const yr1 = result.yearlyResults[0];
 
-    expect(yr1.corporateTaxOnPassive).toBeCloseTo(11351, -1);
+    expect(yr1.corporateTaxOnPassive).toBeCloseTo(10536, -1);
   });
 });
 

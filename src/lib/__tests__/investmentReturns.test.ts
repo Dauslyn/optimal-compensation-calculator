@@ -48,11 +48,11 @@ describe('calculateInvestmentReturns', () => {
       expect(result.canadianDividends).toBe(0);
     });
 
-    it('all return is interest income at the fixed income asset-class rate (4.05%)', () => {
+    it('all return is interest income at the fixed income asset-class rate (3.40%)', () => {
       const result = calculateInvestmentReturns(BALANCE, 0.07, 0, 0, 0, 100);
-      // Fixed income should use its own 4.05% rate (FP Canada 2025), NOT the blended 7% returnRate
-      // $1M × 4.05% = $40,500 expected
-      expect(result.foreignIncome).toBeCloseTo(40500, 0);
+      // Fixed income should use its own 3.40% rate (FP Canada 2025), NOT the blended 7% returnRate
+      // $1M × 3.40% = $34,000 expected
+      expect(result.foreignIncome).toBeCloseTo(34000, 0);
     });
   });
 
