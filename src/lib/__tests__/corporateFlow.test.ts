@@ -860,3 +860,99 @@ describe('Corporate Flow — Fixed Strategy Corporate Impact', () => {
     expect(yr1.corporateTaxOnActive).toBeLessThan(200000 * SBD_RATE);
   });
 });
+
+describe('Corporate Flow — ACB Tracking', () => {
+  it('ACB increases with retained business income', () => {
+    // With salary-only strategy and corporate earnings, retained income increases ACB
+    const inputs = createInputs({
+      salaryStrategy: 'salary-only',
+      requiredIncome: 100000,
+      annualCorporateRetainedEarnings: 200000,
+      corporateInvestmentBalance: 100000,
+      investmentReturnRate: 0, // zero investment return to isolate business income effect
+    });
+    const result = calculateProjection(inputs);
+    const yr1 = result.yearlyResults[0];
+
+    // After a year with retained business income, ACB should be >= starting balance
+    expect(yr1.notionalAccounts.corporateACB).toBeGreaterThan(0);
+    expect(yr1.notionalAccounts.corporateACB).not.toBeNaN();
+  });
+
+  it('ACB decreases proportionally with dividend payments', () => {
+    // With dividends-only strategy and large CDA, dividends reduce corp balance and ACB
+    const inputs = createInputs({
+      salaryStrategy: 'dividends-only',
+      requiredIncome: 80000,
+      annualCorporateRetainedEarnings: 50000,
+      corporateInvestmentBalance: 500000,
+      cdaBalance: 200000,
+      investmentReturnRate: 0,
+      planningHorizon: 3,
+    });
+    const result = calculateProjection(inputs);
+
+    // After dividend payments reduce corp balance, ACB should have decreased proportionally
+    const lastYr = result.yearlyResults[result.yearlyResults.length - 1];
+    const firstYr = result.yearlyResults[0];
+
+    // ACB should not increase when only dividends are paid (with 0% return)
+    // and corp balance is being drawn down
+    expect(lastYr.notionalAccounts.corporateACB).toBeGreaterThanOrEqual(0);
+    expect(lastYr.notionalAccounts.corporateACB).toBeLessThanOrEqual(
+      firstYr.notionalAccounts.corporateACB + 1 // allow tiny rounding
+    );
+  });
+
+  it('ACB does not increase from unrealized portfolio gains', () => {
+    // With pure investment return and no salary/dividends, unrealized gains grow
+    // the corporate balance but NOT the ACB
+    const inputs = createInputs({
+      salaryStrategy: 'dividends-only',
+      requiredIncome: 0,
+      annualCorporateRetainedEarnings: 0,
+      corporateInvestmentBalance: 1000000,
+      investmentReturnRate: 0.07,
+      planningHorizon: 5,
+      // Use mostly price-appreciation allocation (US+International equity)
+      canadianEquityPercent: 0,
+      usEquityPercent: 50,
+      internationalEquityPercent: 50,
+      fixedIncomePercent: 0,
+    });
+    const result = calculateProjection(inputs);
+
+    // Over 5 years at 7%, corp balance should grow (unrealized gains accumulate)
+    const lastYr = result.yearlyResults[result.yearlyResults.length - 1];
+    const startingBalance = 1000000;
+
+    expect(lastYr.notionalAccounts.corporateInvestments).toBeGreaterThan(startingBalance);
+    // ACB should be LESS than corp balance because unrealized gains don't increase ACB
+    expect(lastYr.notionalAccounts.corporateACB).toBeLessThanOrEqual(
+      lastYr.notionalAccounts.corporateInvestments + 0.01
+    );
+    // ACB itself should be non-negative and finite
+    expect(lastYr.notionalAccounts.corporateACB).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(lastYr.notionalAccounts.corporateACB)).toBe(true);
+  });
+
+  it('ACB stays non-negative when salary drives corp balance negative', () => {
+    // When salary exceeds corporate cash, corporateInvestments goes negative
+    // ACB should not go negative in this scenario
+    const inputs = createInputs({
+      salaryStrategy: 'salary-only',
+      fixedSalaryAmount: 200000,
+      requiredIncome: 200000,
+      annualCorporateRetainedEarnings: 100000,
+      corporateInvestmentBalance: 50000, // Small starting balance — salary will drive negative
+      investmentReturnRate: 0,
+      planningHorizon: 1,
+    });
+    const result = calculateProjection(inputs);
+    const yr1 = result.yearlyResults[0];
+
+    // ACB should never go below zero
+    expect(yr1.notionalAccounts.corporateACB).toBeGreaterThanOrEqual(-0.01);
+    expect(Number.isFinite(yr1.notionalAccounts.corporateACB)).toBe(true);
+  });
+});

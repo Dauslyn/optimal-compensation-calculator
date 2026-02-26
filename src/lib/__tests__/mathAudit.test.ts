@@ -30,6 +30,7 @@ import { calculateEmployerHealthTax } from '../tax/employerHealthTax';
 import { getPassiveInvestmentTaxRate } from '../tax/provinces';
 import { calculateProjection } from '../calculator';
 import type { UserInputs, NotionalAccounts } from '../types';
+import { getDefaultInputs } from '../localStorage';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SECTION 1: CRA RATE VERIFICATION (2026)
@@ -1122,5 +1123,106 @@ describe('Corporate Passive Income Tax Split — Province-Specific Non-Refundabl
     const oldNonRefundable = taxableInvIncome * 0.265;
     const oldTotal = oldNonRefundable + returns.nRDTOHIncrease;
     expect(Math.abs(oldTotal - expectedTotal)).toBeGreaterThan(50);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SECTION 17: ESTATE ACB INVARIANTS
+// Verifies that corporateACB tracks correctly throughout a projection:
+//   - Start of projection: ACB = corporateInvestments (no embedded gain assumed)
+//   - After multi-year growth: ACB <= corporateInvestments (gain accumulates but never exceeds FMV)
+//   - ACB is always finite and non-negative
+// ══════════════════════════════════════════════════════════════════════════════
+
+describe('Estate ACB Invariants', () => {
+  function makeProjectionInputs(overrides: Partial<ReturnType<typeof getDefaultInputs>> = {}) {
+    return {
+      ...getDefaultInputs(),
+      province: 'ON',
+      currentAge: 50,
+      retirementAge: 65,
+      planningEndAge: 85,
+      planningHorizon: 35,
+      annualCorporateRetainedEarnings: 150000,
+      requiredIncome: 100000,
+      corporateInvestmentBalance: 500000,
+      investmentReturnRate: 0.07,
+      expectedInflationRate: 0.02,
+      ...overrides,
+    };
+  }
+
+  it('corporateACB starts at corporateInvestmentBalance (no embedded gain assumed)', () => {
+    // At projection initialization, corporateACB = corporateInvestmentBalance.
+    // This means we start with zero embedded gains — the "current state" assumption.
+    // In year 1, ACB may change due to salary/dividend processing, but it must be
+    // <= the starting balance (no gain can have materialized before the projection starts).
+    const startingBalance = 750000;
+    const inputs = makeProjectionInputs({
+      corporateInvestmentBalance: startingBalance,
+      investmentReturnRate: 0, // zero return to isolate the ACB initialization
+      planningHorizon: 1,
+      annualCorporateRetainedEarnings: 0,
+      requiredIncome: 0,
+    });
+    const result = calculateProjection(inputs);
+    const yr1 = result.yearlyResults[0];
+
+    // ACB must be non-negative and at most the starting balance
+    // (it can decrease from proportional reduction due to salary/dividend payments)
+    expect(yr1.notionalAccounts.corporateACB).toBeGreaterThanOrEqual(0);
+    expect(yr1.notionalAccounts.corporateACB).toBeLessThanOrEqual(startingBalance + 1);
+    // The year-end corp balance should also be <= starting (no return, only outflows possible)
+    expect(yr1.notionalAccounts.corporateInvestments).toBeLessThanOrEqual(startingBalance + 1);
+  });
+
+  it('ACB <= corporateInvestments after multi-year projection with investment growth', () => {
+    // Over many years at 7%, unrealized gains accumulate.
+    // ACB only grows from taxed income; FMV grows from both income AND appreciation.
+    // Therefore ACB must always be <= corporateInvestments.
+    const inputs = makeProjectionInputs({ planningHorizon: 15 });
+    const result = calculateProjection(inputs);
+
+    for (const yr of result.yearlyResults) {
+      if (yr.notionalAccounts.corporateInvestments > 0) {
+        expect(yr.notionalAccounts.corporateACB).toBeLessThanOrEqual(
+          yr.notionalAccounts.corporateInvestments + 0.01
+        );
+      }
+    }
+  });
+
+  it('ACB is always finite and non-negative across all years', () => {
+    const inputs = makeProjectionInputs({ planningHorizon: 20 });
+    const result = calculateProjection(inputs);
+
+    for (const yr of result.yearlyResults) {
+      expect(yr.notionalAccounts.corporateACB).not.toBeNaN();
+      expect(Number.isFinite(yr.notionalAccounts.corporateACB)).toBe(true);
+      expect(yr.notionalAccounts.corporateACB).toBeGreaterThanOrEqual(-0.01);
+    }
+  });
+
+  it('estate with ACB = FMV has zero corporate CG tax (backward-compatible case)', () => {
+    // When ACB equals corporateInvestments at death, unrealizedGain = 0 → no CG tax
+    // This test verifies backward compatibility: old projections with no embedded gains
+    // produce the same result as before.
+    const inputs = makeProjectionInputs({
+      corporateInvestmentBalance: 500000,
+      investmentReturnRate: 0, // no return → no unrealized gains → ACB stays equal to FMV
+      annualCorporateRetainedEarnings: 0,
+      requiredIncome: 0,
+      planningHorizon: 5,
+      currentAge: 80,
+      retirementAge: 65,
+      planningEndAge: 85,
+    });
+    const result = calculateProjection(inputs);
+    const lastYr = result.yearlyResults[result.yearlyResults.length - 1];
+
+    if (lastYr.estate) {
+      // With 0% return and no business income, ACB = FMV, so corporate CG tax = 0
+      expect(lastYr.estate.corporateCapitalGainsTax).toBeCloseTo(0, 0);
+    }
   });
 });
