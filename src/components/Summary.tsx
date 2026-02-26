@@ -370,10 +370,6 @@ export function Summary({ summary, inputs, comparison, onCompare }: SummaryProps
                   <div className="stat-label">Spouse Admin Costs</div>
                   <div className="stat-value" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.spouse.ipp.totalAdminCosts)}</div>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-label">Spouse PA (RRSP Reduced)</div>
-                  <div className="stat-value negative" style={{ fontSize: '1.1rem' }}>{formatCurrency(summary.spouse.ipp.totalPensionAdjustments)}</div>
-                </div>
               </div>
             </div>
           )}
