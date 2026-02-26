@@ -819,14 +819,13 @@ describe('Full Scenario Trace — Dividends-Only, Ontario, 1 Year', () => {
     expect(totalDivs).toBeGreaterThan(0);
   });
 
-  it('should have total after-tax income meeting or exceeding the $80K target', () => {
-    // With sufficient notional accounts (especially CDA), afterTaxIncome may EXCEED
-    // the target because CDA dividends are tax-free — the depletion engine exhausts
-    // CDA first, and the tax-free income overshoots the target before adding taxable dividends.
-    // This is expected behavior: the engine prioritizes tax-efficient sources.
-    expect(yr1.afterTaxIncome).toBeGreaterThanOrEqual(80000);
-    // But shouldn't wildly overshoot (sanity check — within $10K of target)
-    expect(yr1.afterTaxIncome).toBeLessThan(95000);
+  it('should have total after-tax income within ±2% of the $80K target', () => {
+    // The dividend gross-up engine uses average (not marginal) tax rates to estimate
+    // how many gross dividends deliver the required after-tax amount.  Average-rate
+    // estimation is accurate to within ~1-2%, so we expect the result to land very
+    // close to $80K in either direction rather than always overshooting.
+    expect(yr1.afterTaxIncome).toBeGreaterThan(78400);   // no more than 2% undershoot
+    expect(yr1.afterTaxIncome).toBeLessThan(81600);      // no more than 2% overshoot
   });
 });
 
